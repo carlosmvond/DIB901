@@ -103,16 +103,15 @@ MathJax = {
     <div class="field"><label>X₀ (g/L)</label><div class="row"><input type="range" id="x0" min="0.01" max="1" step="0.01" value="0.1" oninput="syncP('x0')"><span class="val" id="x0-v">0.10</span></div></div>
     <div class="field"><label>S₀ (g/L)</label><div class="row"><input type="range" id="s0" min="0.5" max="20" step="0.1" value="10" oninput="syncP('s0')"><span class="val" id="s0-v">10.0</span></div></div>
     <div class="field"><label>Tiempo total (h)</label><div class="row"><input type="range" id="tmax" min="2" max="48" step="1" value="16" oninput="syncP('tmax')"><span class="val" id="tmax-v">16</span></div></div>
-    <hr class="sep">
-    <div class="ctrl-btns">
-      <button class="run" onclick="runSim()">&#9654; Simular</button>
-      <button onclick="resetSim()">&#8635; Reset</button>
-    </div>
     <div class="eq-display" id="eq-display"></div>
   </div>
 </div>
 
 <div class="right-col">
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <button class="run" style="flex:1;padding:9px;font-size:13px;border:0.5px solid #3B6D11;border-radius:8px;background:#EAF3DE;color:#1a3d08;font-weight:500;cursor:pointer" onclick="runSim()">&#9654; Simular</button>
+    <button style="flex:1;padding:9px;font-size:13px;border:0.5px solid #ccc;border-radius:8px;background:#f8f8f6;cursor:pointer" onclick="resetSim()">&#8635; Reset</button>
+  </div>
   <div class="viz-row">
     <div class="panel" style="padding:0.75rem;display:flex;flex-direction:column;gap:8px">
       <div style="font-size:11px;font-weight:500;color:#999;text-transform:uppercase;letter-spacing:0.06em">Biorreactor</div>
