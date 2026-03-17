@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cultivo Batch — Modelo dinámico</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f0f0ee;color:#1a1a1a;padding:1rem}
+h1{font-size:15px;font-weight:500;margin-bottom:1rem;color:#444;font-family:monospace}
+.layout{display:grid;grid-template-columns:255px 1fr;gap:12px}
+.panel{background:#fff;border:0.5px solid #ddd;border-radius:12px;padding:1rem}
+.panel h2{font-size:11px;font-weight:500;color:#999;margin-bottom:0.65rem;text-transform:uppercase;letter-spacing:0.06em}
+.field{margin-bottom:9px}
+.field label{display:block;font-size:12px;color:#666;margin-bottom:2px}
+.field .row{display:flex;align-items:center;gap:6px}
+.field input[type=range]{flex:1}
+.field .val{font-size:12px;font-weight:500;min-width:44px;text-align:right;color:#222;font-family:monospace}
+.mu-btns{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.mu-btn{padding:7px 9px;font-size:12px;border:0.5px solid #ddd;border-radius:8px;background:#f8f8f6;cursor:pointer;text-align:left;transition:all 0.15s}
+.mu-btn:hover{background:#f0f0ee}
+.mu-btn.active{background:#E6F1FB;border-color:#185FA5}
+.mu-btn .name{font-weight:500;color:#333}
+.mu-btn.active .name{color:#0C447C}
+.mu-btn .eq{font-family:monospace;font-size:11px;color:#bbb;display:block;margin-top:2px}
+.mu-btn.active .eq{color:#378ADD}
+.sep{border:none;border-top:0.5px solid #eee;margin:9px 0}
+.ctrl-btns{display:flex;gap:7px;margin-bottom:10px}
+.ctrl-btns button{flex:1;padding:7px;font-size:13px;border:0.5px solid #ccc;border-radius:8px;background:#f8f8f6;cursor:pointer;transition:background 0.1s}
+.ctrl-btns button:hover{background:#ebebea}
+.ctrl-btns button.run{background:#EAF3DE;border-color:#3B6D11;color:#1a3d08;font-weight:500}
+.ctrl-btns button.run:hover{background:#d5ebc4}
+.eq-display{background:#f8f8f6;border-radius:8px;padding:0.55rem 0.75rem;font-size:11px;font-family:monospace;color:#666;line-height:1.7;white-space:pre}
+.right-col{display:flex;flex-direction:column;gap:12px}
+.viz-row{display:grid;grid-template-columns:1fr 1.55fr;gap:12px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:#f8f8f6;border-radius:8px;padding:0.55rem 0.75rem}
+.stat .lbl{font-size:11px;color:#999;margin-bottom:2px}
+.stat .num{font-size:15px;font-weight:500;font-family:monospace}
+@media(max-width:680px){
+  body{padding:0.6rem}
+  h1{font-size:13px;margin-bottom:0.75rem}
+  .layout{grid-template-columns:1fr}
+  .viz-row{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .sidebar-toggle{display:flex}
+  .sidebar-body{display:none}
+  .sidebar-body.open{display:block}
+  #bio-canvas{min-height:280px!important}
+  #chart-canvas{height:200px!important}
+}
+@media(min-width:681px){
+  .sidebar-toggle{display:none}
+  .sidebar-body{display:block!important}
+}
+.sidebar-toggle{
+  width:100%;padding:8px 10px;background:none;border:none;
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;font-size:13px;font-weight:500;color:#444;
+}
+.sidebar-toggle .arrow{font-size:10px;color:#aaa;transition:transform 0.2s}
+.sidebar-toggle.open .arrow{transform:rotate(180deg)}
+</style>
+</head>
+<body>
+
+<h1>dx/dt = μ(S)·x − m·x &nbsp;&nbsp;&nbsp; dS/dt = −(1/Y)·μ(S)·x</h1>
+
+<div class="layout">
+<div class="panel" style="padding:0">
+  <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">
+    <span>Parámetros y modelo</span>
+    <span class="arrow" id="sidebar-arrow">▼</span>
+  </button>
+  <div class="sidebar-body" id="sidebar-body" style="padding:0 1rem 1rem">
+    <h2 style="padding-top:0.5rem">Modelo μ(S)</h2>
+    <div class="mu-btns">
+      <button class="mu-btn active" onclick="setMu('linear')" id="btn-linear">
+        <span class="name">Proporcional a S</span>
+        <span class="eq">μ(S) = μ_max · S / S₀</span>
+      </button>
+      <button class="mu-btn" onclick="setMu('monod')" id="btn-monod">
+        <span class="name">Monod</span>
+        <span class="eq">μ(S) = μ_max · S / (Ks + S)</span>
+      </button>
+    </div>
+    <hr class="sep">
+    <h2>Parámetros</h2>
+    <div class="field"><label>μ_max (h⁻¹)</label><div class="row"><input type="range" id="mumax" min="0.05" max="2" step="0.05" value="0.8" oninput="syncP('mumax')"><span class="val" id="mumax-v">0.80</span></div></div>
+    <div class="field"><label>Ks (g/L) — solo Monod</label><div class="row"><input type="range" id="ks" min="0.01" max="5" step="0.01" value="0.5" oninput="syncP('ks')"><span class="val" id="ks-v">0.50</span></div></div>
+    <div class="field"><label>m — mantenimiento (h⁻¹)</label><div class="row"><input type="range" id="maint" min="0" max="0.2" step="0.005" value="0.02" oninput="syncP('maint')"><span class="val" id="maint-v">0.020</span></div></div>
+    <div class="field"><label>Y — rendimiento (g_x/g_S)</label><div class="row"><input type="range" id="yield" min="0.1" max="1" step="0.01" value="0.5" oninput="syncP('yield')"><span class="val" id="yield-v">0.50</span></div></div>
+    <hr class="sep">
+    <h2>Condiciones iniciales</h2>
+    <div class="field"><label>X₀ (g/L)</label><div class="row"><input type="range" id="x0" min="0.01" max="1" step="0.01" value="0.1" oninput="syncP('x0')"><span class="val" id="x0-v">0.10</span></div></div>
+    <div class="field"><label>S₀ (g/L)</label><div class="row"><input type="range" id="s0" min="0.5" max="20" step="0.1" value="10" oninput="syncP('s0')"><span class="val" id="s0-v">10.0</span></div></div>
+    <div class="field"><label>Tiempo total (h)</label><div class="row"><input type="range" id="tmax" min="2" max="48" step="1" value="16" oninput="syncP('tmax')"><span class="val" id="tmax-v">16</span></div></div>
+    <hr class="sep">
+    <div class="ctrl-btns">
+      <button class="run" onclick="runSim()">&#9654; Simular</button>
+      <button onclick="resetSim()">&#8635; Reset</button>
+    </div>
+    <div class="eq-display" id="eq-display"></div>
+  </div>
+</div>
+
+<div class="right-col">
+  <div class="viz-row">
+    <div class="panel" style="padding:0.75rem;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:11px;font-weight:500;color:#999;text-transform:uppercase;letter-spacing:0.06em">Biorreactor</div>
+      <canvas id="bio-canvas" style="flex:1;min-height:210px;width:100%"></canvas>
+      <div style="display:flex;gap:14px;font-size:11px;color:#999;flex-wrap:wrap">
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#1D9E75;margin-right:4px;vertical-align:middle"></span>células</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(216,90,48,0.4);border:0.5px solid #D85A30;margin-right:4px;vertical-align:middle"></span>sustrato</span>
+      </div>
+    </div>
+    <div class="panel" style="padding:0.75rem">
+      <div style="font-size:11px;font-weight:500;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">X y S vs tiempo</div>
+      <canvas id="chart-canvas" style="width:100%;height:225px"></canvas>
+      <div style="display:flex;gap:14px;margin-top:6px;font-size:11px">
+        <span style="color:#1D9E75;font-weight:500">— X (g/L)</span>
+        <span style="color:#D85A30;font-weight:500">— S (g/L)</span>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="stats">
+      <div class="stat"><div class="lbl">X actual (g/L)</div><div class="num" style="color:#1D9E75" id="stat-x">—</div></div>
+      <div class="stat"><div class="lbl">S actual (g/L)</div><div class="num" style="color:#D85A30" id="stat-s">—</div></div>
+      <div class="stat"><div class="lbl">μ actual (h⁻¹)</div><div class="num" id="stat-mu">—</div></div>
+      <div class="stat"><div class="lbl">Tiempo (h)</div><div class="num" id="stat-t">—</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+let muModel='linear', simData=null, animId=null, animStep=0, running=false;
+let cellPool=[], bubblePool=[];
+const MAX_CELLS=200, MAX_BUBBLES=28;
+const params={mumax:0.8,ks:0.5,maint:0.02,yield:0.5,x0:0.1,s0:10,tmax:16};
+
+function setMu(m){
+  muModel=m;
+  ['linear','monod'].forEach(k=>document.getElementById('btn-'+k).classList.toggle('active',k===m));
+  updateEq();
+}
+
+function syncP(id){
+  const v=parseFloat(document.getElementById(id).value);
+  params[id]=v;
+  const d=document.getElementById(id+'-v');
+  if(id==='mumax'||id==='ks'||id==='yield') d.textContent=v.toFixed(2);
+  else if(id==='maint') d.textContent=v.toFixed(3);
+  else if(id==='x0') d.textContent=v.toFixed(2);
+  else if(id==='s0') d.textContent=v.toFixed(1);
+  else d.textContent=v;
+  updateEq();
+}
+
+function updateEq(){
+  const {mumax,ks,maint,yield:Y,s0}=params;
+  let ms='';
+  if(muModel==='linear') ms=`μ(S) = ${mumax.toFixed(2)} · S / ${s0.toFixed(1)}`;
+  if(muModel==='monod')  ms=`μ(S) = ${mumax.toFixed(2)} · S / (${ks.toFixed(2)} + S)`;
+  document.getElementById('eq-display').textContent=
+    `${ms}\ndx/dt = (μ(S) − ${maint.toFixed(3)}) · x\ndS/dt = −(1/${Y.toFixed(2)}) · μ(S) · x`;
+}
+
+function muFn(S){
+  const {mumax,ks,s0}=params;
+  if(S<=0) return 0;
+  if(muModel==='linear') return mumax*S/s0;
+  if(muModel==='monod')  return mumax*S/(ks+S);
+  return 0;
+}
+
+function rk4(x,s,dt){
+  const {maint,yield:Y}=params;
+  const f=(x,s)=>{
+    const sEff=Math.max(0,s);
+    const mu=muFn(sEff);
+    return [(mu-maint)*x, -(1/Y)*mu*x];
+  };
+  const [k1x,k1s]=f(x,s);
+  const [k2x,k2s]=f(x+dt/2*k1x, s+dt/2*k1s);
+  const [k3x,k3s]=f(x+dt/2*k2x, s+dt/2*k2s);
+  const [k4x,k4s]=f(x+dt*k3x,   s+dt*k3s);
+  return{
+    x:Math.max(0,x+dt/6*(k1x+2*k2x+2*k3x+k4x)),
+    s:Math.max(0,s+dt/6*(k1s+2*k2s+2*k3s+k4s))
+  };
+}
+
+function runSim(){
+  const {x0,s0,tmax}=params;
+  const dt=0.02, steps=Math.round(tmax/dt);
+  const ts=[],xs=[],ss=[];
+  let x=x0,s=s0;
+  for(let i=0;i<=steps;i++){
+    ts.push(i*dt); xs.push(x); ss.push(s);
+    if(i<steps){const n=rk4(x,s,dt);x=n.x;s=n.s;}
+  }
+  simData={ts,xs,ss};
+  cellPool=[]; bubblePool=[];
+  animStep=0; running=true;
+  if(animId) cancelAnimationFrame(animId);
+  animate();
+}
+
+function resetSim(){
+  running=false;
+  if(animId) cancelAnimationFrame(animId);
+  simData=null; animStep=0; cellPool=[]; bubblePool=[];
+  setTimeout(initBio,10);
+  clearChart();
+  ['stat-x','stat-s','stat-mu','stat-t'].forEach(id=>document.getElementById(id).textContent='—');
+}
+
+function animate(){
+  if(!running||!simData) return;
+  const total=simData.ts.length;
+  const speed=Math.max(1,Math.floor(total/300));
+  animStep=Math.min(animStep+speed,total-1);
+  drawBio(animStep);
+  drawChart(animStep);
+  updateStats(animStep);
+  if(animStep<total-1) animId=requestAnimationFrame(animate);
+}
+
+function seededRand(seed){
+  let s=seed%2147483647; if(s<=0) s+=2147483646;
+  return ()=>{s=s*16807%2147483647; return (s-1)/2147483646;};
+}
+
+function setupCanvas(c){
+  const dpr=window.devicePixelRatio||1;
+  c.width=c.offsetWidth*dpr;
+  c.height=c.offsetHeight*dpr;
+  c.getContext('2d').scale(dpr,dpr);
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+function roundBottom(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(x+w,y);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y);
+  ctx.closePath();
+}
+
+function buildPools(lx,ly,lw,lh){
+  const rng=seededRand(42);
+  cellPool=[];
+  for(let i=0;i<MAX_CELLS;i++){
+    cellPool.push({
+      px:lx+rng()*lw,
+      py:ly+rng()*lh,
+      r:1.8+rng()*2.2,
+      angle:rng()*Math.PI,
+      dividing:rng()<0.14
+    });
+  }
+  const rng2=seededRand(99);
+  bubblePool=[];
+  for(let i=0;i<MAX_BUBBLES;i++){
+    bubblePool.push({
+      x:lx+rng2()*lw,
+      baseY:ly+lh*(0.45+rng2()*0.5),
+      r:1.4+rng2()*2.8,
+      speed:0.25+rng2()*0.65,
+      phase:rng2()*Math.PI*2,
+      wobble:0.8+rng2()*1.8
+    });
+  }
+}
+
+function initBio(){
+  const c=document.getElementById('bio-canvas');
+  if(!c.offsetWidth) return;
+  setupCanvas(c);
+  const ctx=c.getContext('2d');
+  const W=c.offsetWidth,H=c.offsetHeight;
+  const geo=getGeo(W,H);
+  buildPools(geo.lx,geo.ly,geo.lw,geo.lh);
+  drawVessel(ctx,W,H,geo,1,0,0);
+}
+
+function getGeo(W,H){
+  const cx=W/2;
+  const vw=W*0.52, vh=H*0.72;
+  const vx=cx-vw/2, vy=H*0.14;
+  const wall=5, jkt=7;
+  const lx=vx+wall+2, ly=vy+4, lw=vw-wall*2-4, lh=vh-8;
+  return {cx,vw,vh,vx,vy,wall,jkt,lx,ly,lw,lh};
+}
+
+let bioT=0;
+
+function drawVessel(ctx,W,H,geo,sfrac,xfrac,t){
+  const {cx,vw,vh,vx,vy,wall,jkt,lx,ly,lw,lh}=geo;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#f4f4f2'; ctx.fillRect(0,0,W,H);
+
+  const jx=vx-jkt, jy=vy+8, jw=vw+jkt*2, jh=vh-8;
+  ctx.strokeStyle='#c8c8c4'; ctx.lineWidth=jkt*2;
+  ctx.lineJoin='round';
+  roundBottom(ctx,jx,jy,jw,jh,22);
+  ctx.stroke();
+  ctx.strokeStyle='#deded8'; ctx.lineWidth=1.5;
+  roundBottom(ctx,jx+2,jy,jw-4,jh-2,20);
+  ctx.stroke();
+
+  ctx.fillStyle=`rgba(216,90,48,${0.08+sfrac*0.30})`;
+  roundBottom(ctx,lx,ly,lw,lh,16);
+  ctx.fill();
+
+  ctx.save();
+  roundBottom(ctx,lx,ly,lw,lh,16);
+  ctx.clip();
+
+  const aerX=cx, aerY=ly+lh-10;
+  for(let i=0;i<MAX_BUBBLES;i++){
+    const b=bubblePool[i];
+    const travel=b.baseY-ly+b.r;
+    const dy=((t*b.speed*22))%travel;
+    const bx=b.x+Math.sin(t*b.wobble+b.phase)*4;
+    const by=b.baseY-dy;
+    const alpha=0.15+0.25*(dy/travel);
+    ctx.beginPath();
+    ctx.arc(bx,by,b.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${alpha})`;
+    ctx.fill();
+    ctx.strokeStyle=`rgba(255,255,255,${alpha+0.2})`;
+    ctx.lineWidth=0.5; ctx.stroke();
+  }
+
+  const nCells=Math.min(Math.round(xfrac*MAX_CELLS)+3,MAX_CELLS);
+  for(let i=0;i<nCells;i++){
+    const {px,py,r,angle,dividing}=cellPool[i];
+    ctx.beginPath();
+    if(dividing) ctx.ellipse(px,py,r*1.6,r*0.7,angle,0,Math.PI*2);
+    else         ctx.ellipse(px,py,r,r*0.9,angle,0,Math.PI*2);
+    ctx.fillStyle=`rgba(15,110,86,${0.45+xfrac*0.45})`;
+    ctx.fill();
+    ctx.strokeStyle=`rgba(4,52,44,${0.3+xfrac*0.3})`;
+    ctx.lineWidth=0.4; ctx.stroke();
+  }
+
+  ctx.restore();
+
+  ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(lx+5,ly+14); ctx.lineTo(lx+5,ly+lh-20); ctx.stroke();
+
+  ctx.strokeStyle='#aaa'; ctx.lineWidth=wall;
+  ctx.lineJoin='round';
+  roundBottom(ctx,vx,vy,vw,vh,20);
+  ctx.stroke();
+  ctx.strokeStyle='#e4e4e0'; ctx.lineWidth=1.5;
+  roundBottom(ctx,vx,vy,vw,vh,20);
+  ctx.stroke();
+
+  ctx.fillStyle='#ccc'; ctx.strokeStyle='#bbb'; ctx.lineWidth=1;
+  const portR=6;
+  [[vx-portR*0.5, vy+vh*0.28],[vx-portR*0.5, vy+vh*0.55],[vx+vw-portR*1.5, vy+vh*0.55]].forEach(([px,py])=>{
+    ctx.beginPath(); ctx.arc(px+portR,py,portR,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(px+portR,py,portR*0.45,0,Math.PI*2);
+    ctx.fillStyle='#aaa'; ctx.fill();
+    ctx.fillStyle='#ccc';
+  });
+
+  const shaftX=cx, shaftTop=0, shaftBot=ly+lh*0.55;
+  ctx.strokeStyle='#999'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(shaftX,shaftTop); ctx.lineTo(shaftX,shaftBot); ctx.stroke();
+
+  const impY    = shaftBot;
+  const maxLen  = lw * 0.31;
+  const bladeH  = 7;
+  const angle   = t * 0.65;
+  const proj    = Math.cos(angle);
+  const projLen = maxLen * Math.abs(proj);
+  const sign    = proj >= 0 ? 1 : -1;
+  const shade   = proj >= 0 ? '#888' : '#666';
+
+  if(projLen > 0.5){
+    ctx.beginPath();
+    ctx.moveTo(shaftX,           impY - 3);
+    ctx.lineTo(shaftX + sign*projLen, impY - 2);
+    ctx.lineTo(shaftX + sign*projLen, impY - 2 + bladeH);
+    ctx.lineTo(shaftX,           impY - 3 + bladeH);
+    ctx.closePath();
+    ctx.fillStyle = shade;
+    ctx.fill();
+    ctx.strokeStyle='#555'; ctx.lineWidth=0.8; ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(shaftX,           impY - 3);
+    ctx.lineTo(shaftX - sign*projLen, impY - 2);
+    ctx.lineTo(shaftX - sign*projLen, impY - 2 + bladeH);
+    ctx.lineTo(shaftX,           impY - 3 + bladeH);
+    ctx.closePath();
+    ctx.fillStyle = shade;
+    ctx.fill();
+    ctx.strokeStyle='#555'; ctx.lineWidth=0.8; ctx.stroke();
+  }
+
+  ctx.beginPath();
+  ctx.arc(shaftX, impY + bladeH/2 - 3, 4, 0, Math.PI*2);
+  ctx.fillStyle='#777'; ctx.fill();
+  ctx.strokeStyle='#555'; ctx.lineWidth=1; ctx.stroke();
+
+  ctx.fillStyle='#bbb'; ctx.strokeStyle='#aaa'; ctx.lineWidth=1;
+  const aerW=lw*0.55, aerH=5;
+  roundRect(ctx, cx-aerW/2, ly+lh-aerH-2, aerW, aerH, 3);
+  ctx.fill(); ctx.stroke();
+  for(let i=0;i<6;i++){
+    ctx.beginPath();
+    ctx.arc(cx-aerW/2+aerW*i/5+aerW/10, ly+lh-aerH/2-2, 1.5, 0, Math.PI*2);
+    ctx.fillStyle='#999'; ctx.fill();
+  }
+
+  const sensorX=vx+vw-wall/2, sensorY1=vy+vh*0.38, sensorY2=vy+vh*0.72;
+  ctx.strokeStyle='#aaa'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(sensorX,sensorY1); ctx.lineTo(sensorX,sensorY2); ctx.stroke();
+  roundRect(ctx,sensorX-4,sensorY2-8,8,10,2);
+  ctx.fillStyle='#b0b0aa'; ctx.fill();
+
+  const motorW=28, motorH=18;
+  ctx.fillStyle='#888';
+  roundRect(ctx,cx-motorW/2,0,motorW,motorH,4);
+  ctx.fill();
+  ctx.strokeStyle='#999'; ctx.lineWidth=1;
+  ctx.strokeRect(cx-motorW/2+2,2,motorW-4,motorH-4);
+
+  ctx.font='bold 11px system-ui'; ctx.textAlign='center';
+  ctx.fillStyle='#D85A30';
+  ctx.fillText(`S = ${(sfrac*params.s0).toFixed(3)} g/L`, cx, H-16);
+  ctx.fillStyle='#1D9E75';
+  const Xmax=simData?Math.max(...simData.xs)*1.1:1;
+  ctx.fillText(`X = ${(xfrac*Xmax).toFixed(4)} g/L`, cx, H-3);
+}
+
+function initBio(){
+  const c=document.getElementById('bio-canvas');
+  if(!c.offsetWidth) return;
+  setupCanvas(c);
+  const ctx=c.getContext('2d');
+  const W=c.offsetWidth,H=c.offsetHeight;
+  const geo=getGeo(W,H);
+  buildPools(geo.lx,geo.ly,geo.lw,geo.lh);
+  drawVessel(ctx,W,H,geo,1,0,0);
+}
+
+function drawBio(step){
+  bioT+=0.045;
+  const c=document.getElementById('bio-canvas');
+  setupCanvas(c);
+  const ctx=c.getContext('2d');
+  const W=c.offsetWidth,H=c.offsetHeight;
+  const geo=getGeo(W,H);
+  if(cellPool.length===0) buildPools(geo.lx,geo.ly,geo.lw,geo.lh);
+  const {xs,ss}=simData;
+  const x=xs[step],s=ss[step];
+  const xmax=Math.max(...xs)*1.1||1;
+  drawVessel(ctx,W,H,geo,
+    Math.max(0,Math.min(1,s/params.s0)),
+    x/xmax, bioT);
+}
+
+function clearChart(){
+  const c=document.getElementById('chart-canvas');
+  if(!c.offsetWidth) return;
+  setupCanvas(c);
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.offsetWidth,c.offsetHeight);
+}
+
+function drawChart(step){
+  const c=document.getElementById('chart-canvas');
+  setupCanvas(c);
+  const ctx=c.getContext('2d');
+  const W=c.offsetWidth,H=c.offsetHeight;
+  const pad={l:40,r:12,t:12,b:28};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const {ts,xs,ss}=simData;
+  const tmax=ts[ts.length-1];
+  const ymax=Math.max(Math.max(...xs),Math.max(...ss))*1.12;
+
+  ctx.strokeStyle='#f0f0ee'; ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+ph*i/4;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y); ctx.stroke();
+    ctx.fillStyle='#ccc'; ctx.font='10px monospace'; ctx.textAlign='right';
+    ctx.fillText((ymax*(1-i/4)).toFixed(1),pad.l-4,y+4);
+  }
+  for(let i=0;i<=4;i++){
+    const x2=pad.l+pw*i/4;
+    ctx.beginPath(); ctx.moveTo(x2,pad.t); ctx.lineTo(x2,pad.t+ph); ctx.stroke();
+    ctx.fillStyle='#ccc'; ctx.font='10px monospace'; ctx.textAlign='center';
+    ctx.fillText((tmax*i/4).toFixed(1),x2,pad.t+ph+16);
+  }
+  ctx.fillStyle='#ccc'; ctx.font='10px system-ui'; ctx.textAlign='center';
+  ctx.fillText('tiempo (h)',pad.l+pw/2,H-2);
+
+  const tx=t=>pad.l+pw*(t/tmax);
+  const ty=v=>pad.t+ph*(1-v/ymax);
+  function line(arr,color){
+    ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2;
+    for(let i=0;i<=step;i++) i===0?ctx.moveTo(tx(ts[i]),ty(arr[i])):ctx.lineTo(tx(ts[i]),ty(arr[i]));
+    ctx.stroke();
+  }
+  line(ss,'#D85A30');
+  line(xs,'#1D9E75');
+
+  if(step>0){
+    ctx.strokeStyle='#ddd'; ctx.lineWidth=0.8; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(tx(ts[step]),pad.t); ctx.lineTo(tx(ts[step]),pad.t+ph); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.strokeStyle='#eee'; ctx.lineWidth=0.5;
+  ctx.strokeRect(pad.l,pad.t,pw,ph);
+}
+
+function updateStats(step){
+  const {ts,xs,ss}=simData;
+  document.getElementById('stat-x').textContent=xs[step].toFixed(4);
+  document.getElementById('stat-s').textContent=ss[step].toFixed(4);
+  document.getElementById('stat-mu').textContent=muFn(ss[step]).toFixed(4);
+  document.getElementById('stat-t').textContent=ts[step].toFixed(2);
+}
+
+function toggleSidebar(){
+  const body=document.getElementById('sidebar-body');
+  const toggle=document.getElementById('sidebar-toggle');
+  const arrow=document.getElementById('sidebar-arrow');
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  toggle.classList.toggle('open',!isOpen);
+}
+
+['mumax','ks','maint','yield','x0','s0','tmax'].forEach(id=>{
+  document.getElementById(id).value=params[id]; syncP(id);
+});
+updateEq();
+setTimeout(initBio,60);
+</script>
+</body>
+</html>
