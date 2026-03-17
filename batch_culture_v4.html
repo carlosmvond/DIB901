@@ -22,7 +22,7 @@ h1{font-size:15px;font-weight:500;margin-bottom:1rem;color:#444;font-family:mono
 .mu-btn.active{background:#E6F1FB;border-color:#185FA5}
 .mu-btn .name{font-weight:500;color:#333}
 .mu-btn.active .name{color:#0C447C}
-.mu-btn .eq{font-family:monospace;font-size:11px;color:#bbb;display:block;margin-top:2px}
+.mu-btn .eq{font-size:12px;color:#bbb;display:block;margin-top:3px}
 .mu-btn.active .eq{color:#378ADD}
 .sep{border:none;border-top:0.5px solid #eee;margin:9px 0}
 .ctrl-btns{display:flex;gap:7px;margin-bottom:10px}
@@ -30,7 +30,7 @@ h1{font-size:15px;font-weight:500;margin-bottom:1rem;color:#444;font-family:mono
 .ctrl-btns button:hover{background:#ebebea}
 .ctrl-btns button.run{background:#EAF3DE;border-color:#3B6D11;color:#1a3d08;font-weight:500}
 .ctrl-btns button.run:hover{background:#d5ebc4}
-.eq-display{background:#f8f8f6;border-radius:8px;padding:0.55rem 0.75rem;font-size:11px;font-family:monospace;color:#666;line-height:1.7;white-space:pre}
+.eq-display{background:#f8f8f6;border-radius:8px;padding:0.6rem 0.75rem;font-size:13px;color:#555;line-height:2.2}
 .right-col{display:flex;flex-direction:column;gap:12px}
 .viz-row{display:grid;grid-template-columns:1fr 1.55fr;gap:12px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -61,10 +61,18 @@ h1{font-size:15px;font-weight:500;margin-bottom:1rem;color:#444;font-family:mono
 .sidebar-toggle .arrow{font-size:10px;color:#aaa;transition:transform 0.2s}
 .sidebar-toggle.open .arrow{transform:rotate(180deg)}
 </style>
+<script>
+MathJax = {
+  tex: {inlineMath:[['\\(','\\)']]},
+  options:{skipHtmlTags:['script','noscript','style','textarea']},
+  startup:{typeset:false}
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 </head>
 <body>
 
-<h1>dx/dt = μ(S)·x − m·x &nbsp;&nbsp;&nbsp; dS/dt = −(1/Y)·μ(S)·x</h1>
+<h1 id="main-eq">\(\dfrac{dx}{dt} = \mu(S)\,x - m\,x \qquad \dfrac{dS}{dt} = -\dfrac{1}{Y}\,\mu(S)\,x\)</h1>
 
 <div class="layout">
 <div class="panel" style="padding:0">
@@ -77,11 +85,11 @@ h1{font-size:15px;font-weight:500;margin-bottom:1rem;color:#444;font-family:mono
     <div class="mu-btns">
       <button class="mu-btn active" onclick="setMu('linear')" id="btn-linear">
         <span class="name">Proporcional a S</span>
-        <span class="eq">μ(S) = μ_max · S / S₀</span>
+        <span class="eq">\(\mu(S) = \mu_{\max}\dfrac{S}{S_0}\)</span>
       </button>
       <button class="mu-btn" onclick="setMu('monod')" id="btn-monod">
         <span class="name">Monod</span>
-        <span class="eq">μ(S) = μ_max · S / (Ks + S)</span>
+        <span class="eq">\(\mu(S) = \mu_{\max}\dfrac{S}{K_s + S}\)</span>
       </button>
     </div>
     <hr class="sep">
@@ -161,10 +169,17 @@ function syncP(id){
 function updateEq(){
   const {mumax,ks,maint,yield:Y,s0}=params;
   let ms='';
-  if(muModel==='linear') ms=`μ(S) = ${mumax.toFixed(2)} · S / ${s0.toFixed(1)}`;
-  if(muModel==='monod')  ms=`μ(S) = ${mumax.toFixed(2)} · S / (${ks.toFixed(2)} + S)`;
-  document.getElementById('eq-display').textContent=
-    `${ms}\ndx/dt = (μ(S) − ${maint.toFixed(3)}) · x\ndS/dt = −(1/${Y.toFixed(2)}) · μ(S) · x`;
+  if(muModel==='linear')
+    ms=`\\(\\mu(S) = ${mumax.toFixed(2)}\\,\\dfrac{S}{${s0.toFixed(1)}}\\)`;
+  if(muModel==='monod')
+    ms=`\\(\\mu(S) = ${mumax.toFixed(2)}\\,\\dfrac{S}{${ks.toFixed(2)} + S}\\)`;
+  const html=
+    `<div>${ms}</div>`+
+    `<div>\\(\\dfrac{dx}{dt} = \\bigl(\\mu(S) - ${maint.toFixed(3)}\\bigr)\\,x\\)</div>`+
+    `<div>\\(\\dfrac{dS}{dt} = -\\dfrac{1}{${Y.toFixed(2)}}\\,\\mu(S)\\,x\\)</div>`;
+  const el=document.getElementById('eq-display');
+  el.innerHTML=html;
+  if(window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([el]);
 }
 
 function muFn(S){
@@ -559,6 +574,7 @@ function toggleSidebar(){
 });
 updateEq();
 setTimeout(initBio,60);
+setTimeout(()=>{ if(window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise(); },800);
 </script>
 </body>
 </html>
