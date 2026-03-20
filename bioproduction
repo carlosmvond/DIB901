@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bioproduction curve explorer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f2;
+    --panel: #ffffff;
+    --border: #e0ddd6;
+    --text: #1a1a18;
+    --muted: #7a7870;
+    --blue: #1a5fa8;
+    --green: #0f6e3a;
+    --orange: #c44a0e;
+    --accent: #1a5fa8;
+    --radius: 6px;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  h1 {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: .04em;
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    line-height: 1.5;
+  }
+
+  h1 span { color: var(--text); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .param-row {
+    display: grid;
+    grid-template-columns: 36px 1fr 48px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .param-label {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: right;
+  }
+
+  .slider-wrap { display: flex; flex-direction: column; gap: 4px; }
+
+  input[type=range] {
+    width: 100%;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 3px solid white;
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 3px solid white;
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .range-limits {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .range-limits input[type=number] {
+    width: 52px;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 4px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg);
+    color: var(--muted);
+    text-align: center;
+    touch-action: manipulation;
+  }
+  .range-limits input[type=number]:focus { outline: none; border-color: var(--accent); color: var(--text); }
+
+  .param-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    text-align: right;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--text);
+    min-height: 32px;
+  }
+  .toggle-row input[type=checkbox] {
+    width: 20px; height: 20px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+    touch-action: manipulation;
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .metric {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 6px;
+    text-align: center;
+  }
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    letter-spacing: .05em;
+  }
+  .metric-val {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .regime {
+    margin-top: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .regime.warn { border-color: #e0a86e; color: #8a5010; background: #fdf5ec; }
+  .regime.ok   { border-color: #8ecfb0; color: #0d5530; background: #f0faf5; }
+
+  .chart-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-line { width: 16px; height: 2px; border-radius: 1px; flex-shrink: 0; }
+  .legend-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .chart-wrap { position: relative; width: 100%; height: 420px; }
+
+  .formula {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.7;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 680px) {
+    body { padding: 12px; }
+
+    h1 { font-size: 11px; margin-bottom: 12px; }
+
+    .layout {
+      grid-template-columns: 1fr;
+    }
+
+    .chart-wrap { height: 300px; }
+
+    .param-row {
+      grid-template-columns: 32px 1fr 42px;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .param-label { font-size: 12px; }
+    .param-val   { font-size: 12px; }
+
+    input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; }
+    input[type=range]::-moz-range-thumb     { width: 26px; height: 26px; }
+
+    .range-limits input[type=number] { width: 46px; font-size: 10px; }
+
+    .metric-val { font-size: 13px; }
+
+    .legend { gap: 10px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Bioproduction curve &mdash; <span>Luedeking&ndash;Piret model</span></h1>
+
+<div class="layout">
+
+  <div class="panel">
+    <div class="section-title">Parameters</div>
+
+    <div class="param-row">
+      <span class="param-label">P₀</span>
+      <div class="slider-wrap">
+        <input type="range" id="s_P0" min="0" max="5" step="0.1" value="0">
+        <div class="range-limits">
+          <input type="number" id="mn_P0" value="0" step="0.1" title="min">
+          <input type="number" id="mx_P0" value="5" step="0.1" title="max">
+        </div>
+      </div>
+      <span class="param-val" id="v_P0">0.0</span>
+    </div>
+
+    <div class="param-row">
+      <span class="param-label">α̃</span>
+      <div class="slider-wrap">
+        <input type="range" id="s_al" min="0.1" max="10" step="0.1" value="3">
+        <div class="range-limits">
+          <input type="number" id="mn_al" value="0.1" step="0.1" title="min">
+          <input type="number" id="mx_al" value="10" step="0.1" title="max">
+        </div>
+      </div>
+      <span class="param-val" id="v_al">3.0</span>
+    </div>
+
+    <div class="param-row">
+      <span class="param-label">β̃</span>
+      <div class="slider-wrap">
+        <input type="range" id="s_be" min="0" max="5" step="0.05" value="0">
+        <div class="range-limits">
+          <input type="number" id="mn_be" value="0" step="0.05" title="min">
+          <input type="number" id="mx_be" value="5" step="0.05" title="max">
+        </div>
+      </div>
+      <span class="param-val" id="v_be">0.00</span>
+    </div>
+
+    <div class="param-row">
+      <span class="param-label">r</span>
+      <div class="slider-wrap">
+        <input type="range" id="s_r" min="0.05" max="3" step="0.05" value="0.5">
+        <div class="range-limits">
+          <input type="number" id="mn_r" value="0.05" step="0.05" title="min">
+          <input type="number" id="mx_r" value="3" step="0.05" title="max">
+        </div>
+      </div>
+      <span class="param-val" id="v_r">0.50</span>
+    </div>
+
+    <div class="param-row">
+      <span class="param-label">A</span>
+      <div class="slider-wrap">
+        <input type="range" id="s_A" min="0.1" max="20" step="0.1" value="5">
+        <div class="range-limits">
+          <input type="number" id="mn_A" value="0.1" step="0.1" title="min">
+          <input type="number" id="mx_A" value="20" step="0.1" title="max">
+        </div>
+      </div>
+      <span class="param-val" id="v_A">5.0</span>
+    </div>
+
+    <hr class="divider">
+    <div class="section-title">Display options</div>
+
+    <div class="param-row">
+      <span class="param-label" style="font-size:11px; line-height:1.2;">t<br>max</span>
+      <div class="slider-wrap">
+        <input type="range" id="s_tmax" min="1" max="100" step="1" value="30">
+        <div class="range-limits">
+          <input type="number" id="mn_tmax" value="1" step="1" title="min">
+          <input type="number" id="mx_tmax" value="100" step="1" title="max">
+        </div>
+      </div>
+      <span class="param-val" id="v_tmax">30</span>
+    </div>
+
+    <div class="toggle-row">
+      <input type="checkbox" id="cb_tangent" checked>
+      <label for="cb_tangent">Tangent line at t*</label>
+    </div>
+    <div class="toggle-row">
+      <input type="checkbox" id="cb_pdot" checked>
+      <label for="cb_pdot">Show Ṗ(t) on right axis</label>
+    </div>
+
+    <hr class="divider">
+    <div class="section-title">At maximum productivity</div>
+
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">t*</div><div class="metric-val" id="m_tstar">—</div></div>
+      <div class="metric"><div class="metric-label">P*</div><div class="metric-val" id="m_Pstar">—</div></div>
+      <div class="metric"><div class="metric-label">Ṗ*</div><div class="metric-val" id="m_dPstar">—</div></div>
+    </div>
+
+    <div class="regime" id="regime_box">Regime: —</div>
+  </div>
+
+  <div class="chart-panel">
+    <div class="legend">
+      <span class="legend-item"><span class="legend-line" style="background:#1a5fa8;"></span>P(t)</span>
+      <span class="legend-item"><span class="legend-line" style="background:#0f6e3a;"></span>Ṗ(t)</span>
+      <span class="legend-item"><span class="legend-line" style="background:#c44a0e; height:0; border-top: 2px dashed #c44a0e;"></span>tangent at t*</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#c44a0e;"></span>(t*, P*)</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="mainChart"></canvas>
+    </div>
+    <div class="formula">
+      P(t) = P₀ + α̃·[(A+1)/(1+A·e^(−rt)) − 1] + β̃·ln[(e^(rt)+A)/(1+A)]
+    </div>
+  </div>
+
+</div>
+
+<script>
+const N = 400;
+
+function P(t, P0, al, be, r, A) {
+  return P0 + al * ((A+1)/(1 + A*Math.exp(-r*t)) - 1) + be * Math.log((Math.exp(r*t)+A)/(1+A));
+}
+
+function dP(t, al, be, r, A) {
+  const ert = Math.exp(r*t);
+  const denom = A + ert;
+  return r * ert * (A*(A+1)*al + A*be + be*ert) / (denom*denom);
+}
+
+function findTstar(al, be, r, A) {
+  const threshold = (A+1)*al;
+  if (be >= threshold) return null;
+  const ustar = A * (threshold + be) / (threshold - be);
+  if (ustar <= 1) return 0;
+  return Math.log(ustar) / r;
+}
+
+function getParams() {
+  return {
+    P0: +document.getElementById('s_P0').value,
+    al: +document.getElementById('s_al').value,
+    be: +document.getElementById('s_be').value,
+    r:  +document.getElementById('s_r').value,
+    A:  +document.getElementById('s_A').value,
+  };
+}
+
+let chart;
+
+function buildChart() {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label:'P(t)',    data:[], borderColor:'#1a5fa8', borderWidth:2.5, pointRadius:0, tension:0.3, yAxisID:'yP' },
+        { label:'Ṗ(t)',   data:[], borderColor:'#0f6e3a', borderWidth:1.5, pointRadius:0, tension:0.3, yAxisID:'yD' },
+        { label:'tangent', data:[], borderColor:'#c44a0e', borderWidth:1.5, pointRadius:0, borderDash:[6,4], tension:0, yAxisID:'yP' },
+        { label:'peak',    data:[], borderColor:'#c44a0e', backgroundColor:'#c44a0e', borderWidth:2, pointRadius:[...Array(N+1)].map(()=>0), showLine:false, yAxisID:'yP', spanGaps:false },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 0 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: {
+            title: items => 't = ' + parseFloat(items[0].label).toFixed(3),
+            label: i => i.dataset.label + ': ' + (+i.parsed.y).toFixed(4)
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 't', font: { family: "'IBM Plex Mono'", size: 13 } },
+          ticks: { maxTicksLimit: 10, font: { family: "'IBM Plex Mono'", size: 11 },
+            callback: (v, i) => parseFloat(chart.data.labels[i]).toFixed(1) }
+        },
+        yP: {
+          position: 'left',
+          title: { display: true, text: 'P(t)', font: { family: "'IBM Plex Mono'", size: 13 } },
+          ticks: { font: { family: "'IBM Plex Mono'", size: 11 }, callback: v => v.toFixed(2) }
+        },
+        yD: {
+          position: 'right',
+          title: { display: true, text: 'Ṗ(t)', font: { family: "'IBM Plex Mono'", size: 13 } },
+          grid: { drawOnChartArea: false },
+          ticks: { font: { family: "'IBM Plex Mono'", size: 11 }, callback: v => v.toFixed(3) }
+        }
+      }
+    }
+  });
+}
+
+function update() {
+  const {P0, al, be, r, A} = getParams();
+  const tmax = +document.getElementById('s_tmax').value;
+  const ts = Array.from({length: N+1}, (_, i) => i * tmax / N);
+
+  const Pvals  = ts.map(t => P(t, P0, al, be, r, A));
+  const dPvals = ts.map(t => dP(t, al, be, r, A));
+
+  const tstar = findTstar(al, be, r, A);
+  const showTangent = document.getElementById('cb_tangent').checked;
+  const showPdot    = document.getElementById('cb_pdot').checked;
+
+  let tangentVals = new Array(N+1).fill(null);
+  let peakVals    = new Array(N+1).fill(null);
+
+  let mTstar = '—', mPstar = '—', mdPstar = '—';
+  const threshold = (A+1)*al;
+  const regBox = document.getElementById('regime_box');
+
+  if (be >= threshold) {
+    regBox.textContent = 'β̃ ≥ (A+1)α̃  →  no finite maximizer. Ṗ(t) → r·β̃ = '+(r*be).toFixed(4)+' as t → ∞';
+    regBox.className = 'regime warn';
+    mTstar = '∞'; mPstar = '∞'; mdPstar = (r*be).toFixed(4);
+  } else {
+    regBox.textContent = 'β̃ < (A+1)α̃  →  unique maximizer at finite t*';
+    regBox.className = 'regime ok';
+
+    if (tstar !== null && tstar >= 0) {
+      const Pst  = P(tstar, P0, al, be, r, A);
+      const dPst = dP(tstar, al, be, r, A);
+
+      mTstar  = tstar.toFixed(4);
+      mPstar  = Pst.toFixed(4);
+      mdPstar = dPst.toFixed(4);
+
+      const istar = Math.round(tstar / tmax * N);
+
+      // tangent line over the FULL time interval [0, tmax]
+      if (showTangent) {
+        for (let i = 0; i <= N; i++) {
+          tangentVals[i] = Pst + dPst * (ts[i] - tstar);
+        }
+      }
+
+      // peak dot only if t* is within the visible window
+      if (istar >= 0 && istar <= N) {
+        peakVals[istar] = Pst;
+      }
+    }
+  }
+
+  const peakRadii = new Array(N+1).fill(0);
+  const istarFinal = peakVals.findIndex(v => v !== null);
+  if (istarFinal >= 0) peakRadii[istarFinal] = 7;
+
+  chart.data.labels = ts.map(t => t.toFixed(5));
+  chart.data.datasets[0].data = Pvals;
+  chart.data.datasets[1].data = showPdot ? dPvals : new Array(N+1).fill(null);
+  chart.data.datasets[2].data = tangentVals;
+  chart.data.datasets[3].data = peakVals;
+  chart.data.datasets[3].pointRadius = peakRadii;
+  chart.options.scales.yD.display = showPdot;
+
+  chart.update();
+
+  document.getElementById('m_tstar').textContent  = mTstar;
+  document.getElementById('m_Pstar').textContent  = mPstar;
+  document.getElementById('m_dPstar').textContent = mdPstar;
+}
+
+function bindSlider(id, dec) {
+  const sl = document.getElementById('s_' + id);
+  const vl = document.getElementById('v_' + id);
+  const mn = document.getElementById('mn_' + id);
+  const mx = document.getElementById('mx_' + id);
+  sl.addEventListener('input', () => { vl.textContent = (+sl.value).toFixed(dec); update(); });
+  mn.addEventListener('change', () => { sl.min = +mn.value; update(); });
+  mx.addEventListener('change', () => { sl.max = +mx.value; update(); });
+}
+
+buildChart();
+bindSlider('P0', 1);
+bindSlider('al', 1);
+bindSlider('be', 2);
+bindSlider('r',  2);
+bindSlider('A',  1);
+bindSlider('tmax', 0);
+document.getElementById('cb_tangent').addEventListener('change', update);
+document.getElementById('cb_pdot').addEventListener('change', update);
+update();
+</script>
+</body>
+</html>
