@@ -5,11 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bioproduction curve explorer</title>
 <script>
-MathJax = {
-  tex: {inlineMath:[['\\(','\\)']]},
-  options:{skipHtmlTags:['script','noscript','style','textarea']},
-  startup:{typeset:false}
-};
+MathJax={tex:{inlineMath:[['\\(','\\)']]},options:{skipHtmlTags:['script','noscript','style','textarea']},startup:{typeset:false}};
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -17,29 +13,47 @@ MathJax = {
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#f0f0ee;color:#1a1a1a;padding:0.75rem}
 h1{font-size:13px;font-weight:500;color:#666;font-family:monospace;margin-bottom:0.75rem;line-height:1.6;overflow-x:auto;white-space:nowrap}
-.layout{display:grid;grid-template-columns:260px 1fr;gap:10px;align-items:start}
-.panel{background:#fff;border:0.5px solid #ddd;border-radius:12px;padding:0.85rem}
-.panel h2{font-size:10px;font-weight:500;color:#999;margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.07em}
-.field{margin-bottom:9px}
+.layout{display:grid;grid-template-columns:250px 1fr;gap:10px;align-items:start}
+.panel{background:#fff;border:0.5px solid #ddd;border-radius:12px;overflow:hidden}
+
+/* tab bar */
+.tabs{display:flex;border-bottom:0.5px solid #eee}
+.tab-btn{flex:1;padding:8px 4px;font-size:11px;font-weight:500;color:#999;background:none;border:none;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase;transition:color 0.15s,border-bottom 0.15s;border-bottom:2px solid transparent}
+.tab-btn.active{color:#185FA5;border-bottom:2px solid #185FA5}
+.tab-btn:hover:not(.active){color:#555}
+.tab-pane{display:none;padding:0.75rem}
+.tab-pane.active{display:block}
+
+.panel h2{font-size:10px;font-weight:500;color:#999;margin-bottom:0.55rem;text-transform:uppercase;letter-spacing:0.07em}
+
+/* sliders */
+.field{margin-bottom:8px}
 .field label{display:block;font-size:12px;color:#666;margin-bottom:2px}
 .field .row{display:flex;align-items:center;gap:6px}
 .field input[type=range]{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:#ddd;border-radius:2px;outline:none;cursor:pointer;touch-action:manipulation}
 .field input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#185FA5;border:3px solid #fff;box-shadow:0 0 0 1px #185FA5;cursor:pointer}
 .field input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#185FA5;border:3px solid #fff;box-shadow:0 0 0 1px #185FA5;cursor:pointer}
-.field .val{font-size:12px;font-weight:500;min-width:42px;text-align:right;color:#185FA5;font-family:monospace}
-.field .limits{display:flex;justify-content:space-between;gap:4px;margin-top:3px}
-.field .limits input[type=number]{width:50px;font-size:10px;font-family:monospace;padding:2px 4px;border:0.5px solid #ddd;border-radius:4px;background:#f8f8f6;color:#888;text-align:center;touch-action:manipulation}
-.field .limits input[type=number]:focus{outline:none;border-color:#185FA5;color:#333}
+.field .val{font-size:12px;font-weight:500;min-width:38px;text-align:right;color:#185FA5;font-family:monospace}
+
+/* ranges tab */
+.range-row{display:grid;grid-template-columns:1fr 22px 1fr;align-items:center;gap:4px;margin-bottom:7px}
+.range-row .rlabel{font-size:12px;color:#666;grid-column:1/-1;margin-bottom:2px}
+.range-row input[type=number]{width:100%;font-size:11px;font-family:monospace;padding:4px 5px;border:0.5px solid #ddd;border-radius:6px;background:#f8f8f6;color:#555;text-align:center;touch-action:manipulation}
+.range-row input[type=number]:focus{outline:none;border-color:#185FA5;color:#222}
+.range-row .dash{text-align:center;font-size:12px;color:#ccc}
+
 .sep{border:none;border-top:0.5px solid #eee;margin:8px 0}
-.check-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:13px;color:#333;min-height:28px}
+.check-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;color:#333;min-height:28px}
 .check-row input[type=checkbox]{width:18px;height:18px;accent-color:#185FA5;flex-shrink:0;touch-action:manipulation;cursor:pointer}
-.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
-.metric{background:#f8f8f6;border-radius:8px;padding:8px 5px;text-align:center}
-.metric .lbl{font-size:10px;color:#999;margin-bottom:3px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.metric{background:#f8f8f6;border-radius:8px;padding:7px 4px;text-align:center}
+.metric .lbl{font-size:9px;color:#999;margin-bottom:3px}
 .metric .num{font-size:13px;font-weight:500;font-family:monospace;color:#222}
-.regime{margin-top:8px;border-radius:8px;padding:8px 10px;font-size:11px;font-family:monospace;line-height:1.5;background:#f8f8f6;color:#888;border:0.5px solid #ddd}
+.regime{margin-top:8px;border-radius:8px;padding:7px 9px;font-size:11px;font-family:monospace;line-height:1.5;background:#f8f8f6;color:#888;border:0.5px solid #ddd}
 .regime.ok{background:#f0faf5;color:#0d5530;border-color:#8ecfb0}
 .regime.warn{background:#fdf5ec;color:#8a5010;border-color:#e0a86e}
+
+/* chart */
 .right-col{display:flex;flex-direction:column;gap:10px}
 .chart-panel{background:#fff;border:0.5px solid #ddd;border-radius:12px;padding:0.85rem}
 .legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:#999;font-family:monospace}
@@ -47,24 +61,27 @@ h1{font-size:13px;font-weight:500;color:#666;font-family:monospace;margin-bottom
 .legend-line{width:16px;height:2px;border-radius:1px;flex-shrink:0}
 .legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .chart-wrap{position:relative;width:100%;height:380px}
-.formula{margin-top:10px;padding:10px 12px;background:#f8f8f6;border-radius:8px;font-size:11px;color:#888;border:0.5px solid #ddd;overflow-x:auto;text-align:center}
-.sidebar-toggle{width:100%;padding:9px 12px;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:13px;font-weight:500;color:#444}
-.sidebar-toggle .arrow{font-size:10px;color:#aaa;transition:transform 0.2s}
-.sidebar-toggle.open .arrow{transform:rotate(180deg)}
+.formula{margin-top:10px;padding:9px 12px;background:#f8f8f6;border-radius:8px;font-size:11px;color:#888;border:0.5px solid #ddd;overflow-x:auto;text-align:center}
+
+/* mobile: collapsible panel */
+.mob-toggle{width:100%;padding:9px 12px;background:none;border:none;border-bottom:0.5px solid #eee;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:13px;font-weight:500;color:#444}
+.mob-toggle .arrow{font-size:10px;color:#aaa;transition:transform 0.2s}
+.mob-toggle.open .arrow{transform:rotate(180deg)}
+
 @media(max-width:680px){
   body{padding:0.5rem}
   h1{font-size:11px;margin-bottom:0.5rem}
   .layout{grid-template-columns:1fr}
-  .sidebar-body{display:none}
-  .sidebar-body.open{display:block}
-  .sidebar-toggle{display:flex}
-  .chart-wrap{height:270px}
+  .mob-body{display:none}
+  .mob-body.open{display:block}
+  .mob-toggle{display:flex}
+  .chart-wrap{height:265px}
   .metric .num{font-size:12px}
   .metric .lbl{font-size:9px}
 }
 @media(min-width:681px){
-  .sidebar-toggle{display:none}
-  .sidebar-body{display:block!important}
+  .mob-toggle{display:none}
+  .mob-body{display:block!important}
 }
 </style>
 </head>
@@ -74,73 +91,110 @@ h1{font-size:13px;font-weight:500;color:#666;font-family:monospace;margin-bottom
 
 <div class="layout">
 
-<div class="panel" style="padding:0">
-  <button class="sidebar-toggle" id="sb-toggle" onclick="toggleSidebar()">
+<div class="panel">
+  <button class="mob-toggle" id="mob-toggle" onclick="toggleMob()">
     <span>Parameters &amp; options</span>
-    <span class="arrow" id="sb-arrow">▼</span>
+    <span class="arrow" id="mob-arrow">▼</span>
   </button>
-  <div class="sidebar-body" id="sb-body" style="padding:0 0.85rem 0.85rem">
+  <div class="mob-body" id="mob-body">
 
-    <h2 style="padding-top:0.6rem">Model parameters</h2>
-
-    <div class="field">
-      <label>\(P_0\) — initial product</label>
-      <div class="row"><input type="range" id="s_P0" min="0" max="5" step="0.1" value="0" oninput="sl('P0',1)"><span class="val" id="v_P0">0.0</span></div>
-      <div class="limits"><input type="number" id="mn_P0" value="0" step="0.1"><input type="number" id="mx_P0" value="5" step="0.1"></div>
+    <!-- TAB BAR -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('params',this)">Parameters</button>
+      <button class="tab-btn" onclick="showTab('ranges',this)">Ranges</button>
+      <button class="tab-btn" onclick="showTab('options',this)">Options</button>
     </div>
 
-    <div class="field">
-      <label>\(\tilde\alpha\) — growth-associated</label>
-      <div class="row"><input type="range" id="s_al" min="0.1" max="10" step="0.1" value="3" oninput="sl('al',1)"><span class="val" id="v_al">3.0</span></div>
-      <div class="limits"><input type="number" id="mn_al" value="0.1" step="0.1"><input type="number" id="mx_al" value="10" step="0.1"></div>
+    <!-- TAB: PARAMETERS -->
+    <div class="tab-pane active" id="tab-params">
+      <div class="field">
+        <label>\(P_0\) — initial product</label>
+        <div class="row"><input type="range" id="s_P0" min="0" max="5" step="0.1" value="0" oninput="sl('P0',1)"><span class="val" id="v_P0">0.0</span></div>
+      </div>
+      <div class="field">
+        <label>\(\tilde\alpha\) — growth-associated</label>
+        <div class="row"><input type="range" id="s_al" min="0.1" max="10" step="0.1" value="3" oninput="sl('al',1)"><span class="val" id="v_al">3.0</span></div>
+      </div>
+      <div class="field">
+        <label>\(\tilde\beta\) — non-growth-associated</label>
+        <div class="row"><input type="range" id="s_be" min="0" max="5" step="0.05" value="0" oninput="sl('be',2)"><span class="val" id="v_be">0.00</span></div>
+      </div>
+      <div class="field">
+        <label>\(r\) — logistic growth rate</label>
+        <div class="row"><input type="range" id="s_r" min="0.05" max="3" step="0.05" value="0.5" oninput="sl('r',2)"><span class="val" id="v_r">0.50</span></div>
+      </div>
+      <div class="field">
+        <label>\(A=(K-x_0)/x_0\)</label>
+        <div class="row"><input type="range" id="s_A" min="0.1" max="20" step="0.1" value="5" oninput="sl('A',1)"><span class="val" id="v_A">5.0</span></div>
+      </div>
+      <hr class="sep">
+      <h2>At maximum productivity</h2>
+      <div class="metrics">
+        <div class="metric"><div class="lbl">\(t^*\)</div><div class="num" id="m_tstar">—</div></div>
+        <div class="metric"><div class="lbl">\(P(t^*)\)</div><div class="num" id="m_Pstar">—</div></div>
+        <div class="metric"><div class="lbl">\((dP/dt)^*\)</div><div class="num" id="m_dPstar">—</div></div>
+      </div>
+      <div class="regime" id="regime_box">Regime: —</div>
     </div>
 
-    <div class="field">
-      <label>\(\tilde\beta\) — non-growth-associated</label>
-      <div class="row"><input type="range" id="s_be" min="0" max="5" step="0.05" value="0" oninput="sl('be',2)"><span class="val" id="v_be">0.00</span></div>
-      <div class="limits"><input type="number" id="mn_be" value="0" step="0.05"><input type="number" id="mx_be" value="5" step="0.05"></div>
+    <!-- TAB: RANGES -->
+    <div class="tab-pane" id="tab-ranges">
+      <h2>Slider ranges — min / max</h2>
+
+      <div class="range-row">
+        <span class="rlabel">\(P_0\)</span>
+        <input type="number" id="mn_P0" value="0" step="0.1" placeholder="min">
+        <span class="dash">–</span>
+        <input type="number" id="mx_P0" value="5" step="0.1" placeholder="max">
+      </div>
+      <div class="range-row">
+        <span class="rlabel">\(\tilde\alpha\)</span>
+        <input type="number" id="mn_al" value="0.1" step="0.1" placeholder="min">
+        <span class="dash">–</span>
+        <input type="number" id="mx_al" value="10" step="0.1" placeholder="max">
+      </div>
+      <div class="range-row">
+        <span class="rlabel">\(\tilde\beta\)</span>
+        <input type="number" id="mn_be" value="0" step="0.05" placeholder="min">
+        <span class="dash">–</span>
+        <input type="number" id="mx_be" value="5" step="0.05" placeholder="max">
+      </div>
+      <div class="range-row">
+        <span class="rlabel">\(r\)</span>
+        <input type="number" id="mn_r" value="0.05" step="0.05" placeholder="min">
+        <span class="dash">–</span>
+        <input type="number" id="mx_r" value="3" step="0.05" placeholder="max">
+      </div>
+      <div class="range-row">
+        <span class="rlabel">\(A\)</span>
+        <input type="number" id="mn_A" value="0.1" step="0.1" placeholder="min">
+        <span class="dash">–</span>
+        <input type="number" id="mx_A" value="20" step="0.1" placeholder="max">
+      </div>
+      <div class="range-row">
+        <span class="rlabel">\(t_{\max}\)</span>
+        <input type="number" id="mn_tmax" value="1" step="1" placeholder="min">
+        <span class="dash">–</span>
+        <input type="number" id="mx_tmax" value="100" step="1" placeholder="max">
+      </div>
     </div>
 
-    <div class="field">
-      <label>\(r\) — logistic growth rate</label>
-      <div class="row"><input type="range" id="s_r" min="0.05" max="3" step="0.05" value="0.5" oninput="sl('r',2)"><span class="val" id="v_r">0.50</span></div>
-      <div class="limits"><input type="number" id="mn_r" value="0.05" step="0.05"><input type="number" id="mx_r" value="3" step="0.05"></div>
+    <!-- TAB: OPTIONS -->
+    <div class="tab-pane" id="tab-options">
+      <div class="field">
+        <label>\(t_{\max}\) — time window</label>
+        <div class="row"><input type="range" id="s_tmax" min="1" max="100" step="1" value="30" oninput="sl('tmax',0)"><span class="val" id="v_tmax">30</span></div>
+      </div>
+      <hr class="sep">
+      <div class="check-row">
+        <input type="checkbox" id="cb_tangent" checked onchange="update()">
+        <label for="cb_tangent">Tangent line at \(t^*\)</label>
+      </div>
+      <div class="check-row">
+        <input type="checkbox" id="cb_pdot" checked onchange="update()">
+        <label for="cb_pdot">Show \(dP/dt\) (right axis)</label>
+      </div>
     </div>
-
-    <div class="field">
-      <label>\(A = (K-x_0)/x_0\)</label>
-      <div class="row"><input type="range" id="s_A" min="0.1" max="20" step="0.1" value="5" oninput="sl('A',1)"><span class="val" id="v_A">5.0</span></div>
-      <div class="limits"><input type="number" id="mn_A" value="0.1" step="0.1"><input type="number" id="mx_A" value="20" step="0.1"></div>
-    </div>
-
-    <hr class="sep">
-    <h2>Display options</h2>
-
-    <div class="field">
-      <label>\(t_{\max}\) — time window</label>
-      <div class="row"><input type="range" id="s_tmax" min="1" max="100" step="1" value="30" oninput="sl('tmax',0)"><span class="val" id="v_tmax">30</span></div>
-      <div class="limits"><input type="number" id="mn_tmax" value="1" step="1"><input type="number" id="mx_tmax" value="100" step="1"></div>
-    </div>
-
-    <div class="check-row">
-      <input type="checkbox" id="cb_tangent" checked onchange="update()">
-      <label for="cb_tangent">Tangent line at \(t^*\)</label>
-    </div>
-    <div class="check-row">
-      <input type="checkbox" id="cb_pdot" checked onchange="update()">
-      <label for="cb_pdot">Show \(dP/dt\) (right axis)</label>
-    </div>
-
-    <hr class="sep">
-    <h2>At maximum productivity</h2>
-
-    <div class="metrics">
-      <div class="metric"><div class="lbl">\(t^*\)</div><div class="num" id="m_tstar">—</div></div>
-      <div class="metric"><div class="lbl">\(P(t^*)\)</div><div class="num" id="m_Pstar">—</div></div>
-      <div class="metric"><div class="lbl">\((dP/dt)^*\)</div><div class="num" id="m_dPstar">—</div></div>
-    </div>
-
-    <div class="regime" id="regime_box">Regime: —</div>
 
   </div>
 </div>
@@ -191,10 +245,36 @@ function sl(id,dec){
   document.getElementById('v_'+id).textContent=(+document.getElementById('s_'+id).value).toFixed(dec);
   update();
 }
+
+// bind range inputs to sliders
 ['P0','al','be','r','A','tmax'].forEach(id=>{
-  document.getElementById('mn_'+id).addEventListener('change',function(){document.getElementById('s_'+id).min=+this.value;update();});
-  document.getElementById('mx_'+id).addEventListener('change',function(){document.getElementById('s_'+id).max=+this.value;update();});
+  document.getElementById('mn_'+id).addEventListener('change',function(){
+    const sl=document.getElementById('s_'+id);
+    sl.min=+this.value;
+    if(+sl.value<+this.value){sl.value=this.value;}
+    update();
+  });
+  document.getElementById('mx_'+id).addEventListener('change',function(){
+    const sl=document.getElementById('s_'+id);
+    sl.max=+this.value;
+    if(+sl.value>+this.value){sl.value=this.value;}
+    update();
+  });
 });
+
+function showTab(name,btn){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(window.MathJax&&MathJax.typesetPromise)
+    MathJax.typesetPromise([document.getElementById('tab-'+name)]);
+}
+
+function toggleMob(){
+  document.getElementById('mob-body').classList.toggle('open');
+  document.getElementById('mob-toggle').classList.toggle('open');
+}
 
 let chart;
 function buildChart(){
@@ -270,13 +350,6 @@ function update(){
   document.getElementById('m_tstar').textContent=mT;
   document.getElementById('m_Pstar').textContent=mP;
   document.getElementById('m_dPstar').textContent=mD;
-}
-
-function toggleSidebar(){
-  const b=document.getElementById('sb-body');
-  const t=document.getElementById('sb-toggle');
-  b.classList.toggle('open');
-  t.classList.toggle('open');
 }
 
 buildChart();
