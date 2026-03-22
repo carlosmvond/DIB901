@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagrama de fase 1D — dx/dt = f(x)</title>
+<script>
+MathJax = {
+  tex:{inlineMath:[['\\(','\\)']]},
+  options:{skipHtmlTags:['script','noscript','style','textarea']},
+  startup:{typeset:false}
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f0f0ee;color:#1a1a1a;padding:1rem}
+h1{font-size:15px;font-weight:500;color:#444;margin-bottom:1rem}
+.layout{display:grid;grid-template-columns:280px 1fr;gap:12px}
+.panel{background:#fff;border:0.5px solid #ddd;border-radius:12px;padding:1rem}
+.panel h2{font-size:11px;font-weight:500;color:#999;margin-bottom:0.65rem;text-transform:uppercase;letter-spacing:0.06em}
+.sep{border:none;border-top:0.5px solid #eee;margin:10px 0}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:#666;margin-bottom:3px}
+.field input[type=text]{width:100%;font-size:13px;padding:7px 10px;border:0.5px solid #ccc;border-radius:8px;font-family:monospace;background:#f8f8f6}
+.field input[type=text]:focus{outline:none;border-color:#185FA5;background:#fff}
+.field .row{display:flex;align-items:center;gap:6px}
+.field input[type=range]{flex:1}
+.field .val{font-size:12px;font-weight:500;min-width:52px;text-align:right;font-family:monospace;color:#222}
+.preset-btns{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.preset-btn{padding:6px 9px;font-size:12px;border:0.5px solid #ddd;border-radius:8px;background:#f8f8f6;cursor:pointer;text-align:left;transition:all 0.15s}
+.preset-btn:hover{background:#f0f0ee;border-color:#ccc}
+.preset-btn .pname{font-weight:500;color:#333;font-size:12px}
+.preset-btn .peq{font-size:11px;color:#bbb;display:block;margin-top:1px;font-family:monospace}
+.btn{padding:8px;font-size:13px;border:0.5px solid #ccc;border-radius:8px;background:#f8f8f6;cursor:pointer;width:100%;transition:background 0.1s;margin-bottom:8px}
+.btn:hover{background:#ebebea}
+.btn.primary{background:#EAF3DE;border-color:#3B6D11;color:#1a3d08;font-weight:500}
+.btn.primary:hover{background:#d5ebc4}
+.error-msg{font-size:11px;color:#A32D2D;background:#FCEBEB;border-radius:6px;padding:5px 8px;margin-top:4px;display:none}
+.eq-summary{background:#f8f8f6;border-radius:8px;padding:0.6rem 0.75rem;font-size:13px;color:#555;margin-bottom:10px;min-height:40px}
+.equilibria-list{font-size:12px;color:#555;margin-top:8px;line-height:1.8}
+.eq-item{display:flex;align-items:center;gap:8px;margin:3px 0}
+.eq-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.eq-dot.stable{background:#1D9E75;border:2px solid #0F6E56}
+.eq-dot.unstable{background:#fff;border:2px solid #D85A30}
+.eq-dot.unknown{background:#888;border:2px solid #555}
+.right-col{display:flex;flex-direction:column;gap:12px}
+canvas{display:block;width:100%;border-radius:10px;border:0.5px solid #eee}
+.legend{display:flex;gap:16px;font-size:11px;color:#999;margin-top:6px;flex-wrap:wrap}
+.ic-controls{display:flex;align-items:center;gap:8px;margin-top:6px}
+.ic-controls label{font-size:12px;color:#666}
+.ic-controls input[type=range]{flex:1}
+.ic-controls span{font-size:12px;font-family:monospace;min-width:44px;text-align:right}
+@media(max-width:680px){.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<h1>\(\dfrac{dx}{dt} = f(x)\) — Análisis cualitativo y diagrama de fase</h1>
+
+<div class="layout">
+<div style="display:flex;flex-direction:column;gap:12px">
+
+  <div class="panel">
+    <h2>Función f(x)</h2>
+    <div class="field">
+      <label>Ingresa f(x) usando sintaxis JavaScript</label>
+      <input type="text" id="fx-input" value="x*(1-x/5)" placeholder="ej: x*(1 - x/5)">
+      <div class="error-msg" id="error-msg">Expresión inválida. Revisa la sintaxis.</div>
+    </div>
+    <button class="btn primary" onclick="applyFx()">&#9654; Graficar</button>
+
+    <h2>Ejemplos predefinidos</h2>
+    <div class="preset-btns">
+      <button class="preset-btn" onclick="loadPreset('x*(1-x/5)')">
+        <span class="pname">Crecimiento logístico</span>
+        <span class="peq">x*(1 - x/5)</span>
+      </button>
+
+      <button class="preset-btn" onclick="loadPreset('x*(3-x)*(x-5)')">
+        <span class="pname">Efecto Allee</span>
+        <span class="peq">x*(3-x)*(x-5)</span>
+      </button>
+      <button class="preset-btn" onclick="loadPreset('x*(1-x/5)+0.5')">
+        <span class="pname">Logístico con inmigración</span>
+        <span class="peq">x*(1-x/5) + 0.5</span>
+      </button>
+      <button class="preset-btn" onclick="loadPreset('Math.sin(x)')">
+        <span class="pname">f(x) = sin(x)</span>
+        <span class="peq">Math.sin(x)</span>
+      </button>
+
+    </div>
+
+    <hr class="sep">
+    <button class="btn" onclick="toggleHelp()" id="help-btn">? Ayuda — cómo escribir f(x)</button>
+    <div id="help-panel" style="display:none;background:#f8f8f6;border-radius:8px;padding:0.75rem;font-size:12px;color:#444;line-height:1.8;margin-bottom:8px">
+      <strong style="font-size:12px">Operaciones básicas</strong><br>
+      <code>x + 2</code>, &nbsp;<code>x - 1</code>, &nbsp;<code>x * 3</code>, &nbsp;<code>x / 2</code><br>
+      <code>x**2</code> &nbsp;o&nbsp; <code>pow(x,2)</code> &nbsp;→ potencias<br><br>
+      <strong style="font-size:12px">Funciones disponibles</strong><br>
+      <code>sqrt(x)</code> → raíz cuadrada<br>
+      <code>exp(x)</code> → e^x<br>
+      <code>log(x)</code> → logaritmo natural<br>
+      <code>abs(x)</code> → valor absoluto<br>
+      <code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code><br>
+      <code>PI</code> → π ≈ 3.14159<br><br>
+      <strong style="font-size:12px">Ejemplos</strong><br>
+      <code>x*(1 - x/5)</code> → logístico<br>
+      <code>x*(3-x)*(x-1)</code> → Allee<br>
+      <code>x*(1-x/5) + 0.3</code> → con inmigración<br>
+      <code>sqrt(x) - 0.5*x</code> → raíz<br>
+      <code>x*exp(-x) - 0.1</code> → exponencial<br><br>
+      <span style="color:#aaa;font-size:11px">Nota: usa <code>*</code> siempre para multiplicar.<br>
+      <code>2x</code> no funciona — escribe <code>2*x</code>.</span>
+    </div>
+    <hr class="sep">
+    <h2>Ventana de visualización</h2>
+    <div class="field">
+      <label>Rango de x</label>
+      <div class="row">
+        <span style="font-size:12px;font-family:monospace;color:#aaa;padding:4px 8px;border:0.5px solid #eee;border-radius:6px;background:#f8f8f6">0</span>
+        <span style="font-size:12px;color:#aaa">—</span>
+        <input type="number" id="xmax" value="7" style="width:70px;font-size:12px;padding:4px 6px;border:0.5px solid #ccc;border-radius:6px;text-align:center">
+      </div>
+      <input type="hidden" id="xmin" value="0">
+    </div>
+    <div class="field">
+      <label>Tiempo de simulación (h)</label>
+      <div class="row">
+        <input type="range" id="tmax" min="1" max="50" step="1" value="10" oninput="document.getElementById('tmax-v').textContent=this.value;drawAll()">
+        <span class="val" id="tmax-v">10</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Nº de soluciones</label>
+      <div class="row">
+        <input type="range" id="nsols" min="1" max="20" step="1" value="8" oninput="document.getElementById('nsols-v').textContent=this.value;drawAll()">
+        <span class="val" id="nsols-v">8</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Equilibrios detectados</h2>
+    <div class="eq-summary" id="eq-summary">—</div>
+    <div class="equilibria-list" id="eq-list"></div>
+  </div>
+
+</div>
+
+<div class="right-col">
+  <div class="panel" style="padding:0.75rem">
+    <div style="font-size:11px;font-weight:500;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Gráfico de f(x)</div>
+    <canvas id="fx-canvas" style="height:200px"></canvas>
+    <div class="legend">
+      <span><span style="display:inline-block;width:20px;height:2px;background:#185FA5;vertical-align:middle;margin-right:4px"></span>f(x)</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#1D9E75;border:1.5px solid #0F6E56;vertical-align:middle;margin-right:4px"></span>eq. estable</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fff;border:1.5px solid #D85A30;vertical-align:middle;margin-right:4px"></span>eq. inestable</span>
+    </div>
+  </div>
+
+  <div class="panel" style="padding:0.75rem">
+    <div style="font-size:11px;font-weight:500;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Diagrama de fase — recta real</div>
+    <canvas id="phase-canvas" style="height:90px"></canvas>
+  </div>
+
+  <div class="panel" style="padding:0.75rem">
+    <div style="font-size:11px;font-weight:500;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Soluciones x(t)</div>
+    <canvas id="traj-canvas" style="height:220px"></canvas>
+    <div class="legend">
+      <span style="color:#888">Condiciones iniciales distribuidas en el rango de x</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+let fExpr='x*(1-x/5)';
+let fFn=null;
+let equilibria=[];
+
+function evalF(x){
+  if(x<0) return NaN;
+  try{
+    const v=fFn(x);
+    return isFinite(v)?v:NaN;
+  }catch(e){ return NaN; }
+}
+
+function compileFx(expr){
+  return new Function('x',
+    'const abs=Math.abs,sqrt=Math.sqrt,exp=Math.exp,log=Math.log,'+
+    'sin=Math.sin,cos=Math.cos,tan=Math.tan,pow=Math.pow,PI=Math.PI,E=Math.E;'+
+    `return (${expr});`
+  );
+}
+
+function loadPreset(expr){
+  document.getElementById('fx-input').value=expr;
+  applyFx();
+}
+
+function applyFx(){
+  const expr=document.getElementById('fx-input').value.trim();
+  const errEl=document.getElementById('error-msg');
+  try{
+    const fn=compileFx(expr);
+    fn(1); fn(0); fn(0.5);
+    fFn=fn; fExpr=expr;
+    errEl.style.display='none';
+    findEquilibria();
+    drawAll();
+    updateEqSummary();
+  }catch(e){
+    errEl.style.display='block';
+  }
+}
+
+function findEquilibria(){
+  const xmin=Math.max(0, parseFloat(document.getElementById('xmin').value));
+  const xmax=parseFloat(document.getElementById('xmax').value);
+  const N=4000;
+  const dx=(xmax-xmin)/N;
+  const roots=[];
+
+  // scan from a tiny offset to avoid singularities at x=0
+  const scanStart=xmin===0?1e-9:xmin;
+
+  let prev=evalF(scanStart);
+  for(let i=1;i<=N;i++){
+    const xi=scanStart+i*(xmax-scanStart)/N;
+    const curr=evalF(xi);
+    if(isNaN(prev)){prev=curr;continue;}
+    if(isNaN(curr)){prev=curr;continue;}
+    // sign change → root between xi-dx and xi
+    if(prev*curr<0){
+      const a=xi-  (xmax-scanStart)/N, b=xi;
+      const xr=bisect(a,b);
+      if(xr!==null && !roots.some(r=>Math.abs(r-xr)<1e-4)){
+        roots.push(xr);
+      }
+    }
+    // near-zero → likely root
+    if(Math.abs(curr)<1e-8 && !roots.some(r=>Math.abs(r-xi)<1e-4)){
+      roots.push(xi);
+    }
+    prev=curr;
+  }
+
+  // always evaluate x=0 — equilibrium in most biological models
+  // use the exact value at 0 (not a nearby point) to catch f(0)=0 exactly
+  try{
+    const f0exact = fFn(0);
+    if(isFinite(f0exact) && Math.abs(f0exact)<1e-10 && !roots.some(r=>r<1e-4)){
+      roots.unshift(0);
+    }
+  }catch(e){}
+
+  equilibria=roots.sort((a,b)=>a-b).map(xr=>{
+    const fp=fPrime(xr);
+    let stability='unknown';
+    if(isNaN(fp)){stability='unknown';}
+    else if(fp<-1e-6) stability='stable';
+    else if(fp>1e-6) stability='unstable';
+    return{x:xr, fp, stability};
+  });
+}
+
+function bisect(a,b,tol=1e-8,maxIter=80){
+  if(a<0) a=1e-12;
+  let fa=evalF(a),fb=evalF(b);
+  if(isNaN(fa)||isNaN(fb)) return null;
+  if(Math.abs(fa)<tol) return a;
+  if(Math.abs(fb)<tol) return b;
+  if(fa*fb>0) return null;
+  for(let i=0;i<maxIter;i++){
+    const m=(a+b)/2;
+    if(m<0) return null;
+    const fm=evalF(m);
+    if(isNaN(fm)) return null;
+    if(Math.abs(fm)<tol||Math.abs(b-a)<tol) return m;
+    if(fa*fm<0){b=m;fb=fm;}else{a=m;fa=fm;}
+  }
+  return (a+b)/2;
+}
+
+function fPrime(x,h=1e-5){
+  // use one-sided forward difference near x=0 to avoid evaluating at x<0
+  if(x<h){
+    const f1=evalF(x+h), f2=evalF(x+2*h);
+    if(isNaN(f1)||isNaN(f2)) return NaN;
+    return (-3*evalF(x)+4*f1-f2)/(2*h);
+  }
+  const fplus=evalF(x+h), fminus=evalF(x-h);
+  if(isNaN(fplus)||isNaN(fminus)) return NaN;
+  return (fplus-fminus)/(2*h);
+}
+
+function rk4Step(x,dt){
+  const k1=evalF(x);
+  const k2=evalF(x+dt/2*k1);
+  const k3=evalF(x+dt/2*k2);
+  const k4=evalF(x+dt*k3);
+  return x+dt/6*(k1+2*k2+2*k3+k4);
+}
+
+function integrate(x0,tmax,dt=0.05){
+  const ts=[0],xs=[x0];
+  let x=x0,t=0;
+  while(t<tmax-1e-10){
+    const step=Math.min(dt,tmax-t);
+    x=rk4Step(x,step);
+    t+=step;
+    if(!isFinite(x)||Math.abs(x)>1e8) break;
+    ts.push(t); xs.push(x);
+  }
+  return{ts,xs};
+}
+
+function setupCanvas(id){
+  const c=document.getElementById(id);
+  const dpr=window.devicePixelRatio||1;
+  c.width=c.offsetWidth*dpr;
+  c.height=c.offsetHeight*dpr;
+  const ctx=c.getContext('2d');
+  ctx.scale(dpr,dpr);
+  return{c,ctx,W:c.offsetWidth,H:c.offsetHeight};
+}
+
+function drawAll(){
+  if(!fFn) return;
+  findEquilibria();
+  drawFxPlot();
+  drawPhaseLine();
+  drawTrajectories();
+  updateEqSummary();
+}
+
+function drawFxPlot(){
+  const {c,ctx,W,H}=setupCanvas('fx-canvas');
+  const xmin=parseFloat(document.getElementById('xmin').value);
+  const xmax=parseFloat(document.getElementById('xmax').value);
+  const pad={l:44,r:16,t:16,b:28};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const N=400;
+  const ys=[];
+  for(let i=0;i<=N;i++){
+    const xi=xmin+i*(xmax-xmin)/N;
+    ys.push(evalF(xi));
+  }
+  const validYs=ys.filter(y=>isFinite(y)&&!isNaN(y));
+  if(validYs.length===0) return;
+  let ymin=Math.min(...validYs), ymax=Math.max(...validYs);
+  const ypad=(ymax-ymin)*0.12||1;
+  ymin-=ypad; ymax+=ypad;
+
+  const tx=x=>pad.l+pw*(x-xmin)/(xmax-xmin);
+  const ty=y=>pad.t+ph*(1-(y-ymin)/(ymax-ymin));
+
+  ctx.strokeStyle='#f0f0ee'; ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+ph*i/4;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y); ctx.stroke();
+    ctx.fillStyle='#ccc'; ctx.font='10px monospace'; ctx.textAlign='right';
+    ctx.fillText((ymin+(ymax-ymin)*(1-i/4)).toFixed(2),pad.l-3,y+4);
+  }
+
+  const y0=ty(0);
+  if(y0>=pad.t&&y0<=pad.t+ph){
+    ctx.strokeStyle='#ddd'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.l,y0); ctx.lineTo(pad.l+pw,y0); ctx.stroke();
+    ctx.fillStyle='#ccc'; ctx.font='10px monospace'; ctx.textAlign='right';
+    ctx.fillText('0',pad.l-3,y0+4);
+  }
+  const x0=tx(0);
+  if(x0>=pad.l&&x0<=pad.l+pw){
+    ctx.strokeStyle='#ddd'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(x0,pad.t); ctx.lineTo(x0,pad.t+ph); ctx.stroke();
+  }
+
+  for(let i=0;i<=4;i++){
+    ctx.fillStyle='#ccc'; ctx.font='10px monospace'; ctx.textAlign='center';
+    const xi=xmin+i*(xmax-xmin)/4;
+    ctx.fillText(xi.toFixed(1),pad.l+pw*i/4,pad.t+ph+16);
+  }
+  ctx.fillStyle='#aaa'; ctx.font='10px system-ui'; ctx.textAlign='center';
+  ctx.fillText('x',pad.l+pw/2,H-2);
+
+  ctx.beginPath(); ctx.strokeStyle='#185FA5'; ctx.lineWidth=2;
+  let started=false;
+  for(let i=0;i<=N;i++){
+    const xi=xmin+i*(xmax-xmin)/N;
+    const yi=ys[i];
+    if(!isFinite(yi)||isNaN(yi)){started=false;continue;}
+    const cx2=tx(xi), cy=ty(yi);
+    if(!started){ctx.moveTo(cx2,cy);started=true;}
+    else ctx.lineTo(cx2,cy);
+  }
+  ctx.stroke();
+
+  equilibria.forEach(eq=>{
+    const cx2=tx(eq.x), cy=ty(0);
+    ctx.beginPath(); ctx.arc(cx2,cy,5,0,Math.PI*2);
+    if(eq.stability==='stable'){
+      ctx.fillStyle='#1D9E75'; ctx.fill();
+      ctx.strokeStyle='#0F6E56';
+    } else if(eq.stability==='unstable'){
+      ctx.fillStyle='#fff'; ctx.fill();
+      ctx.strokeStyle='#D85A30';
+    } else {
+      ctx.fillStyle='#888'; ctx.fill();
+      ctx.strokeStyle='#444';
+    }
+    ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle='#555'; ctx.font='10px monospace'; ctx.textAlign='center';
+    ctx.fillText(eq.x.toFixed(2),cx2,cy-9);
+  });
+
+  ctx.strokeStyle='#eee'; ctx.lineWidth=0.5;
+  ctx.strokeRect(pad.l,pad.t,pw,ph);
+}
+
+function drawPhaseLine(){
+  const {c,ctx,W,H}=setupCanvas('phase-canvas');
+  const xmin=parseFloat(document.getElementById('xmin').value);
+  const xmax=parseFloat(document.getElementById('xmax').value);
+  const pad={l:44,r:16,t:30,b:24};
+  const pw=W-pad.l-pad.r;
+  const lineY=pad.t+(H-pad.t-pad.b)/2;
+
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  ctx.strokeStyle='#888'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l,lineY); ctx.lineTo(pad.l+pw,lineY); ctx.stroke();
+
+  ctx.fillStyle='#888';
+  ctx.beginPath(); ctx.moveTo(pad.l+pw,lineY); ctx.lineTo(pad.l+pw-8,lineY-4); ctx.lineTo(pad.l+pw-8,lineY+4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#aaa'; ctx.font='10px system-ui'; ctx.textAlign='left';
+  ctx.fillText('x',pad.l+pw+3,lineY+4);
+
+  ctx.fillStyle='#aaa'; ctx.font='10px monospace'; ctx.textAlign='center';
+  for(let i=0;i<=4;i++){
+    const xi=xmin+i*(xmax-xmin)/4;
+    const px=pad.l+pw*i/4;
+    ctx.beginPath(); ctx.moveTo(px,lineY-4); ctx.lineTo(px,lineY+4); ctx.stroke();
+    ctx.fillText(xi.toFixed(1),px,lineY+16);
+  }
+
+  const tx=x=>pad.l+pw*(x-xmin)/(xmax-xmin);
+  const arrowStep=(xmax-xmin)/18;
+  for(let xi=xmin+arrowStep/2;xi<xmax;xi+=arrowStep){
+    const fval=evalF(xi);
+    if(!isFinite(fval)||isNaN(fval)) continue;
+    const px=tx(xi);
+    if(px<pad.l||px>pad.l+pw) continue;
+    const dir=fval>0?1:-1;
+    const color=fval>0?'#185FA5':'#D85A30';
+    const aw=12;
+    ctx.strokeStyle=color; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(px-dir*aw/2,lineY); ctx.lineTo(px+dir*aw/2,lineY); ctx.stroke();
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.moveTo(px+dir*aw/2,lineY);
+    ctx.lineTo(px+dir*aw/2-dir*5,lineY-4);
+    ctx.lineTo(px+dir*aw/2-dir*5,lineY+4);
+    ctx.closePath(); ctx.fill();
+  }
+
+  equilibria.forEach(eq=>{
+    const px=tx(eq.x);
+    if(px<pad.l-5||px>pad.l+pw+5) return;
+    ctx.beginPath(); ctx.arc(px,lineY,6,0,Math.PI*2);
+    if(eq.stability==='stable'){
+      ctx.fillStyle='#1D9E75'; ctx.fill();
+      ctx.strokeStyle='#0F6E56';
+    } else if(eq.stability==='unstable'){
+      ctx.fillStyle='#fff'; ctx.fill();
+      ctx.strokeStyle='#D85A30';
+    } else {
+      ctx.fillStyle='#aaa'; ctx.fill();
+      ctx.strokeStyle='#666';
+    }
+    ctx.lineWidth=1.8; ctx.stroke();
+    ctx.fillStyle='#444'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+    ctx.fillText(eq.x.toFixed(2),px,lineY-12);
+  });
+}
+
+function drawTrajectories(){
+  const {c,ctx,W,H}=setupCanvas('traj-canvas');
+  const xmin=parseFloat(document.getElementById('xmin').value);
+  const xmax=parseFloat(document.getElementById('xmax').value);
+  const tmax=parseFloat(document.getElementById('tmax').value);
+  const nsols=parseInt(document.getElementById('nsols').value);
+  const pad={l:44,r:16,t:12,b:28};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  ctx.strokeStyle='#f0f0ee'; ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+ph*i/4;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y); ctx.stroke();
+    const xv=xmin+(xmax-xmin)*(1-i/4);
+    ctx.fillStyle='#ccc'; ctx.font='10px monospace'; ctx.textAlign='right';
+    ctx.fillText(xv.toFixed(1),pad.l-3,y+4);
+  }
+  for(let i=0;i<=4;i++){
+    const x2=pad.l+pw*i/4;
+    ctx.beginPath(); ctx.moveTo(x2,pad.t); ctx.lineTo(x2,pad.t+ph); ctx.stroke();
+    ctx.fillStyle='#ccc'; ctx.font='10px monospace'; ctx.textAlign='center';
+    ctx.fillText((tmax*i/4).toFixed(1),x2,pad.t+ph+16);
+  }
+  ctx.fillStyle='#aaa'; ctx.font='10px system-ui'; ctx.textAlign='left';
+  ctx.fillText('t',pad.l+pw+3,pad.t+ph/2);
+  ctx.fillStyle='#aaa'; ctx.font='10px system-ui'; ctx.textAlign='center';
+  ctx.fillText('x(t)',pad.l-32,pad.t+ph/2);
+
+  const tx=t=>pad.l+pw*(t/tmax);
+  const ty=x=>pad.t+ph*(1-(x-xmin)/(xmax-xmin));
+
+  const x0s=[];
+  for(let i=0;i<nsols;i++) x0s.push(xmin+(i+0.5)*(xmax-xmin)/nsols);
+
+  const palette=['#185FA5','#1D9E75','#D85A30','#534AB7','#854F0B','#A32D2D','#0F6E56','#633806','#3C3489','#3B6D11'];
+
+  x0s.forEach((x0,idx)=>{
+    const {ts,xs}=integrate(x0,tmax);
+    ctx.beginPath();
+    ctx.strokeStyle=palette[idx%palette.length];
+    ctx.lineWidth=1.5; ctx.globalAlpha=0.75;
+    let penDown=false;
+    xs.forEach((x,i)=>{
+      const cx2=tx(ts[i]), cy=ty(x);
+      const inView=cy>=pad.t-2&&cy<=pad.t+ph+2;
+      if(!inView){ penDown=false; return; }
+      if(!penDown){ ctx.moveTo(cx2,cy); penDown=true; }
+      else { ctx.lineTo(cx2,cy); }
+    });
+    ctx.stroke();
+    ctx.globalAlpha=1;
+
+    const lastX=xs[xs.length-1];
+    const cx2=tx(ts[ts.length-1]), cy=ty(lastX);
+    if(cy>=pad.t&&cy<=pad.t+ph){
+      ctx.beginPath(); ctx.arc(cx2,cy,3,0,Math.PI*2);
+      ctx.fillStyle=palette[idx%palette.length]; ctx.fill();
+    }
+  });
+
+  equilibria.forEach(eq=>{
+    const cy=ty(eq.x);
+    if(cy<pad.t||cy>pad.t+ph) return;
+    ctx.strokeStyle=eq.stability==='stable'?'#1D9E75':'#D85A30';
+    ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(pad.l,cy); ctx.lineTo(pad.l+pw,cy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=eq.stability==='stable'?'#1D9E75':'#D85A30';
+    ctx.font='10px monospace'; ctx.textAlign='left';
+    ctx.fillText(`x*=${eq.x.toFixed(2)}`,pad.l+2,cy-4);
+  });
+
+  ctx.strokeStyle='#eee'; ctx.lineWidth=0.5;
+  ctx.strokeRect(pad.l,pad.t,pw,ph);
+}
+
+function updateEqSummary(){
+  const el=document.getElementById('eq-summary');
+  const listEl=document.getElementById('eq-list');
+  if(equilibria.length===0){
+    el.textContent='No se detectaron equilibrios en el rango dado.';
+    listEl.innerHTML=''; return;
+  }
+  el.innerHTML=`Se detectaron <strong>${equilibria.length}</strong> equilibrio${equilibria.length>1?'s':''}.`;
+  listEl.innerHTML=equilibria.map(eq=>{
+    const label=eq.stability==='stable'?'Estable (f\'(x*)< 0)':
+                eq.stability==='unstable'?'Inestable (f\'(x*)> 0)':'No clasificable';
+    const dotClass=eq.stability;
+    return `<div class="eq-item">
+      <div class="eq-dot ${dotClass}"></div>
+      <span><strong>x* = ${eq.x.toFixed(4)}</strong> — ${label} &nbsp; [f'(x*) ≈ ${eq.fp.toFixed(4)}]</span>
+    </div>`;
+  }).join('');
+  if(window.MathJax&&MathJax.typesetPromise) MathJax.typesetPromise([listEl]);
+}
+
+window.addEventListener('resize',drawAll);
+
+function toggleHelp(){
+  const p=document.getElementById('help-panel');
+  const btn=document.getElementById('help-btn');
+  const visible=p.style.display!=='none';
+  p.style.display=visible?'none':'block';
+  btn.textContent=visible?'? Ayuda — cómo escribir f(x)':'✕ Cerrar ayuda';
+}
+
+
+document.getElementById('xmax').addEventListener('change',()=>{applyFx()});
+
+applyFx();
+setTimeout(()=>{if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise();},800);
+</script>
+</body>
+</html>
