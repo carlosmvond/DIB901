@@ -84,6 +84,27 @@ canvas{display:block;width:100%;border-radius:8px}
   </div>
 </div>
 
+<!-- bifurcacion -->
+<div class="card">
+  <div class="card-title">Diagrama de bifurcación</div>
+  <canvas id="bif-canvas" style="height:220px;border:0.5px solid #eee"></canvas>
+  <div class="legend">
+    <span><span class="leg-line" style="background:#d45a5a"></span>estable</span>
+    <span><span class="leg-line" style="background:#5a9fd4;opacity:0.7"></span>inestable</span>
+    <span><span class="leg-dot" style="background:#70c090"></span>D actual</span>
+  </div>
+</div>
+
+<!-- trayectoria x(t) -->
+<div class="card">
+  <div class="card-title">x(t) — dinámica</div>
+  <canvas id="traj-canvas" style="height:180px;border:0.5px solid #eee"></canvas>
+  <div class="legend">
+    <span><span class="leg-line" style="background:#5ad4a0"></span>x(t)</span>
+    <span><span class="leg-line" style="background:#d45a5a;border-top:1px dashed #d45a5a;height:0"></span>x* estable</span>
+  </div>
+</div>
+
 <!-- sliders D y x0 -->
 <div class="card">
   <div class="big-slider">
@@ -103,27 +124,6 @@ canvas{display:block;width:100%;border-radius:8px}
     <div class="stat"><div class="lbl">X* INESTABLE</div><div class="num" id="st-xu" style="color:#5a9fd4">—</div></div>
     <div class="stat"><div class="lbl">S* (g/L)</div><div class="num" id="st-s">—</div></div>
     <div class="stat"><div class="lbl">ESTADO</div><div class="num" id="st-state" style="font-size:10px">—</div></div>
-  </div>
-</div>
-
-<!-- bifurcacion -->
-<div class="card">
-  <div class="card-title">Diagrama de bifurcación</div>
-  <canvas id="bif-canvas" style="height:220px;border:0.5px solid #eee"></canvas>
-  <div class="legend">
-    <span><span class="leg-line" style="background:#d45a5a"></span>estable</span>
-    <span><span class="leg-line" style="background:#5a9fd4;opacity:0.7"></span>inestable</span>
-    <span><span class="leg-dot" style="background:#70c090"></span>D actual</span>
-  </div>
-</div>
-
-<!-- trayectoria x(t) -->
-<div class="card">
-  <div class="card-title">x(t) — dinámica</div>
-  <canvas id="traj-canvas" style="height:180px;border:0.5px solid #eee"></canvas>
-  <div class="legend">
-    <span><span class="leg-line" style="background:#5ad4a0"></span>x(t)</span>
-    <span><span class="leg-line" style="background:#d45a5a;border-top:1px dashed #d45a5a;height:0"></span>x* estable</span>
   </div>
 </div>
 
