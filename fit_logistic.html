@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajuste Logístico</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Georgia',serif;background:#0b0f14;color:#d8d4cc;padding:0.8rem;max-width:540px;margin:0 auto;min-height:100vh}
+h1{font-size:12px;font-weight:400;color:#556;margin-bottom:0.8rem;letter-spacing:0.07em;font-family:monospace}
+
+.card{background:#131920;border:0.5px solid #1e2a35;border-radius:12px;padding:0.85rem;margin-bottom:9px}
+.card-title{font-size:10px;font-weight:500;color:#445;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem;font-family:monospace}
+
+/* sliders */
+.big-slider{background:#0d1520;border-radius:9px;padding:0.75rem;margin-bottom:7px;border:0.5px solid #1e3040}
+.big-slider label{font-size:12px;color:#7ab8f5;display:flex;justify-content:space-between;margin-bottom:4px;font-family:monospace}
+.big-slider label span{font-size:17px;font-weight:500;color:#7ab8f5}
+.big-slider input[type=range]{width:100%;accent-color:#7ab8f5}
+
+/* obj buttons */
+.obj-row{display:flex;gap:5px;margin-bottom:8px}
+.obj-btn{flex:1;padding:7px 4px;font-size:10px;border-radius:7px;cursor:pointer;font-family:monospace;border:0.5px solid #1e2a35;background:#0b0f14;color:#667;transition:all 0.15s;text-align:center}
+.obj-btn.active{border-color:#5ad4a0;color:#5ad4a0;background:#0a1a14}
+
+/* view toggle */
+.view-row{display:flex;gap:5px;margin-bottom:8px}
+.view-btn{flex:1;padding:6px;font-size:10px;border-radius:7px;cursor:pointer;font-family:monospace;border:0.5px solid #1e2a35;background:#0b0f14;color:#667;transition:all 0.15s;text-align:center}
+.view-btn.active{border-color:#f5a742;color:#f5a742;background:#1a1200}
+
+/* stats */
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:7px}
+.stat{background:#0b0f14;border-radius:7px;padding:0.4rem 0.5rem}
+.stat .lbl{font-size:8px;color:#445;margin-bottom:1px;letter-spacing:0.05em;font-family:monospace}
+.stat .num{font-size:12px;font-weight:500;font-family:monospace;color:#7ab8f5}
+
+canvas{display:block;width:100%;border-radius:8px}
+
+/* data editor */
+.data-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:4px;align-items:center;margin-bottom:6px;font-size:10px;font-family:monospace}
+.data-grid input{background:#0b0f14;border:0.5px solid #1e2a35;border-radius:5px;padding:4px 6px;color:#d8d4cc;font-size:10px;font-family:monospace;width:100%}
+.data-grid input:focus{outline:none;border-color:#5a9fd4}
+.del-btn{background:none;border:0.5px solid #2a1515;border-radius:5px;color:#664;cursor:pointer;padding:3px 7px;font-size:10px;font-family:monospace}
+.del-btn:hover{border-color:#d45a5a;color:#d45a5a}
+.add-btn{background:#0a1a0a;border:0.5px solid #1e3520;border-radius:6px;color:#5ad4a0;cursor:pointer;padding:5px;font-size:10px;font-family:monospace;width:100%}
+.add-btn:hover{border-color:#5ad4a0}
+.data-header{font-size:9px;color:#445;font-family:monospace;text-align:center}
+
+/* heatmap wrap */
+#hm-wrap{position:relative}
+#hm-canvas{border:0.5px solid #1e2a35;background:#0b0f14;cursor:crosshair}
+#hm-tooltip{position:absolute;background:#131920;border:0.5px solid #1e2a35;border-radius:5px;padding:3px 7px;font-size:9px;font-family:monospace;color:#d8d4cc;pointer-events:none;display:none;white-space:nowrap}
+
+/* 3d wrap */
+#surf-wrap{border:0.5px solid #1e2a35;border-radius:8px;overflow:hidden;touch-action:none}
+#surf-wrap canvas{width:100%!important;height:100%!important;display:block}
+
+.hint{font-size:9px;color:#334;font-family:monospace;margin-top:4px;text-align:center}
+</style>
+</head>
+<body>
+
+<script>
+MathJax={tex:{inlineMath:[['\\(','\\)']]},options:{skipHtmlTags:['script','noscript','style','textarea']},startup:{typeset:false}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<h1 style="font-size:13px;line-height:1.7">
+  \(\displaystyle x(t) = \frac{K\, x_0}{x_0 + (K - x_0)\,e^{-rt}}\) — Ajuste logístico
+</h1>
+
+<!-- DATA EDITOR -->
+<div class="card">
+  <div class="card-title">Datos experimentales</div>
+  <div class="data-grid">
+    <span class="data-header">t</span>
+    <span class="data-header">y</span>
+    <span></span>
+  </div>
+  <div id="data-rows"></div>
+  <button class="add-btn" onclick="addRow()">+ agregar punto</button>
+  <button class="add-btn" onclick="resetAll()" style="margin-top:5px;background:#1a0a0a;border-color:#2a1515;color:#d45a5a">↺ reiniciar todo</button>
+</div>
+
+<!-- PARAMETERS -->
+<div class="card">
+  <div class="card-title">Parámetros</div>
+  <div class="big-slider">
+    <label>r (tasa de crecimiento) <span id="r-val">0.50</span></label>
+    <input type="range" id="r-sl" min="0.01" max="3" step="0.01" value="0.5" oninput="onSlider()">
+  </div>
+  <div class="big-slider">
+    <label>K (capacidad de carga) <span id="K-val">10.0</span></label>
+    <input type="range" id="K-sl" min="1" max="30" step="0.1" value="10" oninput="onSlider()">
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="lbl">x₀ (fijo)</div><div class="num" id="st-x0">—</div></div>
+    <div class="stat"><div class="lbl">FUNCIÓN OBJ.</div><div class="num" id="st-obj" style="color:#5ad4a0">—</div></div>
+    <div class="stat"><div class="lbl">N DATOS</div><div class="num" id="st-n">—</div></div>
+  </div>
+</div>
+
+<!-- FIT PLOT -->
+<div class="card">
+  <div class="card-title">Ajuste del modelo</div>
+  <canvas id="fit-canvas" style="height:220px;border:0.5px solid #1e2a35"></canvas>
+</div>
+
+<!-- OBJECTIVE FUNCTION -->
+<div class="card">
+  <div class="card-title">Función objetivo</div>
+  <div class="obj-row">
+    <button class="obj-btn active" id="ob-l2" onclick="setObj('l2')">‖r‖₂² (mín. cuadrados)</button>
+    <button class="obj-btn" id="ob-l1" onclick="setObj('l1')">‖r‖₁ (mín. absolutos)</button>
+    <button class="obj-btn" id="ob-linf" onclick="setObj('linf')">‖r‖∞ (minimax)</button>
+  </div>
+  <div class="view-row">
+    <button class="view-btn active" id="vw-hm" onclick="setView('heatmap')">■ Heatmap</button>
+    <button class="view-btn" id="vw-3d" onclick="setView('3d')">◈ Superficie 3D</button>
+  </div>
+
+  <!-- HEATMAP -->
+  <div id="hm-wrap">
+    <canvas id="hm-canvas" style="height:240px"></canvas>
+    <div id="hm-tooltip"></div>
+  </div>
+
+  <!-- 3D SURFACE -->
+  <div id="surf-wrap" style="height:260px;display:none"></div>
+  <div class="hint" id="view-hint">Hover sobre el heatmap · eje x = r · eje y = K</div>
+</div>
+
+<script>
+// ── DEFAULT DATA ────────────────────────────────────
+const DEFAULT_DATA=[
+  [0,  1.0],[1,  1.8],[2,  3.2],[3,  5.5],[4,  7.2],
+  [5,  8.5],[6,  9.2],[7,  9.7],[8,  9.9],[10,10.1]
+];
+
+let data=[...DEFAULT_DATA.map(d=>[...d])];
+let rVal=0.50, KVal=10.0;
+let objMode='l2', viewMode='heatmap';
+
+// 3D
+let renderer3=null,scene3=null,camera3=null,mesh3=null;
+let isDrag=false,prevT={x:0,y:0},rotX3=0.6,rotY3=0.4,dist3=4;
+let pinch0=0,dist30=0,raf3=null;
+
+// ── LOGISTIC MODEL ──────────────────────────────────
+function x0(){return data.length?data[0][1]:1;}
+function logistic(t,r,K){
+  const x0v=x0();
+  return K*x0v/(x0v+(K-x0v)*Math.exp(-r*t));
+}
+
+// ── OBJECTIVE ───────────────────────────────────────
+function objective(r,K,mode){
+  if(!data.length) return 0;
+  const res=data.map(([t,y])=>y-logistic(t,r,K));
+  if(mode==='l2') return res.reduce((s,ri)=>s+ri*ri,0);
+  if(mode==='l1') return res.reduce((s,ri)=>s+Math.abs(ri),0);
+  if(mode==='linf') return Math.max(...res.map(ri=>Math.abs(ri)));
+}
+
+// ── DATA EDITOR ─────────────────────────────────────
+function renderDataRows(){
+  const el=document.getElementById('data-rows');
+  el.innerHTML=data.map((d,i)=>`
+    <div class="data-grid">
+      <input type="number" step="any" value="${d[0]}" onchange="updateData(${i},0,this.value)">
+      <input type="number" step="any" value="${d[1]}" onchange="updateData(${i},1,this.value)">
+      <button class="del-btn" onclick="delRow(${i})">✕</button>
+    </div>`).join('');
+  updateStats();drawFit();drawObjective();
+}
+function updateData(i,j,v){
+  data[i][j]=parseFloat(v)||0;
+  data.sort((a,b)=>a[0]-b[0]);
+  renderDataRows();
+}
+function addRow(){
+  const lastT=data.length?data[data.length-1][0]+1:0;
+  data.push([lastT,0]);renderDataRows();
+}
+function delRow(i){if(data.length>2){data.splice(i,1);renderDataRows();}}
+
+// ── STATS ────────────────────────────────────────────
+function updateStats(){
+  document.getElementById('st-x0').textContent=x0().toFixed(3);
+  document.getElementById('st-n').textContent=data.length;
+  const ov=objective(rVal,KVal,objMode);
+  document.getElementById('st-obj').textContent=ov.toFixed(4);
+}
+
+// ── SLIDERS ──────────────────────────────────────────
+function onSlider(){
+  rVal=parseFloat(document.getElementById('r-sl').value);
+  KVal=parseFloat(document.getElementById('K-sl').value);
+  document.getElementById('r-val').textContent=rVal.toFixed(2);
+  document.getElementById('K-val').textContent=KVal.toFixed(1);
+  updateStats();drawFit();drawObjective();
+}
+
+// ── FIT PLOT ─────────────────────────────────────────
+function drawFit(){
+  const c=document.getElementById('fit-canvas');
+  const dpr=devicePixelRatio||1;
+  c.width=c.offsetWidth*dpr;c.height=c.offsetHeight*dpr;
+  const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+  const W=c.offsetWidth,H=c.offsetHeight;
+  const pad={l:38,r:12,t:12,b:22};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+
+  const ts=data.map(d=>d[0]),ys=data.map(d=>d[1]);
+  const tmin=Math.min(...ts),tmax=Math.max(...ts)*1.08;
+  const ymax=Math.max(...ys,KVal)*1.15;
+
+  const tx=t=>pad.l+pw*(t-tmin)/(tmax-tmin||1);
+  const ty=y=>pad.t+ph*(1-y/ymax);
+
+  ctx.fillStyle='#0b0f14';ctx.fillRect(0,0,W,H);
+  // grid
+  ctx.strokeStyle='#141e28';ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    ctx.beginPath();ctx.moveTo(pad.l+pw*i/4,pad.t);ctx.lineTo(pad.l+pw*i/4,pad.t+ph);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(pad.l,pad.t+ph*i/4);ctx.lineTo(pad.l+pw,pad.t+ph*i/4);ctx.stroke();
+  }
+  ctx.fillStyle='#334';ctx.font='8px monospace';ctx.textAlign='center';
+  for(let i=0;i<=4;i++){const v=tmin+i*(tmax-tmin)/4;ctx.fillText(v.toFixed(1),tx(v),pad.t+ph+13);}
+  ctx.textAlign='right';
+  for(let i=0;i<=4;i++){const v=ymax*i/4;ctx.fillText(v.toFixed(1),pad.l-3,ty(v)+3);}
+
+  // K line
+  ctx.save();ctx.strokeStyle='rgba(245,167,66,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(pad.l,ty(KVal));ctx.lineTo(pad.l+pw,ty(KVal));ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='rgba(245,167,66,0.6)';ctx.font='8px monospace';ctx.textAlign='left';
+  ctx.fillText('K='+KVal.toFixed(1),pad.l+3,ty(KVal)-4);
+
+  // model curve
+  ctx.save();ctx.shadowColor='rgba(122,184,245,0.25)';ctx.shadowBlur=8;
+  ctx.beginPath();ctx.strokeStyle='#7ab8f5';ctx.lineWidth=2;
+  const N=300;
+  for(let i=0;i<=N;i++){
+    const t=tmin+i*(tmax-tmin)/N,y=logistic(t,rVal,KVal);
+    i===0?ctx.moveTo(tx(t),ty(y)):ctx.lineTo(tx(t),ty(y));
+  }
+  ctx.stroke();ctx.restore();
+
+  // residuals
+  data.forEach(([t,y])=>{
+    const yhat=logistic(t,rVal,KVal);
+    ctx.save();ctx.strokeStyle='rgba(212,90,90,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,2]);
+    ctx.beginPath();ctx.moveTo(tx(t),ty(y));ctx.lineTo(tx(t),ty(yhat));ctx.stroke();
+    ctx.restore();
+  });
+
+  // data points
+  data.forEach(([t,y])=>{
+    ctx.save();ctx.shadowColor='#5ad4a0';ctx.shadowBlur=6;
+    ctx.beginPath();ctx.arc(tx(t),ty(y),4.5,0,Math.PI*2);
+    ctx.fillStyle='#5ad4a0';ctx.fill();ctx.restore();
+    ctx.beginPath();ctx.arc(tx(t),ty(y),4.5,0,Math.PI*2);
+    ctx.strokeStyle='#0b0f14';ctx.lineWidth=1.2;ctx.stroke();
+  });
+
+  ctx.strokeStyle='#1e2a35';ctx.lineWidth=0.5;ctx.strokeRect(pad.l,pad.t,pw,ph);
+}
+
+// ── HEATMAP / 3D ────────────────────────────────────
+const HM={rmin:0.01,rmax:3,Kmin:1,Kmax:30,NR:160,NK:120};
+
+function computeGrid(){
+  const {rmin,rmax,Kmin,Kmax,NR,NK}=HM;
+  const grid=new Float32Array((NR+1)*(NK+1));
+  let vmin=Infinity,vmax=-Infinity;
+  for(let j=0;j<=NK;j++)for(let i=0;i<=NR;i++){
+    const r=rmin+i*(rmax-rmin)/NR,K=Kmin+j*(Kmax-Kmin)/NK;
+    const v=objective(r,K,objMode);
+    grid[j*(NR+1)+i]=v;
+    if(isFinite(v)){vmin=Math.min(vmin,v);vmax=Math.max(vmax,v);}
+  }
+  return{grid,vmin,vmax};
+}
+
+// color scale: dark blue → cyan → green → yellow → orange → red
+function valToColor(t){
+  // t in [0,1]
+  const stops=[
+    [0,   [8, 20, 60]],
+    [0.2, [20,100,180]],
+    [0.4, [30,180,160]],
+    [0.6, [120,200,60]],
+    [0.8, [240,180,20]],
+    [1.0, [220,50, 20]],
+  ];
+  for(let i=0;i<stops.length-1;i++){
+    const[t0,c0]=stops[i],[t1,c1]=stops[i+1];
+    if(t>=t0&&t<=t1){
+      const f=(t-t0)/(t1-t0);
+      return stops[i].map((_,k)=>k===0?t:[
+        Math.round(c0[0]+f*(c1[0]-c0[0])),
+        Math.round(c0[1]+f*(c1[1]-c0[1])),
+        Math.round(c0[2]+f*(c1[2]-c0[2]))
+      ])[1];
+    }
+  }
+  return [220,50,20];
+}
+
+let _gridCache=null;
+function getGrid(){_gridCache=computeGrid();return _gridCache;}
+
+function drawHeatmap(){
+  const c=document.getElementById('hm-canvas');
+  const dpr=devicePixelRatio||1;
+  c.width=c.offsetWidth*dpr;c.height=c.offsetHeight*dpr;
+  const ctx=c.getContext('2d');
+  const W=c.offsetWidth,H=c.offsetHeight;
+  const pad={l:36,r:10,t:10,b:26};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+
+  ctx.fillStyle='#0b0f14';ctx.fillRect(0,0,W*dpr,H*dpr);
+
+  const {NR,NK,rmin,rmax,Kmin,Kmax}=HM;
+  const {grid,vmin,vmax}=getGrid();
+  const vrange=vmax-vmin||1;
+
+  // draw cells
+  const cw=pw*dpr/NR,ch=ph*dpr/NK;
+  for(let j=0;j<=NK;j++)for(let i=0;i<=NR;i++){
+    const v=grid[j*(NR+1)+i];
+    const t=Math.sqrt(Math.max(0,(v-vmin)/vrange)); // sqrt for better contrast
+    const [R,G,B]=valToColor(t);
+    ctx.fillStyle=`rgb(${R},${G},${B})`;
+    ctx.fillRect(
+      (pad.l+pw*i/NR)*dpr, (pad.t+ph*(1-j/NK))*dpr,
+      Math.ceil(cw)+1, Math.ceil(ch)+1
+    );
+  }
+
+  ctx.scale(dpr,dpr);
+
+  // axes labels
+  ctx.fillStyle='#445';ctx.font='8px monospace';ctx.textAlign='center';
+  for(let i=0;i<=4;i++){
+    const rv=rmin+i*(rmax-rmin)/4;
+    const cx=pad.l+pw*i/4;
+    ctx.fillText(rv.toFixed(2),cx,pad.t+ph+16);
+  }
+  ctx.textAlign='right';
+  for(let j=0;j<=4;j++){
+    const Kv=Kmin+j*(Kmax-Kmin)/4;
+    const cy=pad.t+ph*(1-j/4);
+    ctx.fillText(Kv.toFixed(0),pad.l-3,cy+3);
+  }
+  ctx.fillStyle='#445';ctx.font='9px monospace';ctx.textAlign='center';
+  ctx.fillText('r',pad.l+pw/2,pad.t+ph+25);
+  ctx.save();ctx.translate(10,pad.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('K',0,0);ctx.restore();
+
+  // current (r,K) marker
+  const mx=pad.l+pw*(rVal-rmin)/(rmax-rmin);
+  const my=pad.t+ph*(1-(KVal-Kmin)/(Kmax-Kmin));
+  ctx.save();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(mx-7,my);ctx.lineTo(mx+7,my);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(mx,my-7);ctx.lineTo(mx,my+7);ctx.stroke();
+  ctx.beginPath();ctx.arc(mx,my,5,0,Math.PI*2);
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  ctx.restore();
+
+  // colorbar
+  const cbx=pad.l+pw+3,cby=pad.t,cbw=7,cbh=ph;
+  for(let j=0;j<cbh;j++){
+    const t=1-j/cbh;
+    const[R,G,B]=valToColor(Math.sqrt(t));
+    ctx.fillStyle=`rgb(${R},${G},${B})`;
+    ctx.fillRect(cbx,cby+j,cbw,1);
+  }
+  ctx.strokeStyle='#1e2a35';ctx.lineWidth=0.5;ctx.strokeRect(cbx,cby,cbw,cbh);
+
+  ctx.strokeStyle='#1e2a35';ctx.lineWidth=0.5;ctx.strokeRect(pad.l,pad.t,pw,ph);
+}
+
+// heatmap hover
+document.getElementById('hm-canvas').addEventListener('mousemove',function(e){
+  if(viewMode!=='heatmap')return;
+  const c=this;
+  const rect=c.getBoundingClientRect();
+  const pad={l:36,r:10,t:10,b:26};
+  const pw=c.offsetWidth-pad.l-pad.r,ph=c.offsetHeight-pad.t-pad.b;
+  const mx=e.clientX-rect.left-pad.l,my=e.clientY-rect.top-pad.t;
+  if(mx<0||mx>pw||my<0||my>ph){document.getElementById('hm-tooltip').style.display='none';return;}
+  const{rmin,rmax,Kmin,Kmax}=HM;
+  const r=rmin+mx/pw*(rmax-rmin);
+  const K=Kmax-my/ph*(Kmax-Kmin);
+  const v=objective(r,K,objMode);
+  const tip=document.getElementById('hm-tooltip');
+  tip.style.display='block';
+  tip.style.left=(e.clientX-rect.left+10)+'px';
+  tip.style.top=(e.clientY-rect.top-18)+'px';
+  tip.textContent=`r=${r.toFixed(3)}, K=${K.toFixed(2)}, f=${v.toFixed(4)}`;
+});
+document.getElementById('hm-canvas').addEventListener('mouseleave',()=>{
+  document.getElementById('hm-tooltip').style.display='none';
+});
+
+// heatmap click → set sliders
+document.getElementById('hm-canvas').addEventListener('click',function(e){
+  if(viewMode!=='heatmap')return;
+  const c=this;
+  const rect=c.getBoundingClientRect();
+  const pad={l:36,r:10,t:10,b:26};
+  const pw=c.offsetWidth-pad.l-pad.r,ph=c.offsetHeight-pad.t-pad.b;
+  const mx=e.clientX-rect.left-pad.l,my=e.clientY-rect.top-pad.t;
+  if(mx<0||mx>pw||my<0||my>ph)return;
+  const{rmin,rmax,Kmin,Kmax}=HM;
+  rVal=Math.max(rmin,Math.min(rmax,rmin+mx/pw*(rmax-rmin)));
+  KVal=Math.max(Kmin,Math.min(Kmax,Kmax-my/ph*(Kmax-Kmin)));
+  document.getElementById('r-sl').value=rVal;
+  document.getElementById('K-sl').value=KVal;
+  document.getElementById('r-val').textContent=rVal.toFixed(2);
+  document.getElementById('K-val').textContent=KVal.toFixed(1);
+  updateStats();drawFit();drawObjective();
+});
+
+// ── 3D SURFACE ───────────────────────────────────────
+function init3D(){
+  const wrap=document.getElementById('surf-wrap');
+  if(renderer3){if(raf3)cancelAnimationFrame(raf3);renderer3.dispose();wrap.innerHTML='';}
+  renderer3=new THREE.WebGLRenderer({antialias:true});
+  renderer3.setPixelRatio(devicePixelRatio||1);
+  renderer3.setSize(wrap.offsetWidth,wrap.offsetHeight);
+  renderer3.setClearColor(0x0b0f14,1);
+  wrap.appendChild(renderer3.domElement);
+  scene3=new THREE.Scene();
+  camera3=new THREE.PerspectiveCamera(45,wrap.offsetWidth/wrap.offsetHeight,0.01,1000);
+  scene3.add(new THREE.AmbientLight(0xffffff,0.5));
+  const dl=new THREE.DirectionalLight(0xffffff,0.8);dl.position.set(2,5,3);scene3.add(dl);
+  add3DControls(renderer3.domElement);
+  build3DSurface();
+  loop3D();
+}
+
+function add3DControls(el){
+  el.addEventListener('mousedown',e=>{isDrag=true;prevT={x:e.clientX,y:e.clientY};});
+  window.addEventListener('mouseup',()=>isDrag=false);
+  window.addEventListener('mousemove',e=>{
+    if(!isDrag)return;
+    rotY3+=(e.clientX-prevT.x)*0.012;rotX3+=(e.clientY-prevT.y)*0.012;
+    rotX3=Math.max(-1.4,Math.min(1.4,rotX3));prevT={x:e.clientX,y:e.clientY};
+  });
+  el.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    if(e.touches.length===1){isDrag=true;prevT={x:e.touches[0].clientX,y:e.touches[0].clientY};}
+    else if(e.touches.length===2){pinch0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);dist30=dist3;}
+  },{passive:false});
+  el.addEventListener('touchend',e=>{if(e.touches.length<2)isDrag=false;},{passive:false});
+  el.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    if(e.touches.length===1&&isDrag){
+      rotY3+=(e.touches[0].clientX-prevT.x)*0.015;rotX3+=(e.touches[0].clientY-prevT.y)*0.015;
+      rotX3=Math.max(-1.4,Math.min(1.4,rotX3));prevT={x:e.touches[0].clientX,y:e.touches[0].clientY};
+    } else if(e.touches.length===2){
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      dist3=Math.max(2,Math.min(12,dist30*(pinch0/d)));
+    }
+  },{passive:false});
+  el.addEventListener('wheel',e=>{dist3=Math.max(2,Math.min(12,dist3+e.deltaY*0.005));},{passive:true});
+}
+
+function build3DSurface(){
+  if(mesh3)scene3.remove(mesh3);
+  const{rmin,rmax,Kmin,Kmax}=HM;
+  const NR2=60,NK2=50;
+  const{grid:fullGrid,vmin,vmax}=getGrid();
+  const vrange=vmax-vmin||1;
+  // subsample grid
+  const verts=[],cols=[],idx=[];
+  const stepR=Math.floor(HM.NR/NR2),stepK=Math.floor(HM.NK/NK2);
+  for(let j=0;j<=NK2;j++)for(let i=0;i<=NR2;i++){
+    const ii=Math.min(i*stepR,HM.NR),jj=Math.min(j*stepK,HM.NK);
+    const r=rmin+ii*(rmax-rmin)/HM.NR;
+    const K=Kmin+jj*(Kmax-Kmin)/HM.NK;
+    const v=fullGrid[jj*(HM.NR+1)+ii];
+    const vn=Math.sqrt(Math.max(0,(v-vmin)/vrange));
+    // scale: r→[-1,1], K→[-1,1], v→[0, 2]
+    const sx=(r-rmin)/(rmax-rmin)*2-1;
+    const sy=(K-Kmin)/(Kmax-Kmin)*2-1;
+    const sz=vn*1.5;
+    verts.push(sx,sz,sy); // Y=up
+    const[R,G,B]=valToColor(vn);
+    cols.push(R/255,G/255,B/255);
+  }
+  for(let j=0;j<NK2;j++)for(let i=0;i<NR2;i++){
+    const a=j*(NR2+1)+i;idx.push(a,a+1,a+NR2+1,a+1,a+NR2+2,a+NR2+1);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+  geo.setIndex(idx);geo.computeVertexNormals();
+  mesh3=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide,shininess:30}));
+  scene3.add(mesh3);
+
+  // current point marker
+  const rx=(rVal-rmin)/(rmax-rmin)*2-1;
+  const ry=(KVal-Kmin)/(Kmax-Kmin)*2-1;
+  const v=objective(rVal,KVal,objMode);
+  const vn=Math.sqrt(Math.max(0,(v-vmin)/vrange));
+  const sz=vn*1.5;
+  const sg=new THREE.SphereGeometry(0.05,16,16);
+  const sm=new THREE.Mesh(sg,new THREE.MeshPhongMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:0.8}));
+  sm.position.set(rx,sz,ry);scene3.add(sm);mesh3._marker=sm;
+
+  // axes
+  function ax(p1,p2,c){
+    const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...p1),new THREE.Vector3(...p2)]);
+    scene3.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:c,transparent:true,opacity:0.5})));
+  }
+  ax([-1.1,0,-1],[ 1.1,0,-1],0x6699cc);
+  ax([-1,0,-1.1],[-1,0, 1.1],0x66bb88);
+  ax([-1,0,-1],  [-1,1.6,-1],0xddaa55);
+}
+
+function loop3D(){
+  raf3=requestAnimationFrame(loop3D);
+  if(viewMode!=='3d')return;
+  camera3.position.x=Math.sin(rotY3)*Math.cos(rotX3)*dist3;
+  camera3.position.y=Math.sin(rotX3)*dist3;
+  camera3.position.z=Math.cos(rotY3)*Math.cos(rotX3)*dist3;
+  camera3.lookAt(0,0.5,0);
+  renderer3.render(scene3,camera3);
+}
+
+// ── CONTROLS ─────────────────────────────────────────
+function setObj(mode){
+  objMode=mode;
+  ['l2','l1','linf'].forEach(m=>{
+    document.getElementById('ob-'+m).className='obj-btn'+(m===mode?' active':'');
+  });
+  _gridCache=null;
+  updateStats();drawFit();drawObjective();
+}
+
+function setView(mode){
+  viewMode=mode;
+  ['heatmap','3d'].forEach(m=>{
+    const id='vw-'+(m==='heatmap'?'hm':'3d');
+    document.getElementById(id).className='view-btn'+(m===mode?' active':'');
+  });
+  document.getElementById('hm-wrap').style.display=mode==='heatmap'?'block':'none';
+  document.getElementById('surf-wrap').style.display=mode==='3d'?'block':'none';
+  document.getElementById('view-hint').textContent=
+    mode==='heatmap'?'Hover = ver valor · Click = mover parámetros':'Arrastra para rotar · Pinch para zoom';
+  if(mode==='3d') init3D();
+}
+
+function drawObjective(){
+  if(viewMode==='heatmap') drawHeatmap();
+  else if(viewMode==='3d' && renderer3) build3DSurface();
+}
+
+// ── RESET ────────────────────────────────────────────
+function resetAll(){
+  data=DEFAULT_DATA.map(d=>[...d]);
+  rVal=0.50; KVal=10.0;
+  document.getElementById('r-sl').value=rVal;
+  document.getElementById('K-sl').value=KVal;
+  document.getElementById('r-val').textContent=rVal.toFixed(2);
+  document.getElementById('K-val').textContent=KVal.toFixed(1);
+  objMode='l2';
+  ['l2','l1','linf'].forEach(m=>{
+    document.getElementById('ob-'+m).className='obj-btn'+(m==='l2'?' active':'');
+  });
+  if(viewMode==='3d'){
+    setView('heatmap');
+  }
+  _gridCache=null;
+  renderDataRows();
+}
+
+// ── INIT ─────────────────────────────────────────────
+setTimeout(()=>{if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise();},600);
+renderDataRows();
+window.addEventListener('resize',()=>{
+  if(viewMode==='heatmap'){drawHeatmap();}
+  drawFit();
+});
+</script>
+</body>
+</html>
