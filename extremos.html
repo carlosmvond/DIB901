@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Extremos — Mínimos y Máximos</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Georgia',serif;background:#0e1117;color:#e8e4dc;padding:0.8rem;max-width:520px;margin:0 auto;min-height:100vh}
+h1{font-size:12px;font-weight:400;color:#666;margin-bottom:0.9rem;letter-spacing:0.06em;font-family:monospace}
+
+.card{background:#161b22;border:0.5px solid #2a2f3a;border-radius:12px;padding:0.9rem;margin-bottom:10px}
+.card-title{font-size:10px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem}
+
+.tabs{display:flex;gap:4px;margin-bottom:8px}
+.tab{flex:1;padding:7px;font-size:11px;border-radius:7px;cursor:pointer;font-family:monospace;border:0.5px solid #2a2f3a;background:#0e1117;color:#666;transition:all 0.15s;text-align:center}
+.tab.active{background:#1e3a5f;border-color:#3a7bd5;color:#7ab8f5}
+
+.fn-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.fn-btn{padding:7px 5px;font-size:10px;border-radius:7px;cursor:pointer;font-family:monospace;border:0.5px solid #2a2f3a;background:#0e1117;color:#888;transition:all 0.15s;text-align:center;line-height:1.3}
+.fn-btn.active{background:#1e2f1e;border-color:#4a8a4a;color:#7dd47d}
+.fn-btn:hover{border-color:#3a7bd5;color:#aaa}
+
+canvas{display:block;border-radius:8px;width:100%}
+#c1d{border:0.5px solid #2a2f3a;background:#0e1117}
+#c2d-wrap{position:relative;border:0.5px solid #2a2f3a;border-radius:8px;overflow:hidden;background:#0e1117;touch-action:none}
+#c2d-wrap canvas{width:100%!important;height:100%!important;display:block}
+
+.legend{display:flex;gap:10px;font-size:9px;color:#666;margin-top:5px;flex-wrap:wrap}
+.leg-dot{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle;margin-right:3px}
+.leg-dash{display:inline-block;width:16px;height:0;border-top:2px dashed rgba(255,255,255,0.35);vertical-align:middle;margin-right:3px}
+
+.pts-list{margin-top:4px;display:grid;gap:5px}
+.pt-row{background:#0e1117;border-radius:7px;padding:0.5rem 0.7rem;border-left:3px solid #333;font-size:10px;font-family:monospace;color:#aaa;line-height:1.7}
+.pt-row.gmax{border-color:#f5a742}
+.pt-row.gmin{border-color:#5a9fd4}
+.pt-row.lmax{border-color:#c47dd4}
+.pt-row.lmin{border-color:#5ad4a0}
+.pt-row.none{border-color:#888}
+
+.pt-info{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px}
+.pt-coords{font-size:9px;color:#777;margin-top:1px}
+
+.tan-btn{padding:3px 9px;font-size:9px;border-radius:5px;cursor:pointer;font-family:monospace;border:0.5px solid #333;background:#1a1f28;color:#666;transition:all 0.15s;white-space:nowrap}
+.tan-btn.on{background:#1a2a1a;border-color:#5aaa70;color:#7dd47d}
+.tan-btn:hover{border-color:#5a9fd4;color:#aaa}
+
+.hint{font-size:9px;color:#555;font-family:monospace;margin-top:5px;text-align:center}
+
+.badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:8px;font-family:monospace;margin-right:4px;vertical-align:middle}
+.badge.gmax{background:#3a2800;color:#f5a742;border:0.5px solid #f5a742}
+.badge.gmin{background:#001a30;color:#5a9fd4;border:0.5px solid #5a9fd4}
+.badge.lmax{background:#2d1a3a;color:#c47dd4;border:0.5px solid #c47dd4}
+.badge.lmin{background:#001f18;color:#5ad4a0;border:0.5px solid #5ad4a0}
+.badge.none{background:#1a1a1a;color:#888;border:0.5px solid #555}
+
+.tan-note{font-size:9px;color:#555;margin-top:6px;font-family:monospace;font-style:italic;line-height:1.5}
+</style>
+</head>
+<body>
+
+<h1>f(x) / f(x,y) — Extremos locales y globales</h1>
+
+<div class="tabs">
+  <div class="tab active" id="tab1d" onclick="setDim(1)">1D — f(x)</div>
+  <div class="tab" id="tab2d" onclick="setDim(2)">2D — f(x,y)</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Función</div>
+  <div class="fn-grid" id="fn-grid"></div>
+</div>
+
+<div class="card" id="panel-1d">
+  <div class="card-title">Gráfico</div>
+  <canvas id="c1d" style="height:230px"></canvas>
+  <div class="legend">
+    <span><span class="leg-dot" style="background:#f5a742"></span>Máx. global</span>
+    <span><span class="leg-dot" style="background:#5a9fd4"></span>Mín. global</span>
+    <span><span class="leg-dot" style="background:#c47dd4"></span>Máx. local</span>
+    <span><span class="leg-dot" style="background:#5ad4a0"></span>Mín. local</span>
+    <span><span class="leg-dash"></span>tangente</span>
+  </div>
+</div>
+
+<div class="card" id="panel-2d" style="display:none">
+  <div class="card-title">Superficie — arrastra para rotar</div>
+  <div id="c2d-wrap" style="height:290px"></div>
+  <div class="hint">Toca y arrastra · Pinch para zoom</div>
+  <div class="legend">
+    <span><span class="leg-dot" style="background:#f5a742"></span>Máx. global</span>
+    <span><span class="leg-dot" style="background:#5a9fd4"></span>Mín. global</span>
+    <span><span class="leg-dot" style="background:#c47dd4"></span>Máx. local</span>
+    <span><span class="leg-dot" style="background:#5ad4a0"></span>Mín. local</span>
+    <span><span class="leg-dot" style="background:rgba(255,255,255,0.25);border:1px dashed rgba(255,255,255,0.3)"></span>plano tang.</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Puntos extremos</div>
+  <div class="pts-list" id="pts-list"></div>
+  <div class="tan-note" id="tan-note"></div>
+</div>
+
+<script>
+// ── numerical derivatives ───────────────────────────────
+const H=1e-5;
+const df1 =(f,x)    =>(f(x+H)-f(x-H))/(2*H);
+const dfdx=(f,x,y)  =>(f(x+H,y)-f(x-H,y))/(2*H);
+const dfdy=(f,x,y)  =>(f(x,y+H)-f(x,y-H))/(2*H);
+
+// ── COLORS ─────────────────────────────────────────────
+const CLR  ={gmax:'#f5a742',gmin:'#5a9fd4',lmax:'#c47dd4',lmin:'#5ad4a0',none:'#888888'};
+const CLR3 ={gmax:0xf5a742, gmin:0x5a9fd4, lmax:0xc47dd4, lmin:0x5ad4a0, none:0x888888};
+const BADGE={gmax:'Máx. global',gmin:'Mín. global',lmax:'Máx. local',lmin:'Mín. local',none:'Punto silla'};
+
+// ── FUNCTIONS ──────────────────────────────────────────
+const FN1D=[
+  {
+    id:'poly', label:'Polinomial\nx⁴−4x²+x',
+    f:x=>x**4-4*x**2+x,
+    domain:[-2.5,2.5],
+    extrema:[
+      {type:'gmax', x: 2.5,         label:'Máx. global'},
+      {type:'gmin', x:-1.473,        label:'Mín. global'},
+      {type:'lmax', x: 0.126,        label:'Máx. local'},
+      {type:'lmin', x: 1.347,        label:'Mín. local'},
+    ]
+  },
+  {
+    id:'trig', label:'Trigonométrica\nsin(x)+½sin(3x)',
+    f:x=>Math.sin(x)+0.5*Math.sin(3*x),
+    domain:[-Math.PI*1.1, Math.PI*1.1],
+    extrema:[
+      {type:'gmax', x: 0.7017,       label:'Máx. global'},
+      {type:'gmin', x:-0.7017,       label:'Mín. global'},
+      {type:'lmax', x: 2.440,        label:'Máx. local'},
+      {type:'lmax', x:-Math.PI/2,    label:'Máx. local'},
+      {type:'lmin', x:-2.440,        label:'Mín. local'},
+      {type:'lmin', x: Math.PI/2,    label:'Mín. local'},
+    ]
+  },
+  {
+    id:'rational', label:'Racional\nx/(x²+1)',
+    f:x=>x/(x*x+1),
+    domain:[-3.5,3.5],
+    extrema:[
+      {type:'gmax', x: 1,  label:'Máx. global'},
+      {type:'gmin', x:-1,  label:'Mín. global'},
+    ]
+  },
+  {
+    id:'multi', label:'Multi-modal\nsin(x)·e^(−|x|/3)',
+    f:x=>Math.sin(x)*Math.exp(-Math.abs(x)/3),
+    domain:[-9,9],
+    extrema:[
+      {type:'gmax', x: 1.2490,  label:'Máx. global'},
+      {type:'gmin', x:-1.2490,  label:'Mín. global'},
+      {type:'lmax', x:-4.3906,  label:'Máx. local'},
+      {type:'lmax', x: 7.5322,  label:'Máx. local'},
+      {type:'lmin', x: 4.3906,  label:'Mín. local'},
+      {type:'lmin', x:-7.5322,  label:'Mín. local'},
+    ]
+  },
+];
+
+const FN2D=[
+  {
+    id:'bowl', label:'Cuenco\nx²+y²',
+    f:(x,y)=>x*x+y*y,
+    domain:2,
+    extrema:[{type:'gmin',x:0,y:0,label:'Mín. global'}]
+  },
+  {
+    id:'saddle', label:'Silla de montar\nx²−y²',
+    f:(x,y)=>x*x-y*y,
+    domain:2,
+    extrema:[{type:'none',x:0,y:0,label:'Punto de silla'}]
+  },
+  {
+    id:'hills', label:'Colinas\nsin(x)·cos(y)',
+    f:(x,y)=>Math.sin(x)*Math.cos(y),
+    domain:Math.PI,
+    extrema:[
+      {type:'gmax',x: Math.PI/2, y:0,         label:'Máx. global'},
+      {type:'gmin',x:-Math.PI/2, y:0,         label:'Mín. global'},
+      {type:'lmax',x:-Math.PI/2, y:Math.PI,   label:'Máx. local'},
+      {type:'lmin',x: Math.PI/2, y:Math.PI,   label:'Mín. local'},
+    ]
+  },
+  {
+    id:'volcano', label:'Volcán\n−r²·e^(−r²/2)',
+    f:(x,y)=>{const r2=x*x+y*y;return -r2*Math.exp(-r2/2);},
+    domain:2.5,
+    extrema:[
+      {type:'gmin',x:0,y:0, label:'Mín. global'},
+      {type:'lmax',x:1,y:0, label:'Máx. local (anillo)'},
+    ]
+  },
+];
+
+// ── STATE ──────────────────────────────────────────────
+let dim=1, fnIdx=0;
+let tanVisible=[];
+
+function resetTanVisible(){
+  const list=dim===1?FN1D[fnIdx].extrema:FN2D[fnIdx].extrema;
+  tanVisible=list.map(()=>false);
+}
+
+// ── UI ─────────────────────────────────────────────────
+function setDim(d){
+  dim=d; fnIdx=0;
+  document.getElementById('tab1d').className='tab'+(d===1?' active':'');
+  document.getElementById('tab2d').className='tab'+(d===2?' active':'');
+  document.getElementById('panel-1d').style.display=d===1?'block':'none';
+  document.getElementById('panel-2d').style.display=d===2?'block':'none';
+  resetTanVisible(); buildFnGrid(); render();
+}
+
+function buildFnGrid(){
+  const list=dim===1?FN1D:FN2D;
+  const g=document.getElementById('fn-grid'); g.innerHTML='';
+  list.forEach((fn,i)=>{
+    const b=document.createElement('button');
+    b.className='fn-btn'+(i===fnIdx?' active':'');
+    b.innerHTML=fn.label.replace('\n','<br>');
+    b.onclick=()=>{fnIdx=i;resetTanVisible();buildFnGrid();render();};
+    g.appendChild(b);
+  });
+}
+
+function toggleTan(i){
+  tanVisible[i]=!tanVisible[i];
+  if(dim===1){draw1d();updatePts1d();}
+  else{syncTanPlanes();updatePts2d();}
+}
+
+function render(){
+  if(dim===1){draw1d();updatePts1d();}
+  else{draw2d();updatePts2d();}
+}
+
+// ══════════════════════════════════════════════════════
+// 1D
+// ══════════════════════════════════════════════════════
+function draw1d(){
+  const fn=FN1D[fnIdx];
+  const c=document.getElementById('c1d');
+  const dpr=window.devicePixelRatio||1;
+  c.width=c.offsetWidth*dpr; c.height=c.offsetHeight*dpr;
+  const ctx=c.getContext('2d'); ctx.scale(dpr,dpr);
+  const W=c.offsetWidth, H=c.offsetHeight;
+  const pad={l:40,r:10,t:14,b:22};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+
+  const[xmin,xmax]=fn.domain;
+  const N=600, ys=[];
+  for(let i=0;i<=N;i++){const x=xmin+i*(xmax-xmin)/N; ys.push(fn.f(x));}
+  const rawMin=Math.min(...ys), rawMax=Math.max(...ys);
+  const ypad=(rawMax-rawMin)*0.15;
+  const Y0=rawMin-ypad, Y1=rawMax+ypad;
+
+  const tx=x=>pad.l+pw*(x-xmin)/(xmax-xmin);
+  const ty=y=>pad.t+ph*(1-(y-Y0)/(Y1-Y0));
+
+  // bg
+  ctx.fillStyle='#0e1117'; ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle='#1e2530'; ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    ctx.beginPath();ctx.moveTo(pad.l+pw*i/4,pad.t);ctx.lineTo(pad.l+pw*i/4,pad.t+ph);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(pad.l,pad.t+ph*i/4);ctx.lineTo(pad.l+pw,pad.t+ph*i/4);ctx.stroke();
+  }
+  ctx.fillStyle='#3a3a3a'; ctx.font='8px monospace'; ctx.textAlign='center';
+  for(let i=0;i<=4;i++){const xv=xmin+i*(xmax-xmin)/4; ctx.fillText(xv.toFixed(1),tx(xv),pad.t+ph+13);}
+  ctx.textAlign='right';
+  for(let i=0;i<=4;i++){const yv=Y0+i*(Y1-Y0)/4; ctx.fillText(yv.toFixed(2),pad.l-3,ty(yv)+3);}
+
+  // zero line
+  if(Y0<0&&Y1>0){
+    ctx.save();ctx.strokeStyle='#2a3040';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(pad.l,ty(0));ctx.lineTo(pad.l+pw,ty(0));ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── tangent lines (draw BEFORE curve so curve is on top) ──
+  fn.extrema.forEach((e,i)=>{
+    if(!tanVisible[i]) return;
+    const x0=e.x, y0=fn.f(x0), m=df1(fn.f,x0);
+    const col=CLR[e.type];
+    // line from xmin to xmax: y = y0 + m*(x-x0)
+    const yL=y0+m*(xmin-x0), yR=y0+m*(xmax-x0);
+    ctx.save();
+    ctx.strokeStyle=col; ctx.lineWidth=1.6; ctx.setLineDash([7,4]);
+    ctx.globalAlpha=0.75;
+    ctx.shadowColor=col; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.moveTo(tx(xmin),ty(yL)); ctx.lineTo(tx(xmax),ty(yR)); ctx.stroke();
+    ctx.restore();
+
+    // small label showing equation
+    const lx=tx(x0), ly=ty(y0);
+    const offY=e.type==='gmax'||e.type==='lmax'?18:-22;
+    ctx.save();
+    ctx.fillStyle=col; ctx.font='bold 8px monospace'; ctx.globalAlpha=0.9;
+    ctx.textAlign='center';
+    ctx.fillText(`y = ${y0.toFixed(3)}`,lx,ly+offY);
+    ctx.restore();
+  });
+
+  // curve
+  ctx.save();
+  ctx.shadowColor='rgba(122,184,245,0.25)'; ctx.shadowBlur=8;
+  ctx.beginPath(); ctx.strokeStyle='#7ab8f5'; ctx.lineWidth=2;
+  for(let i=0;i<=N;i++){
+    const x=xmin+i*(xmax-xmin)/N, y=ys[i];
+    i===0?ctx.moveTo(tx(x),ty(y)):ctx.lineTo(tx(x),ty(y));
+  }
+  ctx.stroke(); ctx.restore();
+
+  // extrema dots (on top of everything)
+  fn.extrema.forEach((e,i)=>{
+    const yv=fn.f(e.x), cx=tx(e.x), cy=ty(yv);
+    const on=tanVisible[i], r=on?7.5:6;
+    ctx.save(); ctx.shadowColor=CLR[e.type]; ctx.shadowBlur=on?20:10;
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fillStyle=CLR[e.type]; ctx.fill();
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.strokeStyle=on?'#ffffff':'#0e1117'; ctx.lineWidth=on?2:1.5; ctx.stroke();
+  });
+
+  ctx.strokeStyle='#2a2f3a'; ctx.lineWidth=0.5;
+  ctx.strokeRect(pad.l,pad.t,pw,ph);
+}
+
+function updatePts1d(){
+  const fn=FN1D[fnIdx];
+  document.getElementById('pts-list').innerHTML=fn.extrema.map((e,i)=>{
+    const yv=fn.f(e.x), m=df1(fn.f,e.x), on=tanVisible[i];
+    return `<div class="pt-row ${e.type}">
+      <div class="pt-info">
+        <div><span class="badge ${e.type}">${BADGE[e.type]}</span>x = ${e.x.toFixed(4)}</div>
+        <button class="tan-btn ${on?'on':''}" onclick="toggleTan(${i})">${on?'— ocultar recta':'— mostrar recta'}</button>
+      </div>
+      <div class="pt-coords">f(x) = ${yv.toFixed(5)} &nbsp;·&nbsp; f′(x) = ${Math.abs(m)<1e-4?'≈ 0':m.toFixed(5)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('tan-note').textContent=
+    'En todo extremo la recta tangente es horizontal: f′(x₀) = 0 (condición necesaria).';
+}
+
+// ══════════════════════════════════════════════════════
+// 2D / THREE.JS
+// ══════════════════════════════════════════════════════
+let renderer=null, scene=null, camera=null, mesh=null;
+let sceneMarkers=[], sceneTanObjs=[];   // spheres/rings | tan planes per extremum
+let isDragging=false, prevTouch={x:0,y:0};
+let rotX=0.55, rotY=0.4, dist=3.8;
+let pinchDist0=0, dist0=0;
+let rafId=null;
+
+function initThree(){
+  const wrap=document.getElementById('c2d-wrap');
+  if(renderer){if(rafId)cancelAnimationFrame(rafId);renderer.dispose();wrap.innerHTML='';}
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(window.devicePixelRatio||1);
+  renderer.setSize(wrap.offsetWidth,wrap.offsetHeight);
+  renderer.setClearColor(0x0e1117,1);
+  wrap.appendChild(renderer.domElement);
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(45,wrap.offsetWidth/wrap.offsetHeight,0.01,100);
+  scene.add(new THREE.AmbientLight(0xffffff,0.45));
+  const dl=new THREE.DirectionalLight(0xffffff,0.8);dl.position.set(2,4,3);scene.add(dl);
+  const dl2=new THREE.DirectionalLight(0x7ab8f5,0.3);dl2.position.set(-2,-1,-2);scene.add(dl2);
+  _addControls(renderer.domElement);
+  buildSurface();
+  loopThree();
+}
+
+function _addControls(el){
+  el.addEventListener('mousedown',e=>{isDragging=true;prevTouch={x:e.clientX,y:e.clientY};});
+  window.addEventListener('mouseup',()=>isDragging=false);
+  window.addEventListener('mousemove',e=>{
+    if(!isDragging)return;
+    rotY+=(e.clientX-prevTouch.x)*0.012;
+    rotX+=(e.clientY-prevTouch.y)*0.012;
+    rotX=Math.max(-1.47,Math.min(1.47,rotX));
+    prevTouch={x:e.clientX,y:e.clientY};
+  });
+  el.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    if(e.touches.length===1){isDragging=true;prevTouch={x:e.touches[0].clientX,y:e.touches[0].clientY};}
+    else if(e.touches.length===2){
+      pinchDist0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      dist0=dist;
+    }
+  },{passive:false});
+  el.addEventListener('touchend',e=>{if(e.touches.length<2)isDragging=false;},{passive:false});
+  el.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    if(e.touches.length===1&&isDragging){
+      rotY+=(e.touches[0].clientX-prevTouch.x)*0.015;
+      rotX+=(e.touches[0].clientY-prevTouch.y)*0.015;
+      rotX=Math.max(-1.47,Math.min(1.47,rotX));
+      prevTouch={x:e.touches[0].clientX,y:e.touches[0].clientY};
+    } else if(e.touches.length===2){
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      dist=Math.max(1.5,Math.min(8,dist0*(pinchDist0/d)));
+    }
+  },{passive:false});
+  el.addEventListener('wheel',e=>{dist=Math.max(1.5,Math.min(8,dist+e.deltaY*0.005));},{passive:true});
+}
+
+
+// ── AXES ───────────────────────────────────────────────
+function makeLabel(text, color){
+  const size=128, fs=22;
+  const cv=document.createElement('canvas'); cv.width=size; cv.height=size;
+  const c=cv.getContext('2d');
+  c.clearRect(0,0,size,size);
+  c.fillStyle=color; c.font=`bold ${fs}px monospace`; c.textAlign='center'; c.textBaseline='middle';
+  c.fillText(text,size/2,size/2);
+  const tex=new THREE.CanvasTexture(cv);
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false});
+  const sp=new THREE.Sprite(mat); sp.scale.set(0.22,0.22,1);
+  return sp;
+}
+
+function makeTick(text, color){
+  const w=96, h=48, fs=16;
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const c=cv.getContext('2d');
+  c.clearRect(0,0,w,h);
+  c.fillStyle=color; c.font=`${fs}px monospace`; c.textAlign='center'; c.textBaseline='middle';
+  c.fillText(text,w/2,h/2);
+  const tex=new THREE.CanvasTexture(cv);
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false});
+  const sp=new THREE.Sprite(mat); sp.scale.set(0.18,0.09,1);
+  return sp;
+}
+
+function addLine(p1, p2, color){
+  const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...p1),new THREE.Vector3(...p2)]);
+  const line=new THREE.Line(geo,new THREE.LineBasicMaterial({color,transparent:true,opacity:0.7}));
+  scene.add(line); sceneMarkers.push(line);
+}
+
+function buildAxes(D, zmin, zmax){
+  const ext=D*1.18;          // axis extends slightly beyond domain
+  const zext=(zmax-zmin)*0.18;
+  const ylo=zmin-zext, yhi=zmax+zext;
+
+  // X axis (scene X) — domain x
+  addLine([-ext, ylo, 0],[ext, ylo, 0], 0x6699cc);
+  const lx=makeLabel('x',  '#6699cc'); lx.position.set(ext+0.18, ylo, 0); scene.add(lx); sceneMarkers.push(lx);
+
+  // Y axis (scene Z) — domain y
+  addLine([0, ylo, -ext],[0, ylo, ext], 0x66bb88);
+  const ly=makeLabel('y',  '#66bb88'); ly.position.set(0, ylo, ext+0.18); scene.add(ly); sceneMarkers.push(ly);
+
+  // Z=f axis (scene Y) — function value
+  addLine([0, ylo, 0],[0, yhi, 0], 0xddaa55);
+  const lf=makeLabel('f',  '#ddaa55'); lf.position.set(0.18, yhi+0.18, 0); scene.add(lf); sceneMarkers.push(lf);
+
+  // floor grid lines (subtle)
+  const gc=0x1e2a1e;
+  const steps=4;
+  for(let i=0;i<=steps;i++){
+    const v=-ext+2*ext*i/steps;
+    addLine([v, ylo, -ext],[v, ylo, ext], gc);
+    addLine([-ext, ylo, v],[ext, ylo, v], gc);
+  }
+
+  // ticks on X axis
+  const ntick=4;
+  for(let i=0;i<=ntick;i++){
+    const v=-D+2*D*i/ntick;
+    addLine([v, ylo, 0],[v, ylo-0.04, 0], 0x6699cc);
+    const t=makeTick(v.toFixed(1),'#557799'); t.position.set(v, ylo-0.12, 0.08);
+    scene.add(t); sceneMarkers.push(t);
+  }
+
+  // ticks on Y (domain) axis
+  for(let i=0;i<=ntick;i++){
+    const v=-D+2*D*i/ntick;
+    addLine([0, ylo, v],[-0.04, ylo-0.04, v], 0x66bb88);
+    const t=makeTick(v.toFixed(1),'#448866'); t.position.set(-0.2, ylo-0.12, v);
+    scene.add(t); sceneMarkers.push(t);
+  }
+
+  // ticks on f axis
+  const nft=4;
+  for(let i=0;i<=nft;i++){
+    const v=ylo+(yhi-ylo)*i/nft;
+    addLine([0, v, 0],[-0.04, v, 0], 0xddaa55);
+    const t=makeTick(v.toFixed(2),'#aa8833'); t.position.set(-0.28, v, 0);
+    scene.add(t); sceneMarkers.push(t);
+  }
+}
+
+function buildSurface(){
+  const fn=FN2D[fnIdx];
+  // clear old
+  if(mesh)scene.remove(mesh);
+  sceneMarkers.forEach(o=>scene.remove(o)); sceneMarkers=[];
+  sceneTanObjs.forEach(o=>scene.remove(o)); sceneTanObjs=[];
+
+  const N=80, D=fn.domain;
+  const verts=[],cols=[],idx=[];
+  let zmin=Infinity, zmax=-Infinity;
+  const grid=[];
+  for(let j=0;j<=N;j++){
+    grid.push([]);
+    for(let i=0;i<=N;i++){
+      const x=-D+2*D*i/N, y=-D+2*D*j/N, z=fn.f(x,y);
+      grid[j].push(z);
+      if(isFinite(z)){zmin=Math.min(zmin,z);zmax=Math.max(zmax,z);}
+    }
+  }
+  const zr=zmax-zmin||1;
+  for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){
+    // Three.js Y=up → map scene(x, f(x,y), y) so the function value is the vertical axis
+    const x=-D+2*D*i/N, y=-D+2*D*j/N, z=grid[j][i], zn=(z-zmin)/zr;
+    verts.push(x, z, y);
+    cols.push(zn<0.5?0.1+zn*0.6:0.4+zn*0.6, 0.15+zn*0.7, zn<0.5?0.4+zn*0.4:0.6-zn*0.5);
+  }
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const a=j*(N+1)+i; idx.push(a,a+1,a+N+1,a+1,a+N+2,a+N+1);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  mesh=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide,shininess:45,transparent:true,opacity:0.93}));
+  scene.add(mesh);
+  // subtle wireframe
+  const wm=new THREE.Mesh(geo.clone(),new THREE.MeshBasicMaterial({color:0x1e2530,wireframe:true,transparent:true,opacity:0.1}));
+  scene.add(wm); sceneMarkers.push(wm);
+
+  // ── axes ──
+  buildAxes(D, zmin, zmax);
+
+  // per-extremum: sphere + ring + tangent plane pair
+  fn.extrema.forEach((e,i)=>{
+    const z=fn.f(e.x,e.y), hc=CLR3[e.type], r=0.06;
+    // sphere
+    const sp=new THREE.Mesh(
+      new THREE.SphereGeometry(r,16,16),
+      new THREE.MeshPhongMaterial({color:hc,emissive:hc,emissiveIntensity:0.55,shininess:120})
+    );
+    sp.position.set(e.x, z, e.y); scene.add(sp); sceneMarkers.push(sp);
+    // ring (lies in the XZ plane at the extremum height)
+    const rg=new THREE.Mesh(
+      new THREE.RingGeometry(r*1.7,r*2.4,32),
+      new THREE.MeshBasicMaterial({color:hc,side:THREE.DoubleSide,transparent:true,opacity:0.65})
+    );
+    rg.rotation.x=Math.PI/2; // face upward (XZ plane)
+    rg.position.set(e.x, z, e.y); scene.add(rg); sceneMarkers.push(rg);
+
+    // ── tangent plane: z = z0 + fx*(x-x0) + fy*(y-y0) ──
+    const x0=e.x, y0=e.y, z0=z;
+    const fx=dfdx(fn.f,x0,y0), fy=dfdy(fn.f,x0,y0);
+    const sz=D*0.85, RES=24;
+    const pv=[], pi=[];
+    for(let j=0;j<=RES;j++)for(let k=0;k<=RES;k++){
+      const dx=-sz+2*sz*k/RES, dy=-sz+2*sz*j/RES;
+      // scene: (x, f_val, y_domain)
+      pv.push(x0+dx, z0+fx*dx+fy*dy, y0+dy);
+    }
+    for(let j=0;j<RES;j++)for(let k=0;k<RES;k++){
+      const a=j*(RES+1)+k; pi.push(a,a+1,a+RES+1,a+1,a+RES+2,a+RES+1);
+    }
+    const pgeo=new THREE.BufferGeometry();
+    pgeo.setAttribute('position',new THREE.Float32BufferAttribute(pv,3));
+    pgeo.setIndex(pi); pgeo.computeVertexNormals();
+
+    const plane=new THREE.Mesh(pgeo,new THREE.MeshPhongMaterial({
+      color:hc,emissive:hc,emissiveIntensity:0.1,
+      side:THREE.DoubleSide,transparent:true,opacity:0.28,shininess:5
+    }));
+    plane.visible=!!tanVisible[i];
+    scene.add(plane); sceneTanObjs.push(plane);
+
+    // edge lines of the plane
+    const edges=new THREE.LineSegments(
+      new THREE.EdgesGeometry(pgeo),
+      new THREE.LineBasicMaterial({color:hc,transparent:true,opacity:0.55})
+    );
+    edges.visible=!!tanVisible[i];
+    scene.add(edges); sceneTanObjs.push(edges);
+  });
+}
+
+// update visibility of tangent objects without rebuilding
+function syncTanPlanes(){
+  const fn=FN2D[fnIdx];
+  fn.extrema.forEach((_,i)=>{
+    const plane=sceneTanObjs[i*2], edges=sceneTanObjs[i*2+1];
+    if(plane)plane.visible=!!tanVisible[i];
+    if(edges)edges.visible=!!tanVisible[i];
+  });
+}
+
+function loopThree(){
+  rafId=requestAnimationFrame(loopThree);
+  if(dim!==2)return;
+  // rings spin around Y axis (horizontal plane)
+  sceneMarkers.forEach(o=>{if(o.geometry&&o.geometry.type==='RingGeometry')o.rotation.y+=0.01;});
+  // orbit camera: Y=up, so elevation = rotX, azimuth = rotY
+  camera.position.x=Math.sin(rotY)*Math.cos(rotX)*dist;
+  camera.position.y=Math.sin(rotX)*dist;
+  camera.position.z=Math.cos(rotY)*Math.cos(rotX)*dist;
+  const fn=FN2D[fnIdx];
+  camera.lookAt(0, fn.f(0,0)||0, 0);
+  renderer.render(scene,camera);
+}
+
+function draw2d(){
+  const wrap=document.getElementById('c2d-wrap');
+  if(!renderer||!renderer.domElement.parentNode)initThree();
+  else buildSurface();
+}
+
+function updatePts2d(){
+  const fn=FN2D[fnIdx];
+  document.getElementById('pts-list').innerHTML=fn.extrema.map((e,i)=>{
+    const zv=fn.f(e.x,e.y);
+    const fx=dfdx(fn.f,e.x,e.y), fy=dfdy(fn.f,e.x,e.y);
+    const fxs=Math.abs(fx)<1e-4?'≈ 0':fx.toFixed(4);
+    const fys=Math.abs(fy)<1e-4?'≈ 0':fy.toFixed(4);
+    const on=tanVisible[i];
+    return `<div class="pt-row ${e.type}">
+      <div class="pt-info">
+        <div><span class="badge ${e.type}">${BADGE[e.type]}</span>(${e.x.toFixed(3)}, ${e.y.toFixed(3)})</div>
+        <button class="tan-btn ${on?'on':''}" onclick="toggleTan(${i})">${on?'⬜ ocultar plano':'⬜ mostrar plano'}</button>
+      </div>
+      <div class="pt-coords">f = ${zv.toFixed(4)} &nbsp;·&nbsp; ∂f/∂x = ${fxs} &nbsp;·&nbsp; ∂f/∂y = ${fys}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('tan-note').textContent=
+    'En todo extremo el plano tangente es horizontal: ∂f/∂x = ∂f/∂y = 0 (condición necesaria).';
+}
+
+// ── RESIZE ─────────────────────────────────────────────
+window.addEventListener('resize',()=>{
+  if(dim===1){draw1d();}
+  else if(renderer){
+    const wrap=document.getElementById('c2d-wrap');
+    renderer.setSize(wrap.offsetWidth,wrap.offsetHeight);
+    camera.aspect=wrap.offsetWidth/wrap.offsetHeight;
+    camera.updateProjectionMatrix();
+  }
+});
+
+// ── BOOT ───────────────────────────────────────────────
+resetTanVisible();
+buildFnGrid();
+draw1d(); updatePts1d();
+</script>
+</body>
+</html>
