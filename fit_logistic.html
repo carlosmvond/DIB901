@@ -43,6 +43,9 @@ canvas{display:block;width:100%;border-radius:8px}
 .data-grid input:focus{outline:none;border-color:#5a9fd4}
 .del-btn{background:none;border:0.5px solid #2a1515;border-radius:5px;color:#664;cursor:pointer;padding:3px 7px;font-size:10px;font-family:monospace}
 .del-btn:hover{border-color:#d45a5a;color:#d45a5a}
+.ds-btn{flex:1;padding:6px 4px;font-size:9px;border-radius:7px;cursor:pointer;font-family:monospace;border:0.5px solid #1e2a35;background:#0b0f14;color:#556;transition:all 0.15s;text-align:center;line-height:1.4}
+.ds-btn.active{background:#0d1a2a;border-color:#7ab8f5;color:#7ab8f5}
+.ds-btn:hover{border-color:#5a9fd4;color:#aaa}
 .add-btn{background:#0a1a0a;border:0.5px solid #1e3520;border-radius:6px;color:#5ad4a0;cursor:pointer;padding:5px;font-size:10px;font-family:monospace;width:100%}
 .add-btn:hover{border-color:#5ad4a0}
 .data-header{font-size:9px;color:#445;font-family:monospace;text-align:center}
@@ -72,6 +75,7 @@ MathJax={tex:{inlineMath:[['\\(','\\)']]},options:{skipHtmlTags:['script','noscr
 <!-- DATA EDITOR -->
 <div class="card">
   <div class="card-title">Datos experimentales</div>
+  <div class="ds-row" id="ds-row" style="display:flex;gap:5px;margin-bottom:8px"></div>
   <div class="data-grid">
     <span class="data-header">t</span>
     <span class="data-header">y</span>
@@ -132,12 +136,27 @@ MathJax={tex:{inlineMath:[['\\(','\\)']]},options:{skipHtmlTags:['script','noscr
 
 <script>
 // ── DEFAULT DATA ────────────────────────────────────
-const DEFAULT_DATA=[
-  [0,  1.0],[1,  1.8],[2,  3.2],[3,  5.5],[4,  7.2],
-  [5,  8.5],[6,  9.2],[7,  9.7],[8,  9.9],[10,10.1]
+const DATASETS=[
+  {
+    label:'Datos limpios',
+    desc:'Curva logística con ruido mínimo',
+    d:[[0,1.0],[1,1.55],[2,2.32],[3,3.32],[4,4.51],[5,5.75],[6,6.91],[7,7.86],[8,8.58],[10,9.43]]
+  },
+  {
+    label:'Ruido moderado',
+    desc:'Curva logística con perturbaciones visibles',
+    d:[[0,1.3],[1,1.47],[2,2.71],[3,4.24],[4,4.37],[5,5.61],[6,7.85],[7,8.32],[8,8.3],[10,9.75]]
+  },
+  {
+    label:'Datos errráticos',
+    desc:'Alta varianza y valores atípicos',
+    d:[[0,4.04],[1,0.71],[2,2.38],[3,7.82],[4,3.09],[5,5.75],[6,6.9],[7,5.06],[8,10.42],[10,10.51]]
+  },
 ];
+const DEFAULT_DATA=DATASETS[0].d;
 
 let data=[...DEFAULT_DATA.map(d=>[...d])];
+let datasetIdx=0;
 let rVal=0.50, KVal=10.0;
 let objMode='l2', viewMode='heatmap';
 
@@ -561,7 +580,23 @@ function drawObjective(){
 }
 
 // ── RESET ────────────────────────────────────────────
+function renderDatasetBtns(){
+  const el=document.getElementById('ds-row');
+  el.innerHTML=DATASETS.map((ds,i)=>`
+    <button class="ds-btn ${i===datasetIdx?'active':''}" onclick="loadDataset(${i})" title="${ds.desc}">${ds.label}</button>
+  `).join('');
+}
+
+function loadDataset(i){
+  datasetIdx=i;
+  data=DATASETS[i].d.map(d=>[...d]);
+  _gridCache=null;
+  renderDatasetBtns();
+  renderDataRows();
+}
+
 function resetAll(){
+  datasetIdx=0;
   data=DEFAULT_DATA.map(d=>[...d]);
   rVal=0.50; KVal=10.0;
   document.getElementById('r-sl').value=rVal;
@@ -576,11 +611,13 @@ function resetAll(){
     setView('heatmap');
   }
   _gridCache=null;
+  renderDatasetBtns();
   renderDataRows();
 }
 
 // ── INIT ─────────────────────────────────────────────
 setTimeout(()=>{if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise();},600);
+renderDatasetBtns();
 renderDataRows();
 window.addEventListener('resize',()=>{
   if(viewMode==='heatmap'){drawHeatmap();}
