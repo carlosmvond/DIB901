@@ -59,6 +59,10 @@ canvas{display:block;width:100%;border-radius:8px}
 #surf-wrap{border:0.5px solid #1e2a35;border-radius:8px;overflow:hidden;touch-action:none}
 #surf-wrap canvas{width:100%!important;height:100%!important;display:block}
 
+.gd-btn{width:100%;padding:9px;font-size:11px;border-radius:8px;cursor:pointer;font-family:monospace;border:0.5px solid #1e3520;background:#0a1a0a;color:#5ad4a0;transition:all 0.15s;margin-top:6px;font-weight:500}
+.gd-btn:hover:not(:disabled){background:#0f2a14;border-color:#5ad4a0}
+.gd-btn:disabled{opacity:0.35;cursor:not-allowed;border-color:#1e2a35;color:#445}
+.gd-note{font-size:9px;font-family:monospace;margin-top:5px;text-align:center;min-height:14px}
 .hint{font-size:9px;color:#334;font-family:monospace;margin-top:4px;text-align:center}
 </style>
 </head>
@@ -132,6 +136,46 @@ MathJax={tex:{inlineMath:[['\\(','\\)']]},options:{skipHtmlTags:['script','noscr
   <!-- 3D SURFACE -->
   <div id="surf-wrap" style="height:260px;display:none"></div>
   <div class="hint" id="view-hint">Hover sobre el heatmap · eje x = r · eje y = K</div>
+  <div class="obj-row" style="margin-bottom:6px">
+    <button class="obj-btn active" id="alg-gd" onclick="setAlg('gd')">Desc. gradiente</button>
+    <button class="obj-btn" id="alg-cg" onclick="setAlg('cg')">Grad. conjugado</button>
+  </div>
+  <!-- GD params -->
+  <div id="params-gd" style="margin-bottom:7px">
+    <div style="background:#0d1520;border-radius:9px;padding:0.65rem;border:0.5px solid #1e3040">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <label style="font-size:11px;color:#7ab8f5;font-family:monospace;white-space:nowrap">α (learning rate)</label>
+        <input type="number" id="alpha-input" value="0.001" step="0.0001" min="1e-7" max="1"
+          oninput="onAlphaInput()"
+          style="flex:1;background:#0b0f14;border:0.5px solid #2a3a50;border-radius:5px;padding:4px 7px;color:#7ab8f5;font-size:12px;font-family:monospace;width:100%">
+      </div>
+      <div style="font-size:8px;color:#334;font-family:monospace">
+        θ<sub>k+1</sub> = θ<sub>k</sub> − α ∇f(θ<sub>k</sub>)
+      </div>
+    </div>
+  </div>
+  <!-- CG params -->
+  <div id="params-cg" style="margin-bottom:7px;display:none">
+    <div style="background:#0d1520;border-radius:9px;padding:0.65rem;border:0.5px solid #1e3040">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <label style="font-size:11px;color:#7ab8f5;font-family:monospace;white-space:nowrap">α (paso inicial)</label>
+        <input type="number" id="alpha-cg-input" value="0.001" step="0.0001" min="1e-7" max="1"
+          oninput="onAlphaCGInput()"
+          style="flex:1;background:#0b0f14;border:0.5px solid #2a3a50;border-radius:5px;padding:4px 7px;color:#7ab8f5;font-size:12px;font-family:monospace;width:100%">
+      </div>
+      <div style="font-size:8px;color:#334;font-family:monospace">
+        β<sub>k+1</sub> = ‖∇f(θ<sub>k+1</sub>)‖² / ‖∇f(θ<sub>k</sub>)‖²
+        &nbsp;·&nbsp;
+        d<sub>k+1</sub> = −∇f + β·d<sub>k</sub>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:0">
+    <button class="gd-btn" id="gd-btn" onclick="gdStep()" style="margin-top:0;flex:2">▶ un paso</button>
+    <button class="gd-btn" id="gd-run-btn" onclick="gdToggleRun()" style="margin-top:0;flex:2;background:#0a1020;border-color:#3a6ab5;color:#7ab8f5">⏩ converger</button>
+    <button class="gd-btn" id="gd-clear-btn" onclick="clearTrail()" style="margin-top:0;flex:1;background:#0f0a0a;border-color:#2a1515;color:#d45a5a">✕</button>
+  </div>
+  <div class="gd-note" id="gd-note" style="color:#5ad4a0"></div>
 </div>
 
 <script>
@@ -159,6 +203,16 @@ let data=[...DEFAULT_DATA.map(d=>[...d])];
 let datasetIdx=0;
 let rVal=0.50, KVal=10.0;
 let objMode='l2', viewMode='heatmap';
+let gdAlpha=0.001;   // learning rate
+let gdTrail=[];      // history of (r,K) for trail on heatmap
+let gdRunning=false; // auto-run state
+let gdIter=0;        // iteration counter
+let algMode='gd';    // 'gd' or 'cg'
+// CG state (Fletcher-Reeves)
+let cgDir={r:0,K:0};       // current conjugate direction d_k
+let cgGradPrev={r:0,K:0};  // previous gradient
+let gdRafId=null;    // requestAnimationFrame id for auto-run
+let gdLastTime=0;    // for throttling
 
 // 3D
 let renderer3=null,scene3=null,camera3=null,mesh3=null;
@@ -388,6 +442,31 @@ function drawHeatmap(){
   ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
   ctx.restore();
 
+  // GD trail
+  if(gdTrail.length>1){
+    const{rmin,rmax,Kmin,Kmax}=HM;
+    ctx.save();
+    for(let i=1;i<gdTrail.length;i++){
+      const alpha=0.25+0.75*i/gdTrail.length;
+      const x1=pad.l+pw*(gdTrail[i-1][0]-rmin)/(rmax-rmin);
+      const y1=pad.t+ph*(1-(gdTrail[i-1][1]-Kmin)/(Kmax-Kmin));
+      const x2=pad.l+pw*(gdTrail[i][0]-rmin)/(rmax-rmin);
+      const y2=pad.t+ph*(1-(gdTrail[i][1]-Kmin)/(Kmax-Kmin));
+      ctx.strokeStyle=`rgba(255,255,255,${alpha})`;
+      ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    }
+    // last trail point
+    if(gdTrail.length>0){
+      const lp=gdTrail[gdTrail.length-1];
+      const lx=pad.l+pw*(lp[0]-rmin)/(rmax-rmin);
+      const ly=pad.t+ph*(1-(lp[1]-Kmin)/(Kmax-Kmin));
+      ctx.beginPath();ctx.arc(lx,ly,2.5,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.4)';ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // colorbar
   const cbx=pad.l+pw+3,cby=pad.t,cbw=7,cbh=ph;
   for(let j=0;j<cbh;j++){
@@ -557,6 +636,16 @@ function setObj(mode){
   ['l2','l1','linf'].forEach(m=>{
     document.getElementById('ob-'+m).className='obj-btn'+(m===mode?' active':'');
   });
+  gdRunning=false;
+  if(gdRafId) cancelAnimationFrame(gdRafId);
+  const runBtn=document.getElementById('gd-run-btn');
+  if(runBtn){runBtn.textContent='⏩ converger';runBtn.style.borderColor='#3a6ab5';runBtn.style.color='#7ab8f5';runBtn.style.background='#0a1020';}
+  gdTrail=[];
+  gdIter=0;
+  document.getElementById('gd-note').textContent=
+    mode==='l2'?'':'⚠ Descenso de gradiente solo disponible para ‖r‖₂² (función diferenciable)';
+  document.getElementById('gd-note').style.color=mode==='l2'?'#5ad4a0':'#d4a05a';
+  document.getElementById('gd-btn').disabled=(mode!=='l2');
   _gridCache=null;
   updateStats();drawFit();drawObjective();
 }
@@ -579,6 +668,176 @@ function drawObjective(){
   else if(viewMode==='3d' && renderer3) build3DSurface();
 }
 
+// ── GRADIENT DESCENT ────────────────────────────────
+// Gradient of L2 objective: -2 * sum( r_i * d_phi/d_theta )
+// d_phi/dr  = K*x0*(K-x0)*t*e^(-rt) / (x0+(K-x0)*e^(-rt))^2
+// d_phi/dK  = x0^2 / (x0+(K-x0)*e^(-rt))^2  [via quotient rule]
+function dPhiDr(t, r, K){
+  const x0v=x0(), eterm=Math.exp(-r*t);
+  const denom=x0v+(K-x0v)*eterm;
+  return K*x0v*(K-x0v)*t*eterm/(denom*denom);
+}
+function dPhiDK(t, r, K){
+  const x0v=x0(), eterm=Math.exp(-r*t);
+  const denom=x0v+(K-x0v)*eterm;
+  return x0v*x0v/(denom*denom);
+}
+function onAlphaInput(){
+  const v=parseFloat(document.getElementById('alpha-input').value);
+  if(isFinite(v)&&v>0) gdAlpha=v;
+}
+function onAlphaCGInput(){
+  const v=parseFloat(document.getElementById('alpha-cg-input').value);
+  if(isFinite(v)&&v>0) gdAlpha=v;
+}
+
+function setAlg(mode){
+  algMode=mode;
+  ['gd','cg'].forEach(m=>{
+    document.getElementById('alg-'+m).className='obj-btn'+(m===mode?' active':'');
+  });
+  document.getElementById('params-gd').style.display=mode==='gd'?'block':'none';
+  document.getElementById('params-cg').style.display=mode==='cg'?'block':'none';
+  // sync alpha from inputs
+  if(mode==='gd'){
+    const v=parseFloat(document.getElementById('alpha-input').value);
+    if(isFinite(v)&&v>0) gdAlpha=v;
+  } else {
+    const v=parseFloat(document.getElementById('alpha-cg-input').value);
+    if(isFinite(v)&&v>0) gdAlpha=v;
+  }
+  // reset CG direction when switching
+  cgDir={r:0,K:0}; cgGradPrev={r:0,K:0};
+  clearTrail();
+}
+
+// ── compute gradient ────────────────────────────────
+function computeGrad(){
+  let gr=0, gK=0;
+  data.forEach(([t,y])=>{
+    const phi=logistic(t,rVal,KVal), ri=y-phi;
+    gr += -2*ri*dPhiDr(t,rVal,KVal);
+    gK += -2*ri*dPhiDK(t,rVal,KVal);
+  });
+  return {gr, gK};
+}
+
+function applyStep(dr, dK){
+  gdTrail.push([rVal, KVal]);
+  if(gdTrail.length>120) gdTrail.shift();
+  rVal=Math.max(0.01,Math.min(3,  rVal+dr));
+  KVal=Math.max(1,   Math.min(30, KVal+dK));
+  document.getElementById('r-sl').value=rVal;
+  document.getElementById('K-sl').value=KVal;
+  document.getElementById('r-val').textContent=rVal.toFixed(3);
+  document.getElementById('K-val').textContent=KVal.toFixed(3);
+}
+
+function gdStep(){
+  if(objMode!=='l2') return;
+  if(algMode==='gd') stepGD();
+  else               stepCG();
+  const fval=objective(rVal,KVal,objMode);
+  const {gr,gK}=computeGrad();
+  const gnorm=Math.sqrt(gr*gr+gK*gK);
+  gdIter++;
+  const algLabel=algMode==='gd'?'GD':'CG';
+  document.getElementById('gd-note').textContent=
+    `[${algLabel}] it=${gdIter}  r=${rVal.toFixed(4)}, K=${KVal.toFixed(4)}, f=${fval.toFixed(5)}  |∇f|=${gnorm.toFixed(4)}`;
+  _gridCache=null;
+  updateStats(); drawFit(); drawObjective();
+}
+
+function stepGD(){
+  const {gr,gK}=computeGrad();
+  const gnorm=Math.sqrt(gr*gr+gK*gK)||1;
+  const alpha=Math.min(gdAlpha, 0.5/gnorm);
+  applyStep(-alpha*gr, -alpha*gK);
+}
+
+// Fletcher-Reeves conjugate gradient
+function stepCG(){
+  const {gr,gK}=computeGrad();
+  const gnorm2=gr*gr+gK*gK;
+  let dr, dK;
+  if(gdIter===0 || (cgGradPrev.r===0&&cgGradPrev.K===0)){
+    // first step: use steepest descent direction
+    cgDir={r:-gr, K:-gK};
+  } else {
+    // beta = ||grad_new||^2 / ||grad_old||^2  (Fletcher-Reeves)
+    const prevNorm2=cgGradPrev.r*cgGradPrev.r+cgGradPrev.K*cgGradPrev.K||1;
+    const beta=gnorm2/prevNorm2;
+    cgDir={r:-gr+beta*cgDir.r, K:-gK+beta*cgDir.K};
+  }
+  cgGradPrev={r:gr, K:gK};
+  // line search: fixed step scaled by direction norm
+  const dnorm=Math.sqrt(cgDir.r*cgDir.r+cgDir.K*cgDir.K)||1;
+  const alpha=Math.min(gdAlpha, 0.5/dnorm);
+  applyStep(alpha*cgDir.r, alpha*cgDir.K);
+}
+
+function clearTrail(){
+  gdRunning=false;
+  if(gdRafId) cancelAnimationFrame(gdRafId);
+  const rb=document.getElementById('gd-run-btn');
+  if(rb){rb.textContent='⏩ converger';rb.style.borderColor='#3a6ab5';rb.style.color='#7ab8f5';rb.style.background='#0a1020';}
+  gdTrail=[];
+  gdIter=0;
+  cgDir={r:0,K:0}; cgGradPrev={r:0,K:0};
+  document.getElementById('gd-note').textContent='';
+  drawObjective();
+}
+
+function gdToggleRun(){
+  if(objMode!=='l2') return;
+  gdRunning=!gdRunning;
+  const btn=document.getElementById('gd-run-btn');
+  if(gdRunning){
+    btn.textContent='⏹ detener';
+    btn.style.borderColor='#d4a05a';
+    btn.style.color='#d4a05a';
+    btn.style.background='#1a1000';
+    gdLastTime=0;
+    gdAutoLoop(performance.now());
+  } else {
+    btn.textContent='⏩ converger';
+    btn.style.borderColor='#3a6ab5';
+    btn.style.color='#7ab8f5';
+    btn.style.background='#0a1020';
+  }
+}
+
+function gdAutoLoop(ts){
+  if(!gdRunning) return;
+  // ~12 steps/sec — faster than a finger tap but followable on heatmap
+  const interval=85;
+  if(ts-gdLastTime >= interval){
+    gdLastTime=ts;
+    // check convergence: |∇f| < threshold
+    let gr=0, gK=0;
+    data.forEach(([t,y])=>{
+      const phi=logistic(t,rVal,KVal), ri=y-phi;
+      gr += -2*ri*dPhiDr(t,rVal,KVal);
+      gK += -2*ri*dPhiDK(t,rVal,KVal);
+    });
+    const gnorm=Math.sqrt(gr*gr+gK*gK);
+    if(gnorm < 1e-5){
+      // converged
+      gdRunning=false;
+      const btn=document.getElementById('gd-run-btn');
+      btn.textContent='✓ convergió';
+      btn.style.borderColor='#5ad4a0';
+      btn.style.color='#5ad4a0';
+      btn.style.background='#0a1a0a';
+      document.getElementById('gd-note').textContent=
+        `it=${gdIter}  Convergido: r=${rVal.toFixed(4)}, K=${KVal.toFixed(4)}, f=${objective(rVal,KVal,objMode).toFixed(5)}`;
+      return;
+    }
+    gdStep();
+  }
+  gdRafId=requestAnimationFrame(gdAutoLoop);
+}
+
 // ── RESET ────────────────────────────────────────────
 function renderDatasetBtns(){
   const el=document.getElementById('ds-row');
@@ -591,6 +850,14 @@ function loadDataset(i){
   datasetIdx=i;
   data=DATASETS[i].d.map(d=>[...d]);
   _gridCache=null;
+  gdRunning=false;
+  if(gdRafId) cancelAnimationFrame(gdRafId);
+  const rb=document.getElementById('gd-run-btn');
+  if(rb){rb.textContent='⏩ converger';rb.style.borderColor='#3a6ab5';rb.style.color='#7ab8f5';rb.style.background='#0a1020';}
+  gdTrail=[];
+  gdIter=0;
+  cgDir={r:0,K:0}; cgGradPrev={r:0,K:0};
+  document.getElementById('gd-note').textContent='';
   renderDatasetBtns();
   renderDataRows();
 }
