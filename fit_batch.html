@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajuste — Batch vs Logístico</title>
+<script>
+MathJax={tex:{inlineMath:[['\\(','\\)']]},options:{skipHtmlTags:['script','noscript','style','textarea']},startup:{typeset:false}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Georgia',serif;background:#0b0f14;color:#d8d4cc;padding:0.8rem;max-width:540px;margin:0 auto;min-height:100vh}
+h1{font-size:13px;font-weight:400;color:#556;margin-bottom:0.8rem;letter-spacing:0.05em}
+
+.card{background:#131920;border:0.5px solid #1e2a35;border-radius:12px;padding:0.85rem;margin-bottom:9px}
+.card-title{font-size:10px;font-weight:500;color:#445;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.55rem;font-family:monospace}
+
+/* tabs */
+.tabs{display:flex;gap:4px;margin-bottom:9px}
+.tab{flex:1;padding:7px;font-size:11px;border-radius:7px;cursor:pointer;font-family:monospace;border:0.5px solid #1e2a35;background:#0b0f14;color:#556;transition:all 0.15s;text-align:center}
+.tab.active{background:#1a2a1a;border-color:#5ad4a0;color:#5ad4a0}
+
+/* model selector */
+.model-row{display:flex;gap:5px;margin-bottom:8px}
+.model-btn{flex:1;padding:8px 4px;font-size:10px;border-radius:7px;cursor:pointer;font-family:monospace;border:0.5px solid #1e2a35;background:#0b0f14;color:#667;transition:all 0.15s;text-align:center;line-height:1.5}
+.model-btn.active{border-color:#7ab8f5;color:#7ab8f5;background:#0a1520}
+
+/* sliders */
+.sl-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px;margin-bottom:6px}
+.sl-row label{font-size:10px;color:#7ab8f5;font-family:monospace;white-space:nowrap}
+.sl-row input[type=range]{accent-color:#7ab8f5}
+.sl-row .val{font-size:11px;font-family:monospace;color:#aac8f0;min-width:44px;text-align:right}
+
+/* algorithm selector */
+.alg-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:7px}
+.alg-btn{padding:6px 4px;font-size:10px;border-radius:7px;cursor:pointer;font-family:monospace;border:0.5px solid #1e2a35;background:#0b0f14;color:#667;transition:all 0.15s;text-align:center}
+.alg-btn.active{border-color:#5ad4a0;color:#5ad4a0;background:#0a1a0a}
+.alg-btn:disabled{opacity:0.3;cursor:not-allowed}
+
+/* run button */
+.run-btn{width:100%;padding:9px;font-size:11px;border-radius:8px;cursor:pointer;font-family:monospace;border:0.5px solid #1e3520;background:#0a1a0a;color:#5ad4a0;margin-bottom:6px;font-weight:500;transition:all 0.15s}
+.run-btn:hover:not(:disabled){background:#0f2a14;border-color:#5ad4a0}
+.run-btn:disabled{opacity:0.3;cursor:not-allowed}
+
+/* log */
+.log-box{background:#070c10;border:0.5px solid #1e2a35;border-radius:7px;padding:0.6rem;font-family:monospace;font-size:9px;color:#8ab0c8;max-height:180px;overflow-y:auto;line-height:1.7}
+.log-box .converged{color:#5ad4a0}
+.log-box .header{color:#556;border-bottom:0.5px solid #1e2a35;padding-bottom:3px;margin-bottom:3px}
+
+canvas{display:block;width:100%;border-radius:8px}
+
+/* info tab content */
+.info-box{font-size:11px;line-height:1.8;color:#aaa}
+.info-box h3{font-size:10px;color:#7ab8f5;font-family:monospace;text-transform:uppercase;letter-spacing:0.08em;margin:10px 0 4px}
+.info-box .param-table{width:100%;border-collapse:collapse;margin:6px 0;font-size:10px;font-family:monospace}
+.info-box .param-table td,.info-box .param-table th{padding:4px 8px;border:0.5px solid #1e2a35}
+.info-box .param-table th{color:#556;font-weight:400;background:#0b0f14}
+.info-box .param-table td:first-child{color:#7ab8f5}
+</style>
+</head>
+<body>
+
+<h1>Ajuste de modelos de crecimiento — datos batch</h1>
+
+<!-- MAIN TABS -->
+<div class="tabs">
+  <div class="tab active" id="tab-fit"  onclick="setMainTab('fit')">⚗ Ajuste</div>
+  <div class="tab"        id="tab-info" onclick="setMainTab('info')">ℹ Datos y modelo</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ FIT TAB -->
+<div id="panel-fit">
+
+  <!-- MODEL SELECTOR -->
+  <div class="card">
+    <div class="card-title">Modelo</div>
+    <div class="model-row">
+      <button class="model-btn active" id="m-logistic" onclick="setModel('logistic')">
+        Logístico<br><small style="font-size:9px;color:#556">\(x(t)=\frac{K x_0}{x_0+(K-x_0)e^{-rt}}\)</small>
+      </button>
+      <button class="model-btn" id="m-batch" onclick="setModel('batch')">
+        Batch (EDO)<br><small style="font-size:9px;color:#556">\(\dot x=\mu_0 S x,\;\dot S=-\tfrac{1}{Y}\mu_0 S x\)</small>
+      </button>
+    </div>
+  </div>
+
+  <!-- PARAMETERS (sliders) -->
+  <div class="card">
+    <div class="card-title">Parámetros <span id="param-subtitle" style="color:#334;font-size:9px;text-transform:none;letter-spacing:0">— arrastrar para explorar</span></div>
+    <div id="param-sliders"></div>
+  </div>
+
+  <!-- FIT PLOT -->
+  <div class="card">
+    <div class="card-title">Ajuste del modelo</div>
+    <canvas id="fit-canvas" style="height:230px;border:0.5px solid #1e2a35"></canvas>
+  </div>
+
+  <!-- ALGORITHM -->
+  <div class="card">
+    <div class="card-title">Algoritmo de optimización — mínimos cuadrados</div>
+    <div class="alg-grid">
+      <button class="alg-btn active" id="alg-gd"  onclick="setAlg('gd')">Desc. gradiente</button>
+      <button class="alg-btn"        id="alg-cg"  onclick="setAlg('cg')">Grad. conjugado</button>
+      <button class="alg-btn"        id="alg-gn"  onclick="setAlg('gn')">Gauss-Newton</button>
+      <button class="alg-btn"        id="alg-lm"  onclick="setAlg('lm')">Levenberg-Marquardt</button>
+    </div>
+    <button class="run-btn" id="run-btn" onclick="toggleRun()">▶ ejecutar</button>
+    <div class="log-box" id="log-box"><span class="header">esperando...</span></div>
+  </div>
+
+</div><!-- end panel-fit -->
+
+<!-- ═══════════════════════════════════════════ INFO TAB -->
+<div id="panel-info" style="display:none">
+  <div class="card">
+    <div class="card-title">Origen de los datos</div>
+    <div class="info-box">
+      <p>Los datos corresponden a la biomasa \(x(t)\) de un cultivo batch simulado con el siguiente sistema de EDOs:</p>
+      <p style="margin:8px 0;text-align:center">
+        \(\dfrac{dx}{dt} = \mu_0\, S\, x, \qquad \dfrac{dS}{dt} = -\dfrac{1}{Y}\,\mu_0\, S\, x\)
+      </p>
+      <p>donde \(x\) es la concentración de biomasa (g/L) y \(S\) es la concentración de sustrato (g/L). Se añadió ruido gaussiano \(\mathcal{N}(0, 0.15^2)\) a las observaciones de biomasa. Solo se mide \(x(t)\) — el sustrato \(S(t)\) no se observa.</p>
+
+      <h3>Parámetros verdaderos</h3>
+      <table class="param-table">
+        <tr><th>Parámetro</th><th>Valor</th><th>Descripción</th></tr>
+        <tr><td>μ₀</td><td>0.15 h⁻¹(g/L)⁻¹</td><td>tasa específica de crecimiento</td></tr>
+        <tr><td>Y</td><td>0.50 g_x/g_S</td><td>rendimiento biomasa/sustrato</td></tr>
+        <tr><td>x₀</td><td>0.30 g/L</td><td>biomasa inicial</td></tr>
+        <tr><td>S₀</td><td>10.0 g/L</td><td>sustrato inicial</td></tr>
+      </table>
+      <p style="font-size:9px;color:#556;margin-top:4px">Capacidad de carga efectiva: \(K = x_0 + Y\cdot S_0 = 5.3\) g/L</p>
+
+      <h3>Modelos a ajustar</h3>
+      <p><b style="color:#7ab8f5">Logístico</b> — solución analítica cerrada, 3 parámetros: \(r, K, x_0\).</p>
+      <p style="margin-top:4px"><b style="color:#7ab8f5">Batch (EDO)</b> — integración numérica de las EDOs en cada evaluación, 4 parámetros: \(\mu_0, Y, x_0, S_0\).</p>
+
+      <h3>Tiempos de muestreo</h3>
+      <p style="font-family:monospace;font-size:10px;color:#7ab8f5">t = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 18, 20 h</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════
+const TS=[0,1,2,3,4,5,6,7,8,9,10,12,15,18,20];
+const YS=[0.375,1.184,3.228,4.872,5.116,5.234,5.531,5.414,5.229,5.381,5.23,5.23,5.336,5.013,5.041];
+
+// ══════════════════════════════════════════════════════════
+// MODELS
+// ══════════════════════════════════════════════════════════
+// Logistic: θ = [r, K, x0]
+function modelLogistic(theta, ts){
+  const[r,K,x0]=theta;
+  return ts.map(t=>K*x0/(x0+(K-x0)*Math.exp(-r*t)));
+}
+
+// Batch ODE: θ = [mu0, Y, x0, S0]
+// RK4 integration
+function modelBatch(theta, ts){
+  const[mu0,Y,x0,S0]=theta;
+  const tmax=ts[ts.length-1];
+  const dt=0.05;
+  const nsteps=Math.ceil(tmax/dt);
+  let x=x0, S=S0, t=0;
+  const out=[];
+  let ti=0;
+  for(let i=0;i<=nsteps;i++){
+    // record if we're at a data time
+    while(ti<ts.length && Math.abs(t-ts[ti])<dt/2){
+      out.push({t:ts[ti],x:Math.max(0,x)});ti++;
+    }
+    if(ti>=ts.length) break;
+    const S_=Math.max(0,S);
+    const k1x=mu0*S_*x,       k1S=-1/Y*mu0*S_*x;
+    const S2=Math.max(0,S+dt/2*k1S);
+    const k2x=mu0*S2*(x+dt/2*k1x), k2S=-1/Y*mu0*S2*(x+dt/2*k1x);
+    const S3=Math.max(0,S+dt/2*k2S);
+    const k3x=mu0*S3*(x+dt/2*k2x), k3S=-1/Y*mu0*S3*(x+dt/2*k2x);
+    const S4=Math.max(0,S+dt*k3S);
+    const k4x=mu0*S4*(x+dt*k3x),   k4S=-1/Y*mu0*S4*(x+dt*k3x);
+    x+=dt/6*(k1x+2*k2x+2*k3x+k4x);
+    S+=dt/6*(k1S+2*k2S+2*k3S+k4S);
+    x=Math.max(0,x); S=Math.max(0,S);
+    t+=dt;
+  }
+  // fill any missing
+  while(out.length<ts.length) out.push({t:ts[out.length],x:x});
+  return out.sort((a,b)=>a.t-b.t).map(o=>o.x);
+}
+
+function modelPredict(theta){
+  return modelActive==='logistic'?modelLogistic(theta,TS):modelBatch(theta,TS);
+}
+
+// ══════════════════════════════════════════════════════════
+// PARAMETER DEFINITIONS
+// ══════════════════════════════════════════════════════════
+const PARAMS={
+  logistic:[
+    {id:'r',  label:'r',    min:0.01, max:5,  step:0.01, val:2.5,  tex:'r'},
+    {id:'K',  label:'K',    min:0.5,  max:15, step:0.1,  val:8.0,  tex:'K'},
+    {id:'x0', label:'x₀',  min:0.01, max:3,  step:0.01, val:1.0,  tex:'x_0'},
+  ],
+  batch:[
+    {id:'mu0',label:'μ₀',   min:0.01, max:1,  step:0.005,val:0.4,  tex:'\\mu_0'},
+    {id:'Y',  label:'Y',    min:0.1,  max:2,  step:0.01, val:0.8,  tex:'Y'},
+    {id:'x0', label:'x₀',  min:0.01, max:3,  step:0.01, val:1.0,  tex:'x_0'},
+    {id:'S0', label:'S₀',  min:0.5,  max:20, step:0.1,  val:6.0,  tex:'S_0'},
+  ]
+};
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let modelActive='logistic';
+let algActive='gd';
+let theta=PARAMS.logistic.map(p=>p.val);
+let running=false, rafId=null, iterCount=0;
+// CG state
+let cgDir=null, cgGradPrev=null;
+// LM state
+let lmLambda=0.01;
+
+// ══════════════════════════════════════════════════════════
+// MAIN TAB
+// ══════════════════════════════════════════════════════════
+function setMainTab(t){
+  document.getElementById('panel-fit').style.display=t==='fit'?'block':'none';
+  document.getElementById('panel-info').style.display=t==='info'?'block':'none';
+  document.getElementById('tab-fit').className='tab'+(t==='fit'?' active':'');
+  document.getElementById('tab-info').className='tab'+(t==='info'?' active':'');
+  if(t==='info') setTimeout(()=>{if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise();},200);
+}
+
+// ══════════════════════════════════════════════════════════
+// MODEL
+// ══════════════════════════════════════════════════════════
+function setModel(m){
+  modelActive=m;
+  ['logistic','batch'].forEach(mm=>{
+    document.getElementById('m-'+mm).className='model-btn'+(mm===m?' active':'');
+  });
+  theta=PARAMS[m].map(p=>p.val);
+  stopRun();
+  resetAlgState();
+  buildSliders();
+  drawFit();
+}
+
+// ══════════════════════════════════════════════════════════
+// SLIDERS
+// ══════════════════════════════════════════════════════════
+function buildSliders(){
+  const ps=PARAMS[modelActive];
+  const el=document.getElementById('param-sliders');
+  el.innerHTML=ps.map((p,i)=>`
+    <div class="sl-row">
+      <label>\\(${p.tex}\\)</label>
+      <input type="range" id="sl-${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${theta[i]}"
+        oninput="onSlider(${i},this.value)">
+      <span class="val" id="val-${p.id}">${theta[i].toFixed(3)}</span>
+    </div>`).join('');
+  setTimeout(()=>{if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise();},200);
+}
+
+function onSlider(i,v){
+  theta[i]=parseFloat(v);
+  document.getElementById('val-'+PARAMS[modelActive][i].id).textContent=theta[i].toFixed(3);
+  resetAlgState();
+  drawFit();
+}
+
+function syncSliders(){
+  PARAMS[modelActive].forEach((p,i)=>{
+    const sl=document.getElementById('sl-'+p.id);
+    if(sl){sl.value=theta[i]; document.getElementById('val-'+p.id).textContent=theta[i].toFixed(3);}
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// OBJECTIVE & GRADIENT (L2)
+// ══════════════════════════════════════════════════════════
+const H=1e-5;
+function objective(th){
+  const pred=modelPredict(th);
+  return pred.reduce((s,yh,i)=>s+(YS[i]-yh)**2,0);
+}
+
+function gradient(th){
+  return th.map((_,j)=>{
+    const thP=[...th]; thP[j]+=H;
+    const thM=[...th]; thM[j]-=H;
+    return (objective(thP)-objective(thM))/(2*H);
+  });
+}
+
+function jacobian(th){
+  // J[i][j] = d(pred_i)/d(theta_j)  → residual jacobian = -J
+  const pred0=modelPredict(th);
+  return th.map((_,j)=>{
+    const thP=[...th]; thP[j]+=H;
+    const predP=modelPredict(thP);
+    return predP.map((yp,i)=>(yp-pred0[i])/H);
+  });
+}
+
+function residuals(th){
+  const pred=modelPredict(th);
+  return YS.map((y,i)=>y-pred[i]);
+}
+
+// ══════════════════════════════════════════════════════════
+// ALGORITHMS
+// ══════════════════════════════════════════════════════════
+function stepGD(){
+  const g=gradient(theta);
+  const gnorm=Math.sqrt(g.reduce((s,gi)=>s+gi*gi,0))||1;
+  const alpha=Math.min(0.001,0.5/gnorm);
+  theta=theta.map((t,i)=>clamp(t-alpha*g[i],i));
+  return Math.sqrt(g.reduce((s,gi)=>s+gi*gi,0));
+}
+
+function stepCG(){
+  const g=gradient(theta);
+  const gnorm2=g.reduce((s,gi)=>s+gi*gi,0);
+  if(!cgDir||!cgGradPrev){
+    cgDir=g.map(gi=>-gi);
+    cgGradPrev=g;
+  } else {
+    const prevNorm2=cgGradPrev.reduce((s,gi)=>s+gi*gi,0)||1;
+    const beta=gnorm2/prevNorm2;
+    cgDir=g.map((gi,i)=>-gi+beta*cgDir[i]);
+    cgGradPrev=g;
+  }
+  const dnorm=Math.sqrt(cgDir.reduce((s,d)=>s+d*d,0))||1;
+  const alpha=Math.min(0.001,0.5/dnorm);
+  theta=theta.map((t,i)=>clamp(t+alpha*cgDir[i],i));
+  return Math.sqrt(gnorm2);
+}
+
+function stepGN(){
+  const r=residuals(theta);     // n-vector
+  const Jcols=jacobian(theta);  // p columns, each length n  (d pred_i / d theta_j)
+  const p=theta.length, n=r.length;
+  // JtJ = sum_i J_i J_i^T   (p×p)
+  // Jtr = sum_i J_i * r_i   (p-vector)
+  const JtJ=Array.from({length:p},()=>new Array(p).fill(0));
+  const Jtr=new Array(p).fill(0);
+  for(let j=0;j<p;j++) for(let k=0;k<p;k++)
+    for(let i=0;i<n;i++) JtJ[j][k]+=Jcols[j][i]*Jcols[k][i];
+  for(let j=0;j<p;j++) for(let i=0;i<n;i++) Jtr[j]+=Jcols[j][i]*r[i];
+  const delta=solveLinear(JtJ,Jtr);
+  if(delta) theta=theta.map((t,i)=>clamp(t+delta[i],i));
+  const g=gradient(theta);
+  return Math.sqrt(g.reduce((s,gi)=>s+gi*gi,0));
+}
+
+function stepLM(){
+  const r=residuals(theta);
+  const Jcols=jacobian(theta);
+  const p=theta.length, n=r.length;
+  const JtJ=Array.from({length:p},()=>new Array(p).fill(0));
+  const Jtr=new Array(p).fill(0);
+  for(let j=0;j<p;j++) for(let k=0;k<p;k++)
+    for(let i=0;i<n;i++) JtJ[j][k]+=Jcols[j][i]*Jcols[k][i];
+  for(let j=0;j<p;j++) for(let i=0;i<n;i++) Jtr[j]+=Jcols[j][i]*r[i];
+  // add lambda*I
+  const A=JtJ.map((row,j)=>row.map((v,k)=>j===k?v+lmLambda:v));
+  const delta=solveLinear(A,Jtr);
+  if(delta){
+    const thetaNew=theta.map((t,i)=>clamp(t+delta[i],i));
+    const fOld=objective(theta), fNew=objective(thetaNew);
+    if(fNew<fOld){theta=thetaNew; lmLambda=Math.max(1e-8,lmLambda/10);}
+    else lmLambda=Math.min(1e6,lmLambda*10);
+  }
+  const g=gradient(theta);
+  return Math.sqrt(g.reduce((s,gi)=>s+gi*gi,0));
+}
+
+// ── 2×2 and general linear solver (Gaussian elimination) ──
+function solveLinear(A,b){
+  const n=b.length;
+  const M=A.map((row,i)=>[...row,b[i]]);
+  for(let col=0;col<n;col++){
+    let pivot=col;
+    for(let row=col+1;row<n;row++) if(Math.abs(M[row][col])>Math.abs(M[pivot][col])) pivot=row;
+    [M[col],M[pivot]]=[M[pivot],M[col]];
+    if(Math.abs(M[col][col])<1e-14) return null;
+    const div=M[col][col];
+    for(let k=col;k<=n;k++) M[col][k]/=div;
+    for(let row=0;row<n;row++) if(row!==col){
+      const f=M[row][col];
+      for(let k=col;k<=n;k++) M[row][k]-=f*M[col][k];
+    }
+  }
+  return M.map(row=>row[n]);
+}
+
+function clamp(v,i){
+  const p=PARAMS[modelActive][i];
+  return Math.max(p.min,Math.min(p.max,v));
+}
+
+// ══════════════════════════════════════════════════════════
+// ALGORITHM SELECTOR
+// ══════════════════════════════════════════════════════════
+function setAlg(a){
+  algActive=a;
+  ['gd','cg','gn','lm'].forEach(aa=>{
+    document.getElementById('alg-'+aa).className='alg-btn'+(aa===a?' active':'');
+  });
+  stopRun();
+  resetAlgState();
+}
+
+function resetAlgState(){
+  cgDir=null; cgGradPrev=null;
+  lmLambda=0.01;
+  iterCount=0;
+}
+
+// ══════════════════════════════════════════════════════════
+// RUN LOOP
+// ══════════════════════════════════════════════════════════
+function toggleRun(){
+  if(!running) startRun();
+  else stopRun();
+}
+
+function startRun(){
+  running=true;
+  resetAlgState();
+  clearLog();
+  logLine(`<span class="header">[${algActive.toUpperCase()}] iniciando — modelo ${modelActive}</span>`);
+  logLine(`<span class="header">it &nbsp;&nbsp;&nbsp; f(θ) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |∇f| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; θ</span>`);
+  document.getElementById('run-btn').textContent='⏹ detener';
+  document.getElementById('run-btn').style.borderColor='#d45a5a';
+  document.getElementById('run-btn').style.color='#d45a5a';
+  document.getElementById('run-btn').style.background='#1a0a0a';
+  loopRun();
+}
+
+function stopRun(){
+  running=false;
+  if(rafId) cancelAnimationFrame(rafId);
+  const btn=document.getElementById('run-btn');
+  if(btn){
+    btn.textContent='▶ ejecutar';
+    btn.style.borderColor='#1e3520';
+    btn.style.color='#5ad4a0';
+    btn.style.background='#0a1a0a';
+  }
+}
+
+function loopRun(){
+  if(!running) return;
+  // do several steps per frame for speed
+  const stepsPerFrame = (algActive==='gn'||algActive==='lm')?1:8;
+  let gnorm=0;
+  for(let s=0;s<stepsPerFrame;s++){
+    if(algActive==='gd')       gnorm=stepGD();
+    else if(algActive==='cg')  gnorm=stepCG();
+    else if(algActive==='gn')  gnorm=stepGN();
+    else if(algActive==='lm')  gnorm=stepLM();
+    iterCount++;
+  }
+  syncSliders();
+  drawFit();
+
+  const fval=objective(theta);
+  const thStr=theta.map(v=>v.toFixed(4)).join(', ');
+  const lmInfo=algActive==='lm'?` λ=${lmLambda.toExponential(1)}`:'';
+  if(iterCount%stepsPerFrame===0||iterCount<=stepsPerFrame){
+    logLine(`${String(iterCount).padStart(5)}  ${fval.toFixed(6)}  ${gnorm.toFixed(6)}  [${thStr}]${lmInfo}`);
+  }
+
+  if(gnorm<1e-5){
+    logLine(`<span class="converged">✓ convergido en ${iterCount} iteraciones — f=${fval.toFixed(6)}</span>`);
+    stopRun();
+    return;
+  }
+  if(iterCount>20000){
+    logLine(`<span style="color:#d4a05a">⚠ máximo de iteraciones alcanzado</span>`);
+    stopRun();
+    return;
+  }
+  rafId=requestAnimationFrame(loopRun);
+}
+
+// ══════════════════════════════════════════════════════════
+// LOG
+// ══════════════════════════════════════════════════════════
+function logLine(html){
+  const box=document.getElementById('log-box');
+  const div=document.createElement('div');
+  div.innerHTML=html;
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+  // keep max 300 lines
+  while(box.children.length>300) box.removeChild(box.firstChild);
+}
+function clearLog(){
+  document.getElementById('log-box').innerHTML='';
+}
+
+// ══════════════════════════════════════════════════════════
+// DRAW FIT
+// ══════════════════════════════════════════════════════════
+function drawFit(){
+  const c=document.getElementById('fit-canvas');
+  const dpr=devicePixelRatio||1;
+  c.width=c.offsetWidth*dpr; c.height=c.offsetHeight*dpr;
+  const ctx=c.getContext('2d'); ctx.scale(dpr,dpr);
+  const W=c.offsetWidth, H=c.offsetHeight;
+  const pad={l:38,r:12,t:12,b:22};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+
+  const tmax=TS[TS.length-1]*1.05;
+  const ymax=Math.max(...YS,Math.max(...modelPredict(theta)))*1.15;
+
+  const tx=t=>pad.l+pw*t/tmax;
+  const ty=y=>pad.t+ph*(1-Math.max(0,y)/ymax);
+
+  ctx.fillStyle='#0b0f14'; ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle='#141e28'; ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    ctx.beginPath();ctx.moveTo(pad.l+pw*i/4,pad.t);ctx.lineTo(pad.l+pw*i/4,pad.t+ph);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(pad.l,pad.t+ph*i/4);ctx.lineTo(pad.l+pw,pad.t+ph*i/4);ctx.stroke();
+  }
+  ctx.fillStyle='#334'; ctx.font='8px monospace'; ctx.textAlign='center';
+  for(let i=0;i<=4;i++) ctx.fillText((tmax*i/4).toFixed(0),tx(tmax*i/4),pad.t+ph+13);
+  ctx.textAlign='right';
+  for(let i=0;i<=4;i++) ctx.fillText((ymax*i/4).toFixed(1),pad.l-3,ty(ymax*i/4)+3);
+
+  // model curve (dense)
+  const N=300, pred=[];
+  const tsDense=Array.from({length:N+1},(_,i)=>tmax*i/N);
+  const predDense=modelActive==='logistic'?modelLogistic(theta,tsDense):modelBatch(theta,tsDense);
+  ctx.save(); ctx.shadowColor='rgba(122,184,245,0.25)'; ctx.shadowBlur=8;
+  ctx.beginPath(); ctx.strokeStyle='#7ab8f5'; ctx.lineWidth=2;
+  predDense.forEach((y,i)=>i===0?ctx.moveTo(tx(tsDense[i]),ty(y)):ctx.lineTo(tx(tsDense[i]),ty(y)));
+  ctx.stroke(); ctx.restore();
+
+  // residuals
+  const predPts=modelPredict(theta);
+  TS.forEach((t,i)=>{
+    ctx.save(); ctx.strokeStyle='rgba(212,90,90,0.45)'; ctx.lineWidth=1; ctx.setLineDash([3,2]);
+    ctx.beginPath(); ctx.moveTo(tx(t),ty(YS[i])); ctx.lineTo(tx(t),ty(predPts[i])); ctx.stroke();
+    ctx.restore();
+  });
+
+  // data points
+  TS.forEach((t,i)=>{
+    ctx.save(); ctx.shadowColor='#5ad4a0'; ctx.shadowBlur=6;
+    ctx.beginPath(); ctx.arc(tx(t),ty(YS[i]),4.5,0,Math.PI*2);
+    ctx.fillStyle='#5ad4a0'; ctx.fill(); ctx.restore();
+    ctx.beginPath(); ctx.arc(tx(t),ty(YS[i]),4.5,0,Math.PI*2);
+    ctx.strokeStyle='#0b0f14'; ctx.lineWidth=1.2; ctx.stroke();
+  });
+
+  // labels
+  ctx.fillStyle='#334'; ctx.font='9px monospace'; ctx.textAlign='center';
+  ctx.fillText('t (h)',pad.l+pw/2,H-2);
+  ctx.save(); ctx.translate(10,pad.t+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('x (g/L)',0,0); ctx.restore();
+
+  ctx.strokeStyle='#1e2a35'; ctx.lineWidth=0.5; ctx.strokeRect(pad.l,pad.t,pw,ph);
+
+  // f(θ) label
+  const fval=objective(theta);
+  ctx.fillStyle='#445'; ctx.font='9px monospace'; ctx.textAlign='right';
+  ctx.fillText(`f(θ)=${fval.toFixed(4)}`,pad.l+pw-2,pad.t+12);
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+buildSliders();
+drawFit();
+window.addEventListener('resize',drawFit);
+setTimeout(()=>{if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise();},600);
+</script>
+</body>
+</html>
