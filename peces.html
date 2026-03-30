@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosecha logística</title>
+<script>
+MathJax={tex:{inlineMath:[['\\(','\\)']]},options:{skipHtmlTags:['script','noscript','style','textarea']},startup:{typeset:false}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Georgia',serif;background:#060d18;color:#d8d4cc;padding:0.8rem;max-width:540px;margin:0 auto}
+h1{font-size:12px;font-weight:400;color:#3a5a7a;margin-bottom:0.8rem;letter-spacing:0.06em;font-family:monospace}
+.card{background:#0a1520;border:0.5px solid #1a2a3a;border-radius:12px;padding:0.85rem;margin-bottom:9px}
+.card-title{font-size:10px;font-weight:500;color:#3a5a7a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.55rem;font-family:monospace}
+.h-wrap{background:#061018;border-radius:9px;padding:0.75rem;border:0.5px solid #1a3a5a;margin-bottom:7px}
+.h-wrap .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.h-wrap .hlabel{font-size:12px;color:#5ab0e0;font-family:monospace}
+.h-wrap .hval{font-size:20px;font-weight:500;font-family:monospace;color:#5ab0e0}
+.h-wrap input[type=range]{width:100%;accent-color:#5ab0e0}
+.h-status{font-size:9px;font-family:monospace;margin-top:4px;text-align:center;min-height:13px}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:6px}
+.stat{background:#061018;border-radius:7px;padding:0.38rem 0.5rem;text-align:center}
+.stat .lbl{font-size:8px;color:#2a4a6a;font-family:monospace}
+.stat .num{font-size:11px;font-weight:500;font-family:monospace}
+.sl-row{display:grid;grid-template-columns:26px 1fr 42px;align-items:center;gap:5px;margin-bottom:4px;font-size:10px;font-family:monospace}
+.sl-row label{color:#5ab0e0;text-align:center}
+.sl-row input[type=range]{accent-color:#3a6a9a}
+.sl-row .val{color:#8ac0e0;text-align:right}
+.tab{flex:1;padding:7px;font-size:11px;border-radius:7px;cursor:pointer;font-family:monospace;border:0.5px solid #1a2a3a;background:#060d18;color:#3a5a7a;transition:all 0.15s;text-align:center}
+.tab.active{background:#0a1a2a;border-color:#5ab0e0;color:#5ab0e0}
+.sim-row{display:flex;gap:6px;margin-top:8px}
+.sim-btn{flex:1;padding:8px;font-size:11px;border-radius:8px;cursor:pointer;font-family:monospace;border:0.5px solid #1e3520;background:#0a1a0a;color:#5ad4a0;transition:all 0.15s;font-weight:500}
+.sim-btn:hover{background:#0f2a14;border-color:#5ad4a0}
+.sim-btn.pause{border-color:#d4a05a;color:#d4a05a;background:#1a1000}
+.sim-btn.reset{border-color:#2a1515;color:#d45a5a;background:#0f0a0a}
+.sim-time{font-size:9px;font-family:monospace;color:#3a5a7a;text-align:center;margin-top:4px}
+canvas{display:block;width:100%}
+</style>
+</head>
+<body>
+<h1>\(\dot x = rx\!\left(1-\tfrac{x}{K}\right)-hx\) — cosecha logística</h1>
+
+<!-- TABS -->
+<div style="display:flex;gap:4px;margin-bottom:9px">
+  <div class="tab active" id="tab-sim" onclick="setTab('sim')">⚗ Simulación</div>
+  <div class="tab" id="tab-param" onclick="setTab('param')">⚙ Parámetros</div>
+</div>
+
+<div id="panel-sim">
+<div class="card">
+  <div class="card-title">Tasa de cosecha</div>
+  <div class="h-wrap" style="margin-bottom:0">
+    <div class="top"><span class="hlabel">h</span><span class="hval" id="h-display">0.25</span></div>
+    <input type="range" id="h-sl" min="0" max="0.6" step="0.005" value="0.25" oninput="onH()">
+    <div class="h-status" id="h-status"></div>
+  </div>
+  <div style="font-size:8px;font-family:monospace;color:#2a4a6a;margin-top:3px;text-align:right">
+    rango h: [0, <span id="h-range-display">0.60</span>] — ajustar en ⚙ Parámetros
+  </div>
+</div>
+
+<div class="card" style="padding:0.6rem">
+  <canvas id="ocean-canvas" style="height:200px;border-radius:8px"></canvas>
+  <div class="stats" style="margin-top:6px">
+    <div class="stat"><div class="lbl">x(t) actual</div><div class="num" id="st-x" style="color:#5ab0e0">—</div></div>
+    <div class="stat"><div class="lbl">f(h) = h·x*</div><div class="num" id="st-f" style="color:#5ad4a0">—</div></div>
+    <div class="stat"><div class="lbl">h* = r/2</div><div class="num" id="st-hopt" style="color:#c47dd4">—</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Dinámica x(t)</div>
+  <canvas id="dyn-canvas" style="height:185px;border:0.5px solid #1a2a3a;background:#0b0f14;border-radius:8px"></canvas>
+  <div class="sim-row">
+    <button class="sim-btn" id="sim-btn" onclick="toggleSim()">▶ iniciar</button>
+    <button class="sim-btn reset" onclick="resetSim()">↺ reiniciar</button>
+  </div>
+  <div class="sim-time" id="sim-time">t = 0.00 h</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Productividad f(h) = h · x*(h)</div>
+  <canvas id="prod-canvas" style="height:185px;border:0.5px solid #1a2a3a;background:#0b0f14;border-radius:8px"></canvas>
+</div>
+</div><!-- end panel-sim -->
+
+<div id="panel-param" style="display:none">
+<div class="card">
+  <div class="card-title">Parámetros del modelo</div>
+  <div class="sl-row"><label>r</label><input type="range" id="sl-r" min="0.1" max="2" step="0.05" value="0.5" oninput="onParam()"><span class="val" id="val-r">0.50</span></div>
+  <div class="sl-row"><label>K</label><input type="range" id="sl-K" min="5" max="30" step="0.5" value="15" oninput="onParam()"><span class="val" id="val-K">15.0</span></div>
+  <div class="sl-row"><label>x₀</label><input type="range" id="sl-x0" min="0.1" max="15" step="0.1" value="1" oninput="onParam()"><span class="val" id="val-x0">1.0</span></div>
+</div>
+<div class="card">
+  <div class="card-title">Rango del slider de h</div>
+  <div class="sl-row">
+    <label style="font-size:9px">h<sub>max</sub></label>
+    <input type="range" id="sl-hmax" min="0.1" max="3" step="0.05" value="0.6" oninput="onHmax()">
+    <span class="val" id="val-hmax">0.60</span>
+  </div>
+  <div style="font-size:9px;color:#3a5a7a;font-family:monospace;margin-top:4px">
+    h* = r/2 = <span id="hopt-display">0.25</span> &nbsp;·&nbsp; lavado en h = r = <span id="r-display">0.50</span>
+  </div>
+</div>
+</div>
+
+
+
+<script>
+// ═══════════════════════════════════════════════
+// SIMULATION STATE (live running ODE)
+// ═══════════════════════════════════════════════
+let simRunning=false;
+let simT=0, simX=0; // current time and biomass
+let simHistory={ts:[],xs:[]}; // full trajectory
+const SIM_DT=0.05;
+
+function simStep(dt){
+  // advance ODE by dt using RK4
+  const steps=Math.max(1,Math.round(dt/SIM_DT));
+  const h2=dt/steps;
+  let x=simX;
+  for(let i=0;i<steps;i++){
+    const f=v=>v>0?P.r*v*(1-v/P.K)-P.h*v:0;
+    const k1=f(x),k2=f(x+h2/2*k1),k3=f(x+h2/2*k2),k4=f(x+h2*k3);
+    x=Math.max(0,x+h2/6*(k1+2*k2+2*k3+k4));
+  }
+  simX=x; simT+=dt;
+  simHistory.ts.push(simT);
+  simHistory.xs.push(simX);
+  // keep at most 2000 points
+  if(simHistory.ts.length>2000){simHistory.ts.shift();simHistory.xs.shift();}
+}
+
+function toggleSim(){
+  simRunning=!simRunning;
+  const btn=document.getElementById('sim-btn');
+  if(simRunning){
+    if(simT===0){simX=P.x0;} // start from x0
+    btn.textContent='⏸ pausar'; btn.className='sim-btn pause';
+  } else {
+    btn.textContent='▶ continuar'; btn.className='sim-btn';
+  }
+}
+
+function resetSim(){
+  simRunning=false;
+  simT=0; simX=P.x0;
+  simHistory={ts:[],xs:[]};
+  document.getElementById('sim-btn').textContent='▶ iniciar';
+  document.getElementById('sim-btn').className='sim-btn';
+  document.getElementById('sim-time').textContent='t = 0.00 h';
+  drawDyn();
+}
+
+// ═══════════════════════════════════════════════
+// MODEL
+// ═══════════════════════════════════════════════
+let P={r:0.5,K:15,x0:1,h:0.25};
+function xss(){return P.h>=P.r?0:P.K*(1-P.h/P.r);}
+function fhVal(){return P.h*xss();}
+function hopt(){return P.r/2;}
+function fhopt(){return P.r*P.K/4;}
+function simulate(){
+  const tmax=Math.min(60,Math.max(20,6/Math.max(0.01,Math.abs(P.r-P.h))));
+  let x=P.x0,t=0;const ts=[0],xs=[x];
+  const n=Math.ceil(tmax/0.05);
+  for(let i=0;i<n;i++){
+    const f=v=>v>0?P.r*v*(1-v/P.K)-P.h*v:0;
+    const k1=f(x),k2=f(x+0.025*k1),k3=f(x+0.025*k2),k4=f(x+0.05*k3);
+    x=Math.max(0,x+0.05/6*(k1+2*k2+2*k3+k4));
+    t+=0.05;ts.push(t);xs.push(x);
+  }
+  return{ts,xs,tmax};
+}
+
+// ═══════════════════════════════════════════════
+// SCENE GEOMETRY (computed when canvas is ready)
+// ═══════════════════════════════════════════════
+// Layout: sea occupies [0, portX), port occupies [portX, W]
+// Boats sail from port (right) → sea (left) → back to port
+// waterY = y coordinate of water surface
+let GEO={portX:0,waterY:0,W:0,H:0};
+
+// ═══════════════════════════════════════════════
+// FISH
+// ═══════════════════════════════════════════════
+const MAX_FISH=80;
+let seaFish=[];
+function initFish(){
+  const{portX,waterY,H}=GEO;
+  seaFish=Array.from({length:MAX_FISH},(_,i)=>makeFish(true));
+}
+function makeFish(rand){
+  const{portX,waterY,H}=GEO;
+  return{
+    x:Math.random()*portX*0.9,
+    y:(waterY+10)+Math.random()*(H-waterY-18),
+    vx:(Math.random()<0.5?-1:1)*(0.05+Math.random()*0.1),
+    vy:(Math.random()-0.5)*0.04,
+    phase:Math.random()*Math.PI*2,
+    size:2+Math.random()*2.5,
+    col:['#5ab0e0','#7ad0f0','#3a90c0','#50c8d0','#6ab8d8'][Math.floor(Math.random()*5)],
+    alive:true,alpha:rand?Math.random():0,dying:false
+  };
+}
+
+// ═══════════════════════════════════════════════
+// BOATS  — circuit: port → sea → port
+// state: 'outbound' going left, 'fishing' paused, 'inbound' going right
+// ═══════════════════════════════════════════════
+const MAX_BOATS=16;
+let boats=[];
+
+function makeBoat(){
+  const{portX,waterY,W}=GEO;
+  // stagger starting x slightly inside port
+  const startX=portX+8+Math.random()*20;
+  // fish per trip proportional to x* (fewer fish in sea = fewer caught)
+  const nFish=P.h>=P.r?0:Math.max(0,Math.round((xss()/P.K)*4+0.5));
+  return{
+    x:startX, y:waterY-10-Math.random()*4,
+    speed:1.2+Math.random()*0.6,
+    state:'outbound',
+    // how far into sea it goes before fishing
+    targetX:portX*0.1+Math.random()*portX*0.5,
+    fishTimer:0, fishDuration:0.6+Math.random()*0.4,
+    nFish,
+    wobble:Math.random()*Math.PI*2,
+    alpha:0,
+    lane:0, // assigned y-offset so boats don't overlap
+  };
+}
+
+function targetBoatCount(){
+  // number of boats ∝ h
+  return P.h<0.01?0:Math.round((P.h/P.r)*MAX_BOATS);
+}
+
+// ═══════════════════════════════════════════════
+// ANIMATION
+// ═══════════════════════════════════════════════
+let animT=0,lastTs=0;
+let portFish=0,portFishDisplay=0; // fish delivered to port
+
+function animFrame(ts){
+  requestAnimationFrame(animFrame);
+  const dt=Math.min((ts-lastTs)/1000,0.05);lastTs=ts;animT+=dt;
+
+  const c=document.getElementById('ocean-canvas');
+  const dpr=devicePixelRatio||1;
+  const needInit=c.width!==Math.round(c.offsetWidth*dpr);
+  if(needInit){
+    c.width=Math.round(c.offsetWidth*dpr);
+    c.height=Math.round(c.offsetHeight*dpr);
+  }
+  const W=c.offsetWidth,H=c.offsetHeight;
+  // update geometry
+  const portX=W*0.77;
+  const waterY=H*0.52; // water surface — lower so port sticks out
+  GEO={portX,waterY,W,H};
+  if(needInit){initFish();boats=[];}
+
+  const ctx=c.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  // ── background sky / sea ──
+  // sky
+  const sky=ctx.createLinearGradient(0,0,0,waterY);
+  sky.addColorStop(0,'#08141e');sky.addColorStop(1,'#0a1e32');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,waterY);
+
+  // sea
+  const sea=ctx.createLinearGradient(0,waterY,0,H);
+  sea.addColorStop(0,'#0a1e35');sea.addColorStop(1,'#040e1c');
+  ctx.fillStyle=sea;ctx.fillRect(0,waterY,portX+20,H-waterY);
+
+  // ── port background (right strip) ──
+  // port land — full height, clearly above water
+  ctx.fillStyle='#1a0e06';
+  ctx.fillRect(portX,0,W-portX,H);
+  // land texture
+  ctx.fillStyle='#221408';
+  ctx.fillRect(portX,0,W-portX,waterY+4);
+
+  // ── dock ──
+  const dockTop=waterY+2;
+  // dock surface
+  ctx.fillStyle='#6a4820';
+  ctx.fillRect(portX,dockTop,W-portX,10);
+  for(let x=portX+4;x<W;x+=10){
+    ctx.fillStyle='rgba(0,0,0,0.18)';ctx.fillRect(x,dockTop,1,10);
+  }
+  // dock posts into water
+  for(let x=portX+6;x<W-4;x+=16){
+    ctx.fillStyle='#5a3810';ctx.fillRect(x-2,dockTop+10,4,H-dockTop-10);
+  }
+  // warehouse
+  const whX=W-46,whY=dockTop-28,whW=44,whH=28;
+  ctx.fillStyle='#3a2810';ctx.fillRect(whX,whY,whW,whH);
+  ctx.fillStyle='#4a3418';ctx.fillRect(whX+2,whY+2,whW-4,whH-2);
+  // roof
+  ctx.fillStyle='#2a1808';
+  ctx.beginPath();ctx.moveTo(whX-4,whY);ctx.lineTo(whX+whW/2,whY-16);ctx.lineTo(whX+whW+4,whY);ctx.closePath();ctx.fill();
+  // window
+  ctx.fillStyle='rgba(255,200,80,0.15)';ctx.fillRect(whX+14,whY+8,10,10);
+  ctx.strokeStyle='rgba(255,200,80,0.3)';ctx.lineWidth=0.5;ctx.strokeRect(whX+14,whY+8,10,10);
+
+  // ── water surface / waves ──
+  ctx.save();
+  for(let wi=0;wi<3;wi++){
+    ctx.strokeStyle=`rgba(90,176,224,${0.05+wi*0.02})`;ctx.lineWidth=1.2;
+    ctx.beginPath();
+    for(let x=0;x<portX+20;x+=3){
+      const y=waterY+Math.sin(x/35+animT*0.55+wi*1.5)*2;
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }ctx.stroke();
+  }ctx.restore();
+
+  // ── seabed ──
+  ctx.fillStyle='#061428';
+  ctx.beginPath();ctx.moveTo(0,H);
+  for(let x=0;x<=portX+10;x+=5)ctx.lineTo(x,H-5+Math.sin(x/22+1)*3);
+  ctx.lineTo(portX+10,H);ctx.closePath();ctx.fill();
+
+  // ── seaweed ──
+  for(let i=0;i<5;i++){
+    const sx=portX*0.9*(i+0.5)/5+Math.sin(i*1.7)*6;
+    ctx.save();ctx.strokeStyle='rgba(20,100,60,0.4)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(sx,H-4);
+    for(let s=0;s<15;s+=3)ctx.lineTo(sx+Math.sin(s/5+animT*0.65+i)*3.5,H-4-s);
+    ctx.stroke();ctx.restore();
+  }
+
+  // ── advance simulation ──
+  if(simRunning){
+    simStep(dt*2); // 2x speed so dynamics are visible in reasonable time
+    document.getElementById('sim-time').textContent=`t = ${simT.toFixed(2)} h`;
+    drawDyn(); // redraw dynamics chart each frame
+  }
+
+  // ── manage fish count ──
+  const target=P.h>=P.r?0:Math.round((simT>0?simX:P.x0)/P.K*MAX_FISH);
+  const alive=seaFish.filter(f=>f.alive&&!f.dying).length;
+  if(alive<target){
+    const dead=seaFish.find(f=>!f.alive&&f.alpha<=0);
+    if(dead)Object.assign(dead,makeFish(true));
+  } else if(alive>target+1){
+    const live=seaFish.filter(f=>f.alive&&!f.dying);
+    if(live.length)live[Math.floor(Math.random()*live.length)].dying=true;
+  }
+  seaFish.forEach(f=>{
+    if(!f.alive&&f.alpha<=0)return;
+    if(f.dying||!f.alive){f.alpha=Math.max(0,f.alpha-0.018);if(f.alpha<=0)f.alive=false;}
+    else f.alpha=Math.min(1,f.alpha+0.025);
+    f.phase+=0.022;
+    f.x+=f.vx+Math.sin(f.phase*0.25)*0.05;
+    f.y+=f.vy+Math.sin(f.phase*0.4)*0.04;
+    if(f.x<-8)f.x=portX*0.88;
+    if(f.x>portX*0.9)f.x=-6;
+    f.y=Math.max(waterY+8,Math.min(H-14,f.y));
+    if(Math.random()<0.003)f.vx=(Math.random()<0.5?-1:1)*(0.05+Math.random()*0.1);
+    drawFish(ctx,f);
+  });
+
+  // washout
+  if(P.h>=P.r){
+    ctx.fillStyle='rgba(200,50,20,0.18)';ctx.fillRect(0,waterY,portX,H-waterY);
+    ctx.fillStyle='rgba(220,80,60,0.8)';ctx.font='bold 10px monospace';ctx.textAlign='center';
+    ctx.fillText('⚠ extinción',portX*0.45,H*0.6);
+  }
+
+  // ── manage boat fleet ──
+  const wantBoats=targetBoatCount();
+  // add boats if needed
+  if(boats.length<wantBoats && Math.random()<0.03){
+    boats.push(makeBoat());
+  }
+  // remove excess boats (mark them as retired — they'll finish current trip then vanish)
+  if(boats.length>wantBoats+2){
+    const extra=boats.find(b=>b.state==='inbound'&&!b.retire);
+    if(extra)extra.retire=true;
+  }
+
+  boats=boats.filter(b=>!b.done);
+
+  boats.forEach(b=>{
+    b.wobble+=0.04;
+    b.alpha=Math.min(1,b.alpha+0.04);
+
+    if(b.state==='outbound'){
+      b.x-=b.speed;
+      if(b.x<=b.targetX){b.state='fishing';b.fishTimer=0;}
+    } else if(b.state==='fishing'){
+      b.fishTimer+=dt;
+      // update fish count based on current x* when fishing
+      b.nFish=P.h>=P.r?0:Math.max(0,Math.round((xss()/P.K)*4+0.5));
+      if(b.fishTimer>=b.fishDuration) b.state='inbound';
+    } else if(b.state==='inbound'){
+      b.x+=b.speed;
+      if(b.x>=portX+10){
+        // delivered
+        portFish+=b.nFish;
+        if(b.retire){b.done=true;return;}
+        // reset for next trip
+        b.state='outbound';
+        b.targetX=portX*0.1+Math.random()*portX*0.5;
+        b.fishDuration=1.5+Math.random();
+        b.nFish=0;
+        b.x=portX+8+Math.random()*10;
+      }
+    }
+    ctx.save();ctx.globalAlpha=b.alpha;
+    drawBoat(ctx,b);
+    ctx.restore();
+  });
+
+  // ── port productivity label ──
+  portFishDisplay+=(portFish-portFishDisplay)*0.04;
+  const fv=fhVal(),fm=fhopt();
+  const pct=fm>0?(fv/fm)*100:0;
+  // panel
+  const lx=portX+4,ly=4,lw=W-portX-8,lh=36;
+  ctx.fillStyle='rgba(6,10,18,0.8)';
+  ctx.beginPath();ctx.roundRect(lx,ly,lw,lh,5);ctx.fill();
+  ctx.strokeStyle='rgba(90,150,200,0.25)';ctx.lineWidth=0.5;ctx.stroke();
+  ctx.fillStyle='#5ad4a0';ctx.font='bold 11px monospace';ctx.textAlign='center';
+  ctx.fillText(`f = ${fv.toFixed(2)}`,lx+lw/2,ly+14);
+  ctx.fillStyle='rgba(196,125,212,0.85)';ctx.font='9px monospace';
+  ctx.fillText(`${pct.toFixed(0)}% del óptimo`,lx+lw/2,ly+28);
+
+  // ── fish pile at dock ──
+  portFishDisplay%=40;
+  const pile=Math.round(portFishDisplay);
+  for(let i=0;i<Math.min(pile,14);i++){
+    const angle2=i*0.65,rad=2+i*1.3;
+    const fpx=W-22+Math.cos(angle2)*rad*0.5;
+    const fpy=dockTop-3-i*1.0;
+    ctx.save();ctx.translate(fpx,fpy);ctx.rotate(angle2);
+    ctx.fillStyle=`rgba(90,176,224,${0.55+i*0.03})`;
+    ctx.beginPath();ctx.ellipse(0,0,3.5,1.8,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+
+  // sea label
+  ctx.fillStyle='rgba(90,160,220,0.3)';ctx.font='8px monospace';ctx.textAlign='left';
+  const xLabel=simT>0?`x(t) = ${simX.toFixed(2)}  /  K = ${P.K}`:`x* = ${xss().toFixed(1)}  /  K = ${P.K}`;
+  ctx.fillText(xLabel,5,H-5);
+}
+
+// ═══════════════════════════════════════════════
+// DRAW HELPERS
+// ═══════════════════════════════════════════════
+function drawFish(ctx,f){
+  if(f.alpha<=0)return;
+  ctx.save();ctx.globalAlpha=f.alpha;
+  ctx.translate(f.x,f.y);
+  if(f.vx<0)ctx.scale(-1,1);
+  const s=f.size,tw=Math.sin(f.phase)*0.28*s;
+  ctx.fillStyle=f.col;
+  ctx.beginPath();ctx.moveTo(-s*1.1,0);ctx.lineTo(-s*2.0,-s*0.6+tw);ctx.lineTo(-s*2.0,s*0.6+tw);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.ellipse(0,0,s*1.1,s*0.56,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(s*0.5,-s*0.1,s*0.2,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  ctx.beginPath();ctx.arc(s*0.54,-s*0.1,s*0.1,0,Math.PI*2);ctx.fillStyle='#111';ctx.fill();
+  ctx.restore();
+}
+
+function drawBoat(ctx,b){
+  const{waterY}=GEO;
+  ctx.save();ctx.translate(b.x, waterY-12+Math.sin(b.wobble)*1.8);
+  // hull
+  ctx.beginPath();ctx.moveTo(-13,0);ctx.lineTo(13,0);ctx.lineTo(10,9);ctx.lineTo(-10,9);ctx.closePath();
+  ctx.fillStyle='#7a5020';ctx.fill();ctx.strokeStyle='#5a3810';ctx.lineWidth=0.8;ctx.stroke();
+  // cabin
+  ctx.fillStyle='#c89040';ctx.beginPath();ctx.roundRect(-5,-10,10,10,2);ctx.fill();
+  // mast
+  ctx.strokeStyle='#8a6030';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(2,-10);ctx.lineTo(2,-22);ctx.stroke();
+  // flag
+  ctx.fillStyle='rgba(245,167,66,0.9)';
+  ctx.beginPath();ctx.moveTo(2,-22);ctx.lineTo(9,-19);ctx.lineTo(2,-15);ctx.closePath();ctx.fill();
+  // fish hanging only when inbound (returning)
+  if(b.state==='inbound'){
+    const nf=Math.min(b.nFish,5);
+    for(let i=0;i<nf;i++){
+      const fx=(i-(nf-1)/2)*7;
+      const fy=11+Math.sin(b.wobble+i*1.1)*1.5;
+      ctx.strokeStyle='rgba(180,150,80,0.4)';ctx.lineWidth=0.7;
+      ctx.beginPath();ctx.moveTo(fx*0.3,9);ctx.lineTo(fx,fy);ctx.stroke();
+      ctx.save();ctx.translate(fx,fy);ctx.rotate(0.3);
+      ctx.fillStyle='#5ab0e0';ctx.beginPath();ctx.ellipse(0,0,3.5,2,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#3a90c0';ctx.beginPath();ctx.moveTo(-3.5,0);ctx.lineTo(-6.5,-2);ctx.lineTo(-6.5,2);ctx.closePath();ctx.fill();
+      ctx.restore();
+    }
+  }
+  // fishing animation (net lines)
+  if(b.state==='fishing'){
+    ctx.save();ctx.strokeStyle='rgba(200,180,100,0.25)';ctx.lineWidth=0.8;
+    for(let side=-1;side<=1;side+=2){
+      ctx.beginPath();ctx.moveTo(side*12,5);ctx.lineTo(side*18,20);ctx.stroke();
+    }ctx.restore();
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════
+function setTab(t){
+  document.getElementById('panel-sim').style.display=t==='sim'?'block':'none';
+  document.getElementById('panel-param').style.display=t==='param'?'block':'none';
+  document.getElementById('tab-sim').className='tab'+(t==='sim'?' active':'');
+  document.getElementById('tab-param').className='tab'+(t==='param'?' active':'');
+}
+
+function onHmax(){
+  const hmax=parseFloat(document.getElementById('sl-hmax').value);
+  document.getElementById('val-hmax').textContent=hmax.toFixed(2);
+  document.getElementById('h-range-display').textContent=hmax.toFixed(2);
+  document.getElementById('h-sl').max=hmax.toFixed(3);
+  // clamp h if needed
+  if(P.h>hmax){
+    P.h=hmax*0.9;
+    document.getElementById('h-display').textContent=P.h.toFixed(3);
+  }
+  document.getElementById('h-sl').value=P.h;
+  updateStats();drawDyn();drawProd();
+}
+
+// ═══════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════
+function onH(){
+  P.h=parseFloat(document.getElementById('h-sl').value);
+  document.getElementById('h-display').textContent=P.h.toFixed(3);
+  portFish=0;portFishDisplay=0;
+  updateStats();drawDyn();drawProd();
+}
+function onParam(){
+  P.r=parseFloat(document.getElementById('sl-r').value);
+  P.K=parseFloat(document.getElementById('sl-K').value);
+  P.x0=parseFloat(document.getElementById('sl-x0').value);
+  document.getElementById('val-r').textContent=P.r.toFixed(2);
+  document.getElementById('val-K').textContent=P.K.toFixed(1);
+  document.getElementById('val-x0').textContent=P.x0.toFixed(1);
+  if(P.h>=P.r){P.h=P.r*0.45;document.getElementById('h-sl').value=P.h;document.getElementById('h-display').textContent=P.h.toFixed(3);}
+  document.getElementById('h-sl').max=(P.r*0.995).toFixed(3);
+  portFish=0;portFishDisplay=0;boats=[];
+  resetSim();
+  // update hmax slider max to match new r
+  // preserve hmax from slider
+  const hmaxEl=document.getElementById('sl-hmax');
+  if(hmaxEl){
+    const curHmax=parseFloat(hmaxEl.value);
+    document.getElementById('h-sl').max=curHmax.toFixed(3);
+    if(P.h>curHmax){P.h=curHmax*0.9;document.getElementById('h-sl').value=P.h;document.getElementById('h-display').textContent=P.h.toFixed(3);}
+  }
+  document.getElementById('hopt-display').textContent=hopt().toFixed(3);
+  document.getElementById('r-display').textContent=P.r.toFixed(2);
+  updateStats();drawCharts();
+}
+function updateStats(){
+  const xs=xss(),fv=fhVal(),ho=hopt();
+  const xDisp=simT>0?simX:xs;
+  document.getElementById('st-x').textContent=P.h>=P.r?'0 (ext.)':xDisp.toFixed(2);
+  document.getElementById('st-f').textContent=fv.toFixed(3);
+  document.getElementById('st-hopt').textContent=ho.toFixed(3);
+  const st=document.getElementById('h-status');
+  if(P.h>=P.r){st.style.color='#d45a5a';st.textContent='⚠ extinción — demasiada cosecha';}
+  else if(Math.abs(P.h-hopt())<0.02){st.style.color='#c47dd4';st.textContent='★ h = r/2 — productividad máxima';}
+  else if(P.h<hopt()){st.style.color='#5ab0e0';st.textContent='↗ h < r/2 — muchos peces, poca cosecha';}
+  else{st.style.color='#f5a742';st.textContent='↘ h > r/2 — pocos peces, baja productividad';}
+}
+
+// ═══════════════════════════════════════════════
+// STATIC CHARTS
+// ═══════════════════════════════════════════════
+function setupC(id){
+  const c=document.getElementById(id),dpr=devicePixelRatio||1;
+  c.width=c.offsetWidth*dpr;c.height=c.offsetHeight*dpr;
+  const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+  return{ctx,W:c.offsetWidth,H:c.offsetHeight};
+}
+function gridLines(ctx,pad,W,H,xmin,xmax,ymin,ymax,nx,ny,fx,fy){
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  ctx.strokeStyle='#0d1a28';ctx.lineWidth=0.5;
+  for(let i=0;i<=nx;i++){const x=pad.l+pw*i/nx;ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+ph);ctx.stroke();ctx.fillStyle='#2a3a4a';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText(fx(xmin+i*(xmax-xmin)/nx),x,pad.t+ph+13);}
+  for(let i=0;i<=ny;i++){const y=pad.t+ph*i/ny;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+pw,y);ctx.stroke();ctx.fillStyle='#2a3a4a';ctx.font='8px monospace';ctx.textAlign='right';ctx.fillText(fy(ymax-i*(ymax-ymin)/ny),pad.l-3,y+3);}
+  ctx.strokeStyle='#1a2a3a';ctx.lineWidth=0.5;ctx.strokeRect(pad.l,pad.t,pw,ph);
+}
+function drawCharts(){drawDyn();drawProd();}
+function drawDyn(){
+  const{ctx,W,H}=setupC('dyn-canvas');
+  const pad={l:36,r:10,t:12,b:22};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  ctx.fillStyle='#0b0f14';ctx.fillRect(0,0,W,H);
+
+  const useLive=simHistory.ts.length>1;
+  let ts2,xs2,tmax2;
+  if(useLive){
+    ts2=simHistory.ts; xs2=simHistory.xs;
+    tmax2=Math.max(simT*1.15, 20);
+  } else {
+    const s=simulate(); ts2=s.ts; xs2=s.xs; tmax2=s.tmax;
+  }
+
+  const ymax=Math.max(P.K*1.12, Math.max(...xs2)*1.1, P.x0*1.1, 0.5);
+  const tx=t=>pad.l+pw*t/tmax2;
+  const ty=y=>pad.t+ph*(1-Math.max(0,y)/ymax);
+
+  gridLines(ctx,pad,W,H,0,tmax2,0,ymax,4,4,v=>v.toFixed(0),v=>v.toFixed(1));
+
+  // K line
+  ctx.save();ctx.strokeStyle='rgba(122,184,245,0.2)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(pad.l,ty(P.K));ctx.lineTo(pad.l+pw,ty(P.K));ctx.stroke();ctx.restore();
+  ctx.fillStyle='rgba(122,184,245,0.4)';ctx.font='8px monospace';ctx.textAlign='left';ctx.fillText('K',pad.l+3,ty(P.K)-3);
+
+  // x* line
+  const xs_=xss();
+  if(xs_>0.05){
+    ctx.save();ctx.strokeStyle='rgba(90,212,160,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(pad.l,ty(xs_));ctx.lineTo(pad.l+pw,ty(xs_));ctx.stroke();ctx.restore();
+    ctx.fillStyle='rgba(90,212,160,0.55)';ctx.font='8px monospace';ctx.textAlign='left';ctx.fillText('x*',pad.l+3,ty(xs_)-3);
+  }
+
+  // trajectory
+  ctx.save();ctx.shadowColor='rgba(245,167,66,0.3)';ctx.shadowBlur=6;
+  ctx.beginPath();ctx.strokeStyle=useLive?'#f5a742':'rgba(245,167,66,0.35)';ctx.lineWidth=2;
+  if(!useLive) ctx.setLineDash([4,4]);
+  ts2.forEach((t,i)=>{
+    const cx=tx(t),cy=ty(xs2[i]);
+    if(cx>pad.l+pw) return;
+    i===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);
+  });
+  ctx.stroke();ctx.restore();
+
+  // current point (live)
+  if(useLive&&simT>0){
+    ctx.save();ctx.shadowColor='#f5a742';ctx.shadowBlur=10;
+    ctx.beginPath();ctx.arc(Math.min(tx(simT),pad.l+pw),ty(simX),4,0,Math.PI*2);
+    ctx.fillStyle='#f5a742';ctx.fill();ctx.restore();
+  }
+
+  // preview label if not started
+  if(!useLive&&!simRunning){
+    ctx.fillStyle='rgba(90,160,220,0.35)';ctx.font='9px monospace';ctx.textAlign='center';
+    ctx.fillText('vista previa — presiona ▶ iniciar',pad.l+pw/2,pad.t+16);
+  }
+
+  ctx.fillStyle='#2a3a4a';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText('t',pad.l+pw/2,H-2);
+  ctx.save();ctx.translate(9,pad.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('x(t)',0,0);ctx.restore();
+}
+function drawProd(){
+  const{ctx,W,H}=setupC('prod-canvas');
+  const pad={l:36,r:10,t:14,b:22};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  ctx.fillStyle='#0b0f14';ctx.fillRect(0,0,W,H);
+  const hmax=P.r*0.999,N=300;
+  const fvals=Array.from({length:N+1},(_,i)=>{const hi=hmax*i/N;return hi>=P.r?0:P.K*hi*(1-hi/P.r);});
+  const fmax2=Math.max(...fvals)*1.15;
+  const th=hi=>pad.l+pw*hi/hmax,tf=fv=>pad.t+ph*(1-Math.max(0,fv)/fmax2);
+  gridLines(ctx,pad,W,H,0,hmax,0,fmax2,4,4,v=>v.toFixed(2),v=>v.toFixed(2));
+  const ho=hopt(),fho=fhopt();
+  ctx.save();ctx.strokeStyle='rgba(196,125,212,0.35)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(th(ho),pad.t);ctx.lineTo(th(ho),tf(0));ctx.stroke();ctx.setLineDash([]);ctx.restore();
+  ctx.fillStyle='rgba(196,125,212,0.65)';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText('h*=r/2',th(ho),pad.t+10);
+  ctx.save();ctx.strokeStyle='rgba(196,125,212,0.2)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(pad.l,tf(fho));ctx.lineTo(pad.l+pw,tf(fho));ctx.stroke();ctx.setLineDash([]);ctx.restore();
+  ctx.save();ctx.shadowColor='rgba(90,212,160,0.3)';ctx.shadowBlur=6;
+  ctx.beginPath();ctx.strokeStyle='#5ad4a0';ctx.lineWidth=2;
+  for(let i=0;i<=N;i++){const hi=hmax*i/N;i===0?ctx.moveTo(th(hi),tf(fvals[i])):ctx.lineTo(th(hi),tf(fvals[i]));}
+  ctx.stroke();ctx.restore();
+  ctx.save();ctx.shadowColor='#c47dd4';ctx.shadowBlur=14;
+  ctx.beginPath();ctx.arc(th(ho),tf(fho),6,0,Math.PI*2);ctx.fillStyle='#c47dd4';ctx.fill();ctx.restore();
+  ctx.beginPath();ctx.arc(th(ho),tf(fho),6,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+  const fc=fhVal();
+  ctx.save();ctx.shadowColor='#f5a742';ctx.shadowBlur=10;
+  ctx.beginPath();ctx.arc(th(Math.min(P.h,hmax)),tf(fc),5,0,Math.PI*2);ctx.fillStyle='#f5a742';ctx.fill();ctx.restore();
+  ctx.beginPath();ctx.arc(th(Math.min(P.h,hmax)),tf(fc),5,0,Math.PI*2);ctx.strokeStyle='#0b0f14';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle='#2a3a4a';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText('h',pad.l+pw/2,H-2);
+  ctx.save();ctx.translate(9,pad.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('f(h)',0,0);ctx.restore();
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+updateStats();drawCharts();
+requestAnimationFrame(animFrame);
+window.addEventListener('resize',()=>{boats=[];portFish=0;portFishDisplay=0;drawCharts();});
+setTimeout(()=>{if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise();},600);
+</script>
+</body>
+</html>
