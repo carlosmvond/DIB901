@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradiente — f(x,y) = x² + 2y²</title>
+<script>
+MathJax={tex:{inlineMath:[['\\(','\\)']]},options:{skipHtmlTags:['script','noscript','style','textarea']},startup:{typeset:false}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#07090d;
+  --surface:#0d1117;
+  --surface2:#131b24;
+  --border:#1c2a38;
+  --border2:#243447;
+  --text:#c8d8e8;
+  --muted:#4a6378;
+  --accent:#e8c86a;
+  --accent2:#6ad4e8;
+  --red:#e86a6a;
+  --green:#6ae8a4;
+  --mono:'Space Mono',monospace;
+  --serif:'Lora',Georgia,serif;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--serif);
+  padding:1rem;
+  max-width:580px;
+  margin:0 auto;
+  min-height:100vh;
+  font-size:14px;
+  line-height:1.6;
+}
+
+h1{
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:400;
+  color:var(--muted);
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  margin-bottom:1.2rem;
+  padding-bottom:0.6rem;
+  border-bottom:0.5px solid var(--border);
+}
+
+.card{
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:10px;
+  padding:1rem;
+  margin-bottom:10px;
+}
+
+.card-title{
+  font-family:var(--mono);
+  font-size:9px;
+  font-weight:700;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:0.14em;
+  margin-bottom:0.75rem;
+}
+
+/* tabs */
+.tabs{display:flex;gap:4px;margin-bottom:10px}
+.tab{
+  flex:1;padding:7px 6px;font-size:10px;
+  border-radius:7px;cursor:pointer;
+  font-family:var(--mono);
+  border:0.5px solid var(--border);
+  background:var(--bg);color:var(--muted);
+  transition:all 0.15s;text-align:center;
+}
+.tab.active{background:var(--surface2);border-color:var(--accent2);color:var(--accent2)}
+
+/* info blocks */
+.formula-block{
+  background:var(--surface2);
+  border-left:2px solid var(--accent);
+  border-radius:0 6px 6px 0;
+  padding:0.6rem 0.9rem;
+  margin:0.7rem 0;
+  font-size:13px;
+  text-align:center;
+}
+
+.prop-row{
+  display:grid;
+  grid-template-columns:18px 1fr;
+  gap:6px 10px;
+  align-items:start;
+  margin:6px 0;
+  font-size:12px;
+  line-height:1.7;
+}
+.prop-num{
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--accent);
+  font-weight:700;
+  margin-top:4px;
+}
+
+/* 3D canvas */
+#canvas3d{
+  width:100%;
+  height:360px;
+  border-radius:8px;
+  cursor:grab;
+  display:block;
+  background:var(--bg);
+  border:0.5px solid var(--border);
+}
+#canvas3d:active{cursor:grabbing}
+
+/* 2D canvas */
+#canvas2d{
+  width:100%;
+  aspect-ratio:1;
+  border-radius:8px;
+  cursor:crosshair;
+  display:block;
+  background:var(--bg);
+  border:0.5px solid var(--border);
+  touch-action:none;
+}
+
+/* info panel below 2D */
+#grad-info{
+  margin-top:8px;
+  padding:0.65rem 0.9rem;
+  background:var(--surface2);
+  border-radius:7px;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text);
+  line-height:2;
+  min-height:68px;
+}
+#grad-info .lbl{color:var(--muted)}
+#grad-info .vg{color:var(--accent)}
+#grad-info .vr{color:var(--red)}
+#grad-info .vc{color:var(--accent2)}
+#grad-info .vs{color:var(--green)}
+
+/* legend */
+.legend{
+  display:flex;gap:14px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:9px;color:var(--muted);
+  margin-top:8px;
+}
+.legend span{display:flex;align-items:center;gap:5px}
+.ldot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.lseg{width:16px;height:2px;border-radius:1px;display:inline-block}
+.ldash{width:16px;height:0;border-top:2px dashed;display:inline-block}
+
+/* hint */
+.hint{
+  font-family:var(--mono);font-size:9px;color:var(--muted);
+  text-align:center;margin-bottom:6px;
+  animation:pulse 2.5s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:0.5}50%{opacity:1}}
+
+/* 3D controls hint */
+.ctrl-hint{
+  font-family:var(--mono);font-size:9px;color:var(--muted);
+  text-align:center;margin-top:5px;
+}
+</style>
+</head>
+<body>
+
+<h1>Gradiente — visualización geométrica</h1>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" id="tab-2d" onclick="setTab('2d')">Vista 2D</div>
+  <div class="tab"        id="tab-3d" onclick="setTab('3d')">Superficie 3D</div>
+  <div class="tab"        id="tab-teoria" onclick="setTab('teoria')">Teoría</div>
+</div>
+
+<!-- ═══ 2D PANEL ═══ -->
+<div id="panel-2d">
+  <div class="card">
+    <div class="card-title">Curvas de nivel + vector gradiente</div>
+    <p class="hint">toca o haz clic en cualquier punto del mapa</p>
+    <canvas id="canvas2d"></canvas>
+    <div id="grad-info">
+      <span class="lbl">selecciona un punto para ver ∇f</span>
+    </div>
+    <div class="legend">
+      <span><span class="ldot" style="background:#6ad4e8"></span>curvas de nivel</span>
+      <span><span class="lseg" style="background:#e86a6a"></span>∇f (gradiente)</span>
+      <span><span class="ldash" style="border-color:#6ae8a4"></span>tangente al nivel</span>
+      <span><span class="ldot" style="background:#e8c86a"></span>punto elegido</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 3D PANEL ═══ -->
+<div id="panel-3d" style="display:none">
+  <div class="card">
+    <div class="card-title">Superficie — punto sincronizado con mapa 2D</div>
+    <canvas id="canvas3d"></canvas>
+    <p class="ctrl-hint">arrastrar para rotar · scroll para zoom</p>
+    <div class="legend" style="margin-top:10px">
+      <span><span class="lseg" style="background:#e86a6a"></span>∇f proyectado (plano)</span>
+      <span><span class="lseg" style="background:#ff9955"></span>∇f sobre superficie</span>
+      <span><span class="ldash" style="border-color:#6ae8a4"></span>tangente al nivel</span>
+      <span><span class="ldot" style="background:#e8c86a"></span>punto (x₀,y₀)</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TEORÍA PANEL ═══ -->
+<div id="panel-teoria" style="display:none">
+  <div class="card">
+    <div class="card-title">La función</div>
+    <div style="font-size:13px;line-height:1.9;color:var(--text)">
+      <p>Trabajamos con el paraboloide elíptico:</p>
+      <div class="formula-block">\(f(x,y) = x^2 + 2y^2\)</div>
+      <p>Sus derivadas parciales son:</p>
+      <div class="formula-block">\(\dfrac{\partial f}{\partial x} = 2x \qquad \dfrac{\partial f}{\partial y} = 4y\)</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">El gradiente</div>
+    <div style="font-size:13px;line-height:1.9;color:var(--text)">
+      <div class="formula-block">\(\nabla f = \left(\frac{\partial f}{\partial x},\, \frac{\partial f}{\partial y}\right) = (2x,\; 4y)\)</div>
+      <p>El gradiente tiene tres propiedades geométricas fundamentales:</p>
+
+      <div class="prop-row" style="margin-top:10px">
+        <span class="prop-num">01</span>
+        <span><strong style="color:var(--accent)">Dirección de máximo crecimiento.</strong> El gradiente apunta en la dirección en que \(f\) crece más rápidamente desde el punto \((x_0, y_0)\).</span>
+      </div>
+      <div class="prop-row">
+        <span class="prop-num">02</span>
+        <span><strong style="color:var(--accent)">Perpendicularidad a las curvas de nivel.</strong> Las curvas de nivel son las elipses \(f(x,y)=c\). El gradiente siempre es perpendicular a ellas en el punto de evaluación.</span>
+      </div>
+      <div class="prop-row">
+        <span class="prop-num">03</span>
+        <span><strong style="color:var(--accent)">Magnitud = tasa de cambio máxima.</strong> \(|\nabla f|\) es la tasa de cambio máxima de \(f\) en ese punto. Si el gradiente es grande, la superficie sube empinadamente.</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Derivada direccional</div>
+    <div style="font-size:13px;line-height:1.9;color:var(--text)">
+      <p>En cualquier dirección unitaria \(\hat{u}\), la tasa de cambio de \(f\) es:</p>
+      <div class="formula-block">\(D_{\hat u}\,f = \nabla f \cdot \hat{u} = |\nabla f|\cos\theta\)</div>
+      <p>Es máxima cuando \(\hat{u}\) apunta en la dirección de \(\nabla f\) (con \(\theta=0\)), y cero cuando \(\hat{u}\) es tangente a la curva de nivel (\(\theta=90°\)).</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════
+let activeTab = '2d';
+let scene3dInit = false;
+
+function setTab(t) {
+  activeTab = t;
+  ['2d','3d','teoria'].forEach(tt => {
+    document.getElementById('panel-'+tt).style.display = tt===t ? 'block' : 'none';
+    document.getElementById('tab-'+tt).className = 'tab' + (tt===t ? ' active' : '');
+  });
+  if (t === '3d' && !scene3dInit) { init3D(); scene3dInit = true; }
+  if (t === 'teoria') setTimeout(() => { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise(); }, 200);
+}
+
+// ══════════════════════════════════════════════════════
+// FUNCIONES
+// ══════════════════════════════════════════════════════
+const f   = (x, y) => x*x + 2*y*y;
+const gx  = (x, y) => 2*x;
+const gy  = (x, y) => 4*y;
+
+// ══════════════════════════════════════════════════════
+// 2D CANVAS
+// ══════════════════════════════════════════════════════
+const c2 = document.getElementById('canvas2d');
+let pointX = 1.2, pointY = 0.8;
+
+const DOMAIN = 3.0;
+
+function canvasSize() {
+  return c2.getBoundingClientRect().width;
+}
+
+function toCanvas(x, y, sz) {
+  return [
+    sz/2 + (x / DOMAIN) * sz/2,
+    sz/2 - (y / DOMAIN) * sz/2
+  ];
+}
+
+function fromCanvas(cx, cy, sz) {
+  return [
+    (cx - sz/2) / (sz/2) * DOMAIN,
+    -(cy - sz/2) / (sz/2) * DOMAIN
+  ];
+}
+
+function drawArrow(ctx, x1, y1, x2, y2, color, lw) {
+  const dx = x2-x1, dy = y2-y1;
+  const len = Math.sqrt(dx*dx+dy*dy);
+  if (len < 2) return;
+  const ang = Math.atan2(dy, dx), hs = 9;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - hs*Math.cos(ang-0.42), y2 - hs*Math.sin(ang-0.42));
+  ctx.lineTo(x2 - hs*Math.cos(ang+0.42), y2 - hs*Math.sin(ang+0.42));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function draw2D() {
+  const sz = canvasSize();
+  const dpr = devicePixelRatio || 1;
+  c2.width = sz * dpr;
+  c2.height = sz * dpr;
+  const ctx = c2.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  // background
+  ctx.fillStyle = '#07090d';
+  ctx.fillRect(0, 0, sz, sz);
+
+  // subtle grid
+  ctx.strokeStyle = 'rgba(28,42,56,0.8)';
+  ctx.lineWidth = 0.5;
+  for (let v = -3; v <= 3; v++) {
+    const [cx] = toCanvas(v, 0, sz);
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, sz); ctx.stroke();
+    const [, cy] = toCanvas(0, v, sz);
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(sz, cy); ctx.stroke();
+  }
+
+  // axes
+  ctx.strokeStyle = 'rgba(74,99,120,0.6)';
+  ctx.lineWidth = 1;
+  const [ax0, ay0] = toCanvas(-DOMAIN, 0, sz);
+  const [ax1, ay1] = toCanvas( DOMAIN, 0, sz);
+  ctx.beginPath(); ctx.moveTo(ax0,ay0); ctx.lineTo(ax1,ay1); ctx.stroke();
+  const [bx0, by0] = toCanvas(0, -DOMAIN, sz);
+  const [bx1, by1] = toCanvas(0,  DOMAIN, sz);
+  ctx.beginPath(); ctx.moveTo(bx0,by0); ctx.lineTo(bx1,by1); ctx.stroke();
+
+  // axis labels
+  ctx.fillStyle = 'rgba(74,99,120,0.8)';
+  ctx.font = `${Math.round(sz*0.028)}px Space Mono, monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('x', ax1 - 8, ay0 + 13);
+  ctx.textAlign = 'left';
+  ctx.fillText('y', bx1 + 5, by1 + 12);
+
+  // contour levels
+  const levels = [0.5, 1, 2, 3.5, 5, 7, 9, 12];
+  const nSteps = 400;
+  levels.forEach((lv, li) => {
+    const alpha = 0.3 + 0.55 * li / levels.length;
+    ctx.strokeStyle = `rgba(106,212,232,${alpha})`;
+    ctx.lineWidth = 1 + li * 0.1;
+    ctx.beginPath();
+    let started = false;
+    for (let s = 0; s <= nSteps; s++) {
+      const theta = 2 * Math.PI * s / nSteps;
+      const a = Math.sqrt(lv), b = Math.sqrt(lv / 2);
+      const x = a * Math.cos(theta), y = b * Math.sin(theta);
+      const [cx, cy] = toCanvas(x, y, sz);
+      if (cx < 0 || cx > sz || cy < 0 || cy > sz) { started = false; continue; }
+      if (!started) { ctx.moveTo(cx, cy); started = true; }
+      else ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  });
+
+  // gradient field (subtle arrows)
+  const gridN = 9;
+  for (let i = 0; i <= gridN; i++) {
+    for (let j = 0; j <= gridN; j++) {
+      const fx = -DOMAIN + i / gridN * 2 * DOMAIN;
+      const fy = -DOMAIN + j / gridN * 2 * DOMAIN;
+      const vx = gx(fx, fy), vy = gy(fx, fy);
+      const m = Math.sqrt(vx*vx + vy*vy);
+      if (m < 0.05) continue;
+      const sc = 0.18;
+      const [sx, sy] = toCanvas(fx, fy, sz);
+      const [ex, ey] = toCanvas(fx + vx/m*sc, fy + vy/m*sc, sz);
+      const alph = 0.12 + 0.18 * Math.min(m / 10, 1);
+      ctx.globalAlpha = alph;
+      drawArrow(ctx, sx, sy, ex, ey, '#6ad4e8', 0.8);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // selected point
+  const px = pointX, py = pointY;
+  const dgx = gx(px, py), dgy = gy(px, py);
+  const mag = Math.sqrt(dgx*dgx + dgy*dgy) || 1;
+  const scale = 0.55;
+  const ex = px + dgx * scale, ey = py + dgy * scale;
+  const [pcx, pcy] = toCanvas(px, py, sz);
+  const [ecx, ecy] = toCanvas(ex, ey, sz);
+
+  // tangent line
+  const tnx = -dgy / mag, tny = dgx / mag;
+  const ts = 0.7;
+  const [tx0, ty0] = toCanvas(px - tnx*ts, py - tny*ts, sz);
+  const [tx1, ty1] = toCanvas(px + tnx*ts, py + tny*ts, sz);
+  ctx.save();
+  ctx.strokeStyle = '#6ae8a4';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(tx0, ty0); ctx.lineTo(tx1, ty1); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // gradient arrow
+  drawArrow(ctx, pcx, pcy, ecx, ecy, '#e86a6a', 3);
+
+  // point glow
+  const grad = ctx.createRadialGradient(pcx, pcy, 0, pcx, pcy, 14);
+  grad.addColorStop(0, 'rgba(232,200,106,0.35)');
+  grad.addColorStop(1, 'rgba(232,200,106,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(pcx, pcy, 14, 0, Math.PI*2); ctx.fill();
+
+  // point dot
+  ctx.fillStyle = '#e8c86a';
+  ctx.strokeStyle = '#07090d';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(pcx, pcy, 5.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+
+  // perp mark (small square at base of arrow)
+  const perpLen = 7;
+  const ux = dgx/mag, uy = dgy/mag;
+  const vx2 = -uy, vy2 = ux;
+  const [cx1] = toCanvas(px + ux*0.04 + vx2*0.04, py + uy*0.04 + vy2*0.04, sz);
+  // draw right-angle symbol
+  ctx.save();
+  ctx.strokeStyle = 'rgba(106,232,164,0.55)';
+  ctx.lineWidth = 1;
+  const pxS = pcx + (ux * perpLen * 0.45);
+  const pyS = pcy - (uy * perpLen * 0.45);
+  const dx1 = -uy * perpLen * 0.55, dy1 = ux * perpLen * 0.55;
+  const dx2 = ux * perpLen * 0.55, dy2 = -uy * perpLen * 0.55;
+  ctx.beginPath();
+  ctx.moveTo(pxS + dx1, pyS - dy1);
+  ctx.lineTo(pxS + dx1 + dx2, pyS - dy1 - dy2);
+  ctx.lineTo(pxS + dx2, pyS - dy2);
+  ctx.stroke();
+  ctx.restore();
+
+  // update info
+  const fval = f(px, py);
+  document.getElementById('grad-info').innerHTML =
+    `<span class="lbl">punto &nbsp;</span><span class="vc">(${px.toFixed(2)}, ${py.toFixed(2)})</span>&nbsp;&nbsp;` +
+    `<span class="lbl">f =</span> <span class="vs">${fval.toFixed(3)}</span><br>` +
+    `<span class="lbl">∇f &nbsp;&nbsp;&nbsp;</span><span class="vg">(2x, 4y)</span> <span class="lbl">=</span> ` +
+    `<span class="vr">(${dgx.toFixed(3)}, ${dgy.toFixed(3)})</span>&nbsp;&nbsp;` +
+    `<span class="lbl">|∇f| =</span> <span class="vr">${mag.toFixed(3)}</span>`;
+}
+
+// ── pointer events ──
+function handlePointer(e) {
+  e.preventDefault();
+  const rect = c2.getBoundingClientRect();
+  const sz = rect.width;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const cx = clientX - rect.left;
+  const cy = clientY - rect.top;
+  const [x, y] = fromCanvas(cx, cy, sz);
+  const clamped = DOMAIN * 0.97;
+  pointX = Math.max(-clamped, Math.min(clamped, x));
+  pointY = Math.max(-clamped, Math.min(clamped, y));
+  draw2D();
+}
+
+c2.addEventListener('click', handlePointer);
+c2.addEventListener('touchstart', handlePointer, {passive:false});
+c2.addEventListener('touchmove', handlePointer, {passive:false});
+c2.addEventListener('mousemove', e => { if (e.buttons) handlePointer(e); });
+
+// ══════════════════════════════════════════════════════
+// 3D — Three.js (mejorado)
+// ══════════════════════════════════════════════════════
+function init3D() {
+  const c3 = document.getElementById('canvas3d');
+  const W = c3.getBoundingClientRect().width;
+  const H = 360;
+  c3.style.height = H + 'px';
+
+  const renderer = new THREE.WebGLRenderer({canvas: c3, antialias: true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x07090d, 1);
+  renderer.shadowMap.enabled = true;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(42, W/H, 0.1, 200);
+
+  // ── Surface ──
+  const FMAX = 10; // clip height
+  const RANGE = 2.5;
+  const seg = 100;
+  const geom = new THREE.PlaneGeometry(RANGE*2, RANGE*2, seg, seg);
+  geom.rotateX(-Math.PI/2);
+  const pos = geom.attributes.position;
+
+  // vertex colors: viridis-like  deep-blue → teal → green → yellow
+  const colArr = [];
+  const tmpCol = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const raw = x*x + 2*z*z;
+    const y = Math.min(raw, FMAX);
+    pos.setY(i, y);
+    const t = y / FMAX;
+    // viridis approximation
+    const r = Math.max(0, Math.min(1, -0.6+2.8*t*t));
+    const g = Math.max(0, Math.min(1, 0.1+1.4*t - 0.8*t*t));
+    const b = Math.max(0, Math.min(1, 0.55 - 1.1*t + 0.6*t*t));
+    colArr.push(r, g, b);
+  }
+  pos.needsUpdate = true;
+  geom.computeVertexNormals();
+  geom.setAttribute('color', new THREE.Float32BufferAttribute(colArr, 3));
+
+  const surfMat = new THREE.MeshPhongMaterial({
+    vertexColors: true,
+    shininess: 80,
+    specular: new THREE.Color(0x334455),
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.88,
+  });
+  const surfMesh = new THREE.Mesh(geom, surfMat);
+  scene.add(surfMesh);
+
+  // subtle wireframe on top
+  const wGeom = new THREE.PlaneGeometry(RANGE*2, RANGE*2, 28, 28);
+  wGeom.rotateX(-Math.PI/2);
+  const wPos = wGeom.attributes.position;
+  for (let i = 0; i < wPos.count; i++) {
+    const x = wPos.getX(i), z = wPos.getZ(i);
+    wPos.setY(i, Math.min(x*x+2*z*z, FMAX) + 0.01);
+  }
+  wPos.needsUpdate = true;
+  scene.add(new THREE.Mesh(wGeom,
+    new THREE.MeshBasicMaterial({color:0x0a1824, wireframe:true, transparent:true, opacity:0.22})));
+
+  // ── XY base plane ──
+  const basePlaneGeom = new THREE.PlaneGeometry(RANGE*2, RANGE*2);
+  basePlaneGeom.rotateX(-Math.PI/2);
+  const baseMat = new THREE.MeshBasicMaterial({
+    color: 0x0d1520,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.85,
+  });
+  const basePlane = new THREE.Mesh(basePlaneGeom, baseMat);
+  basePlane.position.y = -0.01;
+  scene.add(basePlane);
+
+  // base grid lines
+  const gridMat = new THREE.LineBasicMaterial({color: 0x1a2e42, transparent:true, opacity:0.6});
+  for (let v = -RANGE; v <= RANGE+0.01; v += 0.5) {
+    const pts1 = [new THREE.Vector3(-RANGE, 0, v), new THREE.Vector3(RANGE, 0, v)];
+    const pts2 = [new THREE.Vector3(v, 0, -RANGE), new THREE.Vector3(v, 0, RANGE)];
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts1), gridMat));
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2), gridMat));
+  }
+
+  // ── Contour curves on base plane ──
+  const contourLevels = [0.3, 0.8, 1.5, 2.5, 4, 6, 8.5];
+  const contourColors = [0x1a5a8a, 0x1a7a9a, 0x1a9a8a, 0x2aaa6a, 0x6ab84a, 0xb8a42a, 0xe8842a];
+  contourLevels.forEach((lv, li) => {
+    const pts = [];
+    const nS = 300;
+    const a = Math.sqrt(lv), b = Math.sqrt(lv/2);
+    if (a > RANGE * 1.05) return;
+    for (let s = 0; s <= nS; s++) {
+      const theta = 2*Math.PI*s/nS;
+      const x = a*Math.cos(theta), z = b*Math.sin(theta);
+      if (Math.abs(x) <= RANGE*1.01 && Math.abs(z) <= RANGE*1.01)
+        pts.push(new THREE.Vector3(x, 0.02, z));
+    }
+    if (pts.length > 2) {
+      const cMat = new THREE.LineBasicMaterial({color: contourColors[li], transparent:true, opacity:0.75});
+      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), cMat));
+    }
+  });
+
+  // base axes
+  const axMat = new THREE.LineBasicMaterial({color:0x3a6080, transparent:true, opacity:0.7});
+  [[[-RANGE,0,0],[RANGE,0,0]],[[0,0,-RANGE],[0,0,RANGE]]].forEach(pts => {
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p=>new THREE.Vector3(...p))), axMat));
+  });
+
+  // axis labels via sprites
+  function makeLabel(text, pos3) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64; canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0,0,64,32);
+    ctx.fillStyle = '#4a7a9a';
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, 32, 16);
+    const tex = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true}));
+    sprite.position.set(...pos3);
+    sprite.scale.set(0.5, 0.25, 1);
+    scene.add(sprite);
+  }
+  makeLabel('x', [RANGE+0.3, 0.05, 0]);
+  makeLabel('y', [0, 0.05, -(RANGE+0.3)]);
+
+  // ── Lights ──
+  scene.add(new THREE.AmbientLight(0x304050, 3.5));
+  const dl1 = new THREE.DirectionalLight(0xaaddff, 2.2);
+  dl1.position.set(5, 12, 6);
+  scene.add(dl1);
+  const dl2 = new THREE.DirectionalLight(0xffd080, 0.8);
+  dl2.position.set(-5, 4, -4);
+  scene.add(dl2);
+  const dl3 = new THREE.DirectionalLight(0x6080ff, 0.5);
+  dl3.position.set(0, -5, 0);
+  scene.add(dl3);
+
+  // ── Dynamic elements (point + arrows) ──
+  let dynGroup = null;
+
+  function updateDynamic() {
+    if (dynGroup) scene.remove(dynGroup);
+    dynGroup = new THREE.Group();
+
+    const px = pointX, pz = pointY;
+    const py = Math.min(f(px, pz), FMAX - 0.1);
+    const vx = gx(px, pz), vz = gy(px, pz);
+    const mag3 = Math.sqrt(vx*vx + vz*vz) || 1;
+    const arrowLen = Math.min(0.9, 0.35 * mag3);
+
+    // — vertical dashed line from base to point —
+    const vLinePts = [];
+    const nSeg = 20;
+    for (let i = 0; i <= nSeg; i++) vLinePts.push(new THREE.Vector3(px, py*i/nSeg, pz));
+    const vLineMat = new THREE.LineBasicMaterial({color:0xe8c86a, transparent:true, opacity:0.55});
+    dynGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(vLinePts), vLineMat));
+
+    // — projection dot on base plane —
+    const projGeom = new THREE.CircleGeometry(0.07, 24);
+    projGeom.rotateX(-Math.PI/2);
+    const projMesh = new THREE.Mesh(projGeom, new THREE.MeshBasicMaterial({color:0xe8c86a, transparent:true, opacity:0.5}));
+    projMesh.position.set(px, 0.03, pz);
+    dynGroup.add(projMesh);
+
+    // — gradient arrow on BASE plane (projected) —
+    const baseArrowDir = new THREE.Vector3(vx/mag3, 0, vz/mag3);
+    const baseArrow = new THREE.ArrowHelper(baseArrowDir,
+      new THREE.Vector3(px, 0.04, pz),
+      arrowLen, 0xe86a6a, arrowLen*0.3, arrowLen*0.18);
+    dynGroup.add(baseArrow);
+
+    // — tangent on base plane —
+    const tnx = -vz/mag3, tnz = vx/mag3;
+    const tLen = 0.8;
+    const tPts = [
+      new THREE.Vector3(px - tnx*tLen, 0.04, pz - tnz*tLen),
+      new THREE.Vector3(px + tnx*tLen, 0.04, pz + tnz*tLen),
+    ];
+    const tMat = new THREE.LineBasicMaterial({color:0x6ae8a4, transparent:true, opacity:0.8});
+    dynGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(tPts), tMat));
+
+    // — gradient arrow on SURFACE (along slope, uphill) —
+    // slope direction: the gradient in xz plane becomes uphill on the surface
+    const slopeDir = new THREE.Vector3(vx, vx*2*px + vz*4*pz, vz);
+    slopeDir.normalize();
+    const surfArrow = new THREE.ArrowHelper(slopeDir,
+      new THREE.Vector3(px, py, pz),
+      arrowLen * 1.1, 0xff9955, arrowLen*0.3, arrowLen*0.18);
+    dynGroup.add(surfArrow);
+
+    // — sphere on surface —
+    const sg = new THREE.SphereGeometry(0.09, 20, 20);
+    const sm = new THREE.MeshPhongMaterial({color:0xe8c86a, emissive:0x806010, shininess:120});
+    const sp = new THREE.Mesh(sg, sm);
+    sp.position.set(px, py, pz);
+    dynGroup.add(sp);
+
+    scene.add(dynGroup);
+  }
+
+  // ── Orbit controls ──
+  let isDragging = false, prevMouse = {x:0,y:0};
+  let spherical = {theta: 0.65, phi: 0.72, r: 11};
+
+  function updateCamera() {
+    camera.position.x = spherical.r * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+    camera.position.y = spherical.r * Math.cos(spherical.phi);
+    camera.position.z = spherical.r * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+    camera.lookAt(0, 2, 0);
+  }
+  updateCamera();
+
+  c3.addEventListener('mousedown', e => { isDragging=true; prevMouse={x:e.clientX,y:e.clientY}; });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    spherical.theta -= (e.clientX - prevMouse.x) * 0.007;
+    spherical.phi = Math.max(0.12, Math.min(Math.PI*0.46, spherical.phi + (e.clientY - prevMouse.y)*0.007));
+    prevMouse = {x:e.clientX, y:e.clientY};
+    updateCamera();
+  });
+  window.addEventListener('mouseup', () => isDragging = false);
+  c3.addEventListener('wheel', e => {
+    spherical.r = Math.max(5, Math.min(22, spherical.r + e.deltaY*0.018));
+    updateCamera(); e.preventDefault();
+  }, {passive:false});
+  let lastTouch = null;
+  c3.addEventListener('touchstart', e => { lastTouch = e.touches[0]; }, {passive:true});
+  c3.addEventListener('touchmove', e => {
+    if (!lastTouch) return;
+    const t = e.touches[0];
+    spherical.theta -= (t.clientX - lastTouch.clientX)*0.007;
+    spherical.phi = Math.max(0.12, Math.min(Math.PI*0.46, spherical.phi + (t.clientY - lastTouch.clientY)*0.007));
+    lastTouch = t; updateCamera(); e.preventDefault();
+  }, {passive:false});
+
+  function animate() {
+    requestAnimationFrame(animate);
+    updateDynamic();
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+draw2D();
+window.addEventListener('resize', draw2D);
+setTimeout(() => { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise(); }, 600);
+</script>
+</body>
+</html>
