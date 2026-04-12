@@ -334,7 +334,7 @@ input[type=range] {
 /* ── STATS BAR ── */
 .stats-bar {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 6px;
   padding: 6px 8px;
   border-top: 1px solid var(--border);
@@ -342,7 +342,7 @@ input[type=range] {
 }
 
 @media (max-width: 767px) {
-  .stats-bar { grid-template-columns: repeat(5, 1fr); padding: 6px; }
+  .stats-bar { grid-template-columns: repeat(3, 1fr); padding: 6px; }
 }
 
 .stat {
@@ -654,8 +654,8 @@ input[type=range] {
         <button class="mode-btn" id="d-mode-fn" onclick="setDMode('fn')">f(t)</button>
       </div>
       <div id="d-slider-ctrl" class="ctrl-item">
-        <div class="ctrl-label">D (d⁻¹) <span class="val" id="d-val">0.00</span></div>
         <input type="range" id="d-slider" min="0" max="2" step="0.01" value="0" oninput="updateDSlider()">
+        <div class="ctrl-label" style="margin-top:3px;margin-bottom:0">D (d⁻¹) <span class="val" id="d-val">0.00</span></div>
       </div>
       <div id="d-fn-ctrl" style="display:none">
         <div class="ctrl-label" style="margin-bottom:3px">D(t) =</div>
@@ -672,8 +672,8 @@ input[type=range] {
         <button class="mode-btn" id="i-mode-fn" onclick="setIMode('fn')">f(t)</button>
       </div>
       <div id="i-slider-ctrl" class="ctrl-item">
-        <div class="ctrl-label">µmol/m²s <span class="val" id="i-val">200</span></div>
         <input type="range" id="i-slider" min="50" max="1000" step="10" value="200" oninput="updateISlider()">
+        <div class="ctrl-label" style="margin-top:3px;margin-bottom:0">µmol/m²s <span class="val" id="i-val">200</span></div>
       </div>
       <div id="i-fn-ctrl" style="display:none">
         <div class="ctrl-label" style="margin-bottom:3px">I₀(t) =</div>
@@ -690,8 +690,8 @@ input[type=range] {
         <button class="mode-btn" id="t-mode-fn" onclick="setTMode('fn')">f(t)</button>
       </div>
       <div id="t-slider-ctrl" class="ctrl-item">
-        <div class="ctrl-label">°C <span class="val" id="t-val">25</span></div>
         <input type="range" id="t-slider" min="10" max="40" step="0.5" value="25" oninput="updateTSlider()">
+        <div class="ctrl-label" style="margin-top:3px;margin-bottom:0">°C <span class="val" id="t-val">25</span></div>
       </div>
       <div id="t-fn-ctrl" style="display:none">
         <div class="ctrl-label" style="margin-bottom:3px">T(t) =</div>
@@ -710,8 +710,8 @@ input[type=range] {
         <button class="mode-btn" id="tm-mode-infinite" onclick="setTmMode('infinite')">∞</button>
       </div>
       <div id="tmax-ctrl" class="ctrl-item">
-        <div class="ctrl-label">Final (d) <span class="val" id="tmax-val">15</span></div>
         <input type="range" id="tmax-slider" min="1" max="60" step="1" value="15" oninput="updateTmax()">
+        <div class="ctrl-label" style="margin-top:3px;margin-bottom:0">Final (d) <span class="val" id="tmax-val">15</span></div>
       </div>
       <div class="toggle-row" style="margin-top:5px">
         <label class="toggle"><input type="checkbox" id="noise-chk"><span class="slider-t"></span></label>
@@ -738,9 +738,11 @@ input[type=range] {
         <div class="chart-card"><div class="chart-title" style="color:#fbbf24">Q — Cuota N</div><canvas id="chart-Q"></canvas></div>
         <div class="chart-card"><div class="chart-title" style="color:#f87171">S — Sustrato</div><canvas id="chart-S"></canvas></div>
         <div class="chart-card"><div class="chart-title" style="color:#4ade80">Chl — Clorofila</div><canvas id="chart-Chl"></canvas></div>
+        <div class="chart-card"><div class="chart-title" style="color:#a78bfa">μ — Crec.</div><canvas id="chart-mu"></canvas></div>
+        <div class="chart-card"><div class="chart-title" style="color:#34d399">ρ — Capt. N</div><canvas id="chart-rho"></canvas></div>
         <div class="chart-card"><div class="chart-title" style="color:#2dd4bf">D(t) — Dilución</div><canvas id="chart-D"></canvas></div>
-        <div class="chart-card"><div class="chart-title" style="color:#fbbf24">I₀(t) — Irradiancia</div><canvas id="chart-I0"></canvas></div>
-        <div class="chart-card" style="grid-column: span 2"><div class="chart-title" style="color:#fb923c">T(t) — Temperatura</div><canvas id="chart-T"></canvas></div>
+        <div class="chart-card"><div class="chart-title" style="color:#fb923c">I₀(t) — Irrad.</div><canvas id="chart-I0"></canvas></div>
+        <div class="chart-card"><div class="chart-title" style="color:#f472b6">T(t) — Temp.</div><canvas id="chart-T"></canvas></div>
       </div>
     </div>
     <div class="time-bar-wrap">
@@ -753,7 +755,8 @@ input[type=range] {
       <div class="stat"><div class="lbl">Q·cuota N</div><div class="num" style="color:#fbbf24" id="st-Q">—</div><div class="unit">g_N/g_X</div></div>
       <div class="stat"><div class="lbl">S·sustrato</div><div class="num" style="color:#f87171" id="st-S">—</div><div class="unit">g_N/m³</div></div>
       <div class="stat"><div class="lbl">Chl</div><div class="num" style="color:#4ade80" id="st-Chl">—</div><div class="unit">g_Chl/m³</div></div>
-      <div class="stat"><div class="lbl">μ·crec</div><div class="num" style="color:#2dd4bf" id="st-mu">—</div><div class="unit">d⁻¹</div></div>
+      <div class="stat"><div class="lbl">μ·crec</div><div class="num" style="color:#a78bfa" id="st-mu">—</div><div class="unit">d⁻¹</div></div>
+      <div class="stat"><div class="lbl">ρ·capt N</div><div class="num" style="color:#34d399" id="st-rho">—</div><div class="unit">g_N/g_X/d</div></div>
     </div>
   </div>
 </div>
@@ -884,10 +887,11 @@ input[type=range] {
       <div class="history-chart-card"><div class="chart-title" style="color:#fbbf24">Q — Cuota N</div><canvas id="h-chart-Q"></canvas></div>
       <div class="history-chart-card"><div class="chart-title" style="color:#f87171">S — Sustrato</div><canvas id="h-chart-S"></canvas></div>
       <div class="history-chart-card"><div class="chart-title" style="color:#4ade80">Chl — Clorofila</div><canvas id="h-chart-Chl"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#a78bfa">μ — Crec.</div><canvas id="h-chart-mu"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#34d399">ρ — Capt. N</div><canvas id="h-chart-rho"></canvas></div>
       <div class="history-chart-card"><div class="chart-title" style="color:#2dd4bf">D(t) — Dilución</div><canvas id="h-chart-D"></canvas></div>
-      <div class="history-chart-card"><div class="chart-title" style="color:#fbbf24">I₀(t) — Irradiancia</div><canvas id="h-chart-I0"></canvas></div>
-      <div class="history-chart-card" style="grid-column: span 2"><div class="chart-title" style="color:#fb923c">T(t) — Temperatura</div><canvas id="h-chart-T"></canvas></div>
-      <div class="history-chart-card"><div class="chart-title" style="color:#a78bfa">μ(t) — Tasa de crec.</div><canvas id="h-chart-mu"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#fb923c">I₀(t) — Irradiancia</div><canvas id="h-chart-I0"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#f472b6">T(t) — Temperatura</div><canvas id="h-chart-T"></canvas></div>
     </div>
   </div>
 </div>
@@ -967,7 +971,7 @@ function odeRHS(X,Q,S,Is,t,p){
     dQ: r - m*(Q-p.Q0) - D*(Q - p.Q0),
     dS: -r*X + D*(Sin - S),
     dIs: m*(Ia - Is),
-    mu: m, I0, D, T
+    mu: m, rho: r, I0, D, T
   };
 }
 
@@ -1026,12 +1030,12 @@ function runSim(){
     // Pre-calculate all steps then animate through them
     const steps = Math.round(tmax / SIM_DT);
     let X=ic.X0, Q=ic.Q0ic, S=ic.S0, Is=ic.Istar0;
-    const ts=[],Xs=[],Qs=[],Ss=[],Chls=[],mus=[],I0s=[],Ds=[],Ts=[];
+    const ts=[],Xs=[],Qs=[],Ss=[],Chls=[],mus=[],rhos=[],I0s=[],Ds=[],Ts=[];
     for(let i=0;i<=steps;i++){
       ts.push(i*SIM_DT); Xs.push(X); Qs.push(Q); Ss.push(S);
       Chls.push(chl(X,Q,Is,params));
       const rhs=odeRHS(X,Q,S,Is,i*SIM_DT,params);
-      mus.push(rhs.mu); I0s.push(rhs.I0); Ds.push(rhs.D); Ts.push(rhs.T);
+      mus.push(rhs.mu); rhos.push(rhs.rho); I0s.push(rhs.I0); Ds.push(rhs.D); Ts.push(rhs.T);
       if(i<steps){ const n=rk4step(X,Q,S,Is,i*SIM_DT,params,SIM_DT); X=n.X; Q=n.Q; S=n.S; Is=n.Is; }
     }
     const showNoise=document.getElementById('noise-chk').checked;
@@ -1041,7 +1045,7 @@ function runSim(){
       Qs: showNoise?addNoise(Qs,0.05,22):Qs, rawQs:Qs,
       Ss: showNoise?addNoise(Ss,0.05,33):Ss, rawSs:Ss,
       Chls:showNoise?addNoise(Chls,0.05,44):Chls, rawChls:Chls,
-      mus, I0s, Ds, Ts
+      mus, rhos, I0s, Ds, Ts
     };
     animStep = 0;
     animateFinite();
@@ -1051,11 +1055,11 @@ function runSim(){
     const showNoise = document.getElementById('noise-chk').checked;
     simData = {
       mode:'infinite',
-      ts:[], Xs:[], Qs:[], Ss:[], Chls:[], mus:[], I0s:[], Ds:[], Ts:[],
+      ts:[], Xs:[], Qs:[], Ss:[], Chls:[], mus:[], rhos:[], I0s:[], Ds:[], Ts:[],
       rawXs:[], rawQs:[], rawSs:[], rawChls:[],
       // full unbounded history for saving (separate from rolling display window)
       fullTs:[], fullRawXs:[], fullRawQs:[], fullRawSs:[], fullRawChls:[],
-      fullMus:[], fullI0s:[], fullDs:[], fullTs2:[],
+      fullMus:[], fullRhos:[], fullI0s:[], fullDs:[], fullTs2:[],
       showNoise
     };
     animateContinuous();
@@ -1119,23 +1123,23 @@ function animateContinuous(){
     simData.rawQs.push(n.Q); simData.Qs.push(n.Q*noise);
     simData.rawSs.push(n.S); simData.Ss.push(n.S*noise);
     simData.rawChls.push(Chl); simData.Chls.push(Chl*noise);
-    simData.mus.push(rhs.mu); simData.I0s.push(rhs.I0);
-    simData.Ds.push(rhs.D); simData.Ts.push(rhs.T);
+    simData.mus.push(rhs.mu); simData.rhos.push(rhs.rho);
+    simData.I0s.push(rhs.I0); simData.Ds.push(rhs.D); simData.Ts.push(rhs.T);
 
     // Also push to unbounded full history (for saving)
     const nt = n.t ?? t+SIM_DT;
     simData.fullTs.push(nt);
     simData.fullRawXs.push(n.X); simData.fullRawQs.push(n.Q);
     simData.fullRawSs.push(n.S); simData.fullRawChls.push(Chl);
-    simData.fullMus.push(rhs.mu); simData.fullI0s.push(rhs.I0);
-    simData.fullDs.push(rhs.D); simData.fullTs2.push(rhs.T);
+    simData.fullMus.push(rhs.mu); simData.fullRhos.push(rhs.rho);
+    simData.fullI0s.push(rhs.I0); simData.fullDs.push(rhs.D); simData.fullTs2.push(rhs.T);
 
     liveState = {...n, t: t+SIM_DT};
 
     // Rolling window: trim if too long
     if(simData.ts.length > MAX_HISTORY){
       const trim = simData.ts.length - MAX_HISTORY;
-      for(const k of ['ts','Xs','Qs','Ss','Chls','rawXs','rawQs','rawSs','rawChls','mus','I0s','Ds','Ts'])
+      for(const k of ['ts','Xs','Qs','Ss','Chls','rawXs','rawQs','rawSs','rawChls','mus','rhos','I0s','Ds','Ts'])
         simData[k].splice(0, trim);
     }
   }
@@ -1214,9 +1218,11 @@ function drawAllCharts(step){
   drawChart('chart-Q',   simData.ts, simData.Qs,    '#fbbf24', step);
   drawChart('chart-S',   simData.ts, simData.Ss,    '#f87171', step);
   drawChart('chart-Chl', simData.ts, simData.Chls,  '#4ade80', step);
+  drawChart('chart-mu',  simData.ts, simData.mus,   '#a78bfa', step);
+  drawChart('chart-rho', simData.ts, simData.rhos,  '#34d399', step);
   drawChart('chart-D',   simData.ts, simData.Ds,    '#2dd4bf', step);
-  drawChart('chart-I0',  simData.ts, simData.I0s,   '#fbbf24', step);
-  drawChart('chart-T',   simData.ts, simData.Ts,    '#fb923c', step);
+  drawChart('chart-I0',  simData.ts, simData.I0s,   '#fb923c', step);
+  drawChart('chart-T',   simData.ts, simData.Ts,    '#f472b6', step);
 }
 
 function updateStats(step){
@@ -1226,6 +1232,7 @@ function updateStats(step){
   document.getElementById('st-S').textContent=simData.rawSs[step].toFixed(2);
   document.getElementById('st-Chl').textContent=simData.rawChls[step].toFixed(2);
   document.getElementById('st-mu').textContent=simData.mus[step].toFixed(3);
+  document.getElementById('st-rho').textContent=simData.rhos[step].toFixed(4);
 }
 
 // ══════════════════════════════════════════════
@@ -1237,18 +1244,18 @@ function saveHistory(){
   if(!simData || simData.ts.length < 2) return;
   historySnapshot = {};
   if(simData.mode === 'infinite'){
-    // Use full unbounded buffer
     historySnapshot.ts      = [...simData.fullTs];
     historySnapshot.rawXs   = [...simData.fullRawXs];
     historySnapshot.rawQs   = [...simData.fullRawQs];
     historySnapshot.rawSs   = [...simData.fullRawSs];
     historySnapshot.rawChls = [...simData.fullRawChls];
     historySnapshot.mus     = [...simData.fullMus];
+    historySnapshot.rhos    = [...simData.fullRhos];
     historySnapshot.I0s     = [...simData.fullI0s];
     historySnapshot.Ds      = [...simData.fullDs];
     historySnapshot.Ts      = [...simData.fullTs2];
   } else {
-    const keys = ['ts','rawXs','rawQs','rawSs','rawChls','mus','I0s','Ds','Ts'];
+    const keys = ['ts','rawXs','rawQs','rawSs','rawChls','mus','rhos','I0s','Ds','Ts'];
     keys.forEach(k => historySnapshot[k] = [...simData[k]]);
   }
   historySnapshot.mode = simData.mode;
@@ -1278,16 +1285,16 @@ function renderHistory(){
     `Experimento completo — ${h.mode === 'infinite' ? '∞ Continuo' : 'Fijo'}`;
   document.getElementById('history-meta').textContent =
     `${n} puntos · duración ${h.duration.toFixed(2)} d · guardado ${h.savedAt}`;
-  // Draw all history charts with full data
   setTimeout(()=>{
     drawHistoryChart('h-chart-X',   h.ts, h.rawXs,   '#60a5fa');
     drawHistoryChart('h-chart-Q',   h.ts, h.rawQs,   '#fbbf24');
     drawHistoryChart('h-chart-S',   h.ts, h.rawSs,   '#f87171');
     drawHistoryChart('h-chart-Chl', h.ts, h.rawChls, '#4ade80');
-    drawHistoryChart('h-chart-D',   h.ts, h.Ds,      '#2dd4bf');
-    drawHistoryChart('h-chart-I0',  h.ts, h.I0s,     '#fbbf24');
-    drawHistoryChart('h-chart-T',   h.ts, h.Ts,      '#fb923c');
     drawHistoryChart('h-chart-mu',  h.ts, h.mus,     '#a78bfa');
+    drawHistoryChart('h-chart-rho', h.ts, h.rhos,    '#34d399');
+    drawHistoryChart('h-chart-D',   h.ts, h.Ds,      '#2dd4bf');
+    drawHistoryChart('h-chart-I0',  h.ts, h.I0s,     '#fb923c');
+    drawHistoryChart('h-chart-T',   h.ts, h.Ts,      '#f472b6');
   }, 60);
 }
 
