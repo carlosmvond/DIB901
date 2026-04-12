@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Scenedesmus obliquus — Fotobiorreactor</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #0d0f0e;
+  --bg2: #141614;
+  --bg3: #1a1d1a;
+  --border: #2a2e2a;
+  --border2: #353a35;
+  --text: #e8ede8;
+  --text2: #8a9a8a;
+  --text3: #5a6a5a;
+  --green: #4ade80;
+  --green2: #22c55e;
+  --green3: #16a34a;
+  --amber: #fbbf24;
+  --blue: #60a5fa;
+  --red: #f87171;
+  --teal: #2dd4bf;
+  --accent: #4ade80;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 13px;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  gap: 10px;
+}
+.header-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.header-title em { color: var(--green); font-style: italic; }
+
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+.tab-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text3);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tab-btn.active { background: var(--bg); color: var(--green); }
+.tab-btn:hover:not(.active) { color: var(--text2); }
+
+/* ── LAYOUT ── */
+.page { display: none; }
+.page.active { display: flex; flex-direction: column; }
+
+/* ── SIM PAGE ── */
+.sim-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  height: calc(100vh - 46px);
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .sim-layout {
+    grid-template-columns: 240px 1fr;
+  }
+}
+
+/* ── CONTROL SIDEBAR ── */
+.ctrl-panel {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 767px) {
+  .sim-layout { height: auto; overflow: visible; }
+  .ctrl-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    max-height: 420px;
+  }
+}
+
+.section {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+.section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+/* ── CONTROL ITEMS ── */
+.ctrl-item { margin-bottom: 8px; }
+.ctrl-item:last-child { margin-bottom: 0; }
+.ctrl-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text2);
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ctrl-label .val {
+  color: var(--green);
+  font-weight: 500;
+}
+.ctrl-row { display: flex; align-items: center; gap: 6px; }
+input[type=range] {
+  display: block;
+  width: 100%;
+  height: 3px;
+  accent-color: var(--green);
+  cursor: pointer;
+  margin: 0;
+}
+
+/* ── MODE TOGGLE ── */
+.mode-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  margin-bottom: 6px;
+}
+.mode-btn {
+  flex: 1;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 4px 2px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text3);
+  transition: all 0.15s;
+  text-align: center;
+}
+.mode-btn.active { background: var(--bg3); color: var(--green); }
+
+/* ── FUNCTION INPUT ── */
+.fn-input-wrap { position: relative; }
+.fn-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.fn-input:focus { border-color: var(--green3); }
+.fn-input.error { border-color: var(--red); }
+.fn-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text3);
+  margin-top: 3px;
+}
+.fn-hint.err { color: var(--red); }
+
+/* ── SIM BUTTON ── */
+.sim-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--green3);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.sim-btn:hover { background: var(--green2); }
+.sim-btn.running { background: #7f1d1d; }
+.sim-btn.running:hover { background: #991b1b; }
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── BIO + CHARTS ── */
+.viz-area {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  padding: 8px;
+  gap: 8px;
+}
+
+@media (min-width: 768px) {
+  .viz-area {
+    grid-template-columns: 200px 1fr;
+    grid-template-rows: 1fr;
+  }
+}
+
+.bio-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.bio-panel canvas {
+  display: block;
+  width: 100%;
+  height: 200px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.chart-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+}
+.chart-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  margin-bottom: 3px;
+}
+.chart-card canvas {
+  display: block;
+  width: 100%;
+  height: 70px;
+}
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+@media (max-width: 767px) {
+  .stats-bar { grid-template-columns: repeat(5, 1fr); padding: 6px; }
+}
+
+.stat {
+  background: var(--bg3);
+  border-radius: var(--radius-sm);
+  padding: 5px 6px;
+}
+.stat .lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  color: var(--text3);
+  margin-bottom: 2px;
+}
+.stat .num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+.stat .unit {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7px;
+  color: var(--text3);
+  margin-top: 1px;
+}
+
+/* ── PARAMS PAGE ── */
+.params-page {
+  padding: 12px;
+  overflow-y: auto;
+  height: calc(100vh - 46px);
+}
+.params-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  max-width: 900px;
+}
+@media (max-width: 600px) {
+  .params-grid-2col { grid-template-columns: 1fr; }
+}
+.param-group {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.param-group-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+.param-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.param-row:last-child { margin-bottom: 0; }
+.param-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text2);
+  flex: 1;
+  min-width: 0;
+}
+.param-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--green);
+  min-width: 52px;
+  text-align: right;
+}
+.param-input {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text);
+  width: 72px;
+  outline: none;
+  text-align: right;
+}
+.param-input:focus { border-color: var(--green3); }
+
+/* ── RUNS PAGE ── */
+.runs-page {
+  padding: 12px;
+  overflow-y: auto;
+  height: calc(100vh - 46px);
+}
+.runs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  max-width: 900px;
+}
+.run-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.run-card:hover { border-color: var(--green3); background: var(--bg3); }
+.run-card.active { border-color: var(--green); background: #0d1f0d; }
+.run-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.run-card-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+}
+.run-card-i0 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--amber);
+  background: #1a1400;
+  border: 1px solid #3a2a00;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+.run-card-vals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+}
+.run-card-vals .k { color: var(--text3); }
+.run-card-vals .v { color: var(--text2); font-weight: 500; }
+.run-load-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.run-card.active .run-load-btn { border-color: var(--green3); color: var(--green); }
+.run-load-btn:hover { border-color: var(--green3); color: var(--green); }
+
+/* ── TOGGLE (noise) ── */
+.toggle-row { display: flex; align-items: center; gap: 8px; }
+.toggle { position: relative; width: 28px; height: 15px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.slider-t { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--border2); border-radius: 15px; transition: .2s; }
+.slider-t:before { position: absolute; content: ""; height: 11px; width: 11px; left: 2px; bottom: 2px; background: var(--text3); border-radius: 50%; transition: .2s; }
+.toggle input:checked + .slider-t { background: var(--green3); }
+.toggle input:checked + .slider-t:before { transform: translateX(13px); background: white; }
+.toggle-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text3); }
+
+/* ── TIME INDICATOR ── */
+.time-bar-wrap {
+  padding: 4px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.time-bar-bg {
+  flex: 1;
+  height: 3px;
+  background: var(--border2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.time-bar-fill {
+  height: 100%;
+  background: var(--green3);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.05s linear;
+}
+.time-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── HISTORY PAGE ── */
+.history-page {
+  padding: 12px;
+  overflow-y: auto;
+  height: calc(100vh - 46px);
+}
+.history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  gap: 8px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.history-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+}
+.history-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text3);
+}
+.history-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  max-width: 1100px;
+}
+@media (max-width: 700px) {
+  .history-grid { grid-template-columns: 1fr 1fr; }
+}
+.history-chart-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+}
+.history-chart-card canvas {
+  display: block;
+  width: 100%;
+  height: 120px;
+}
+.clear-btn {
+  padding: 5px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.clear-btn:hover { border-color: var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<div class="header">
+  <div class="header-title"><em>Scenedesmus obliquus</em> · FBR dinámico</div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="showPage('sim')">Simular</button>
+    <button class="tab-btn" onclick="showPage('params')">Parámetros</button>
+    <button class="tab-btn" onclick="showPage('runs')">Runs</button>
+    <button class="tab-btn" id="tab-history" onclick="showPage('history')">Historial</button>
+  </div>
+</div>
+
+<!-- ══ SIM PAGE ══ -->
+<div class="page active" id="page-sim">
+<div class="sim-layout">
+
+  <!-- CONTROL PANEL -->
+  <div class="ctrl-panel">
+
+    <!-- DILUCIÓN -->
+    <div class="section">
+      <div class="section-title">Tasa de Dilución D</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="d-mode-slider" onclick="setDMode('slider')">Slider</button>
+        <button class="mode-btn" id="d-mode-fn" onclick="setDMode('fn')">f(t)</button>
+      </div>
+      <div id="d-slider-ctrl" class="ctrl-item">
+        <div class="ctrl-label">D (d⁻¹) <span class="val" id="d-val">0.00</span></div>
+        <input type="range" id="d-slider" min="0" max="2" step="0.01" value="0" oninput="updateDSlider()">
+      </div>
+      <div id="d-fn-ctrl" style="display:none">
+        <div class="ctrl-label" style="margin-bottom:4px">D(t) = </div>
+        <div class="fn-input-wrap">
+          <input class="fn-input" id="d-fn" type="text" value="0.1 * Math.sin(t/3) + 0.15" spellcheck="false" oninput="validateFn('d')">
+        </div>
+        <div class="fn-hint" id="d-fn-hint">t en días · retorna d⁻¹</div>
+      </div>
+    </div>
+
+    <!-- LUZ -->
+    <div class="section">
+      <div class="section-title">Irradiancia I₀</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="i-mode-slider" onclick="setIMode('slider')">Slider</button>
+        <button class="mode-btn" id="i-mode-fn" onclick="setIMode('fn')">f(t)</button>
+      </div>
+      <div id="i-slider-ctrl" class="ctrl-item">
+        <div class="ctrl-label">I₀ (µmol/m²s) <span class="val" id="i-val">200</span></div>
+        <input type="range" id="i-slider" min="50" max="1000" step="10" value="200" oninput="updateISlider()">
+      </div>
+      <div id="i-fn-ctrl" style="display:none">
+        <div class="ctrl-label" style="margin-bottom:4px">I₀(t) = </div>
+        <input class="fn-input" id="i-fn" type="text" value="200 + 150 * Math.sin(2*Math.PI*t)" spellcheck="false" oninput="validateFn('i')">
+        <div class="fn-hint" id="i-fn-hint">t en días · retorna µmol/m²s</div>
+      </div>
+    </div>
+
+    <!-- TEMPERATURA -->
+    <div class="section">
+      <div class="section-title">Temperatura T</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="t-mode-slider" onclick="setTMode('slider')">Slider</button>
+        <button class="mode-btn" id="t-mode-fn" onclick="setTMode('fn')">f(t)</button>
+      </div>
+      <div id="t-slider-ctrl" class="ctrl-item">
+        <div class="ctrl-label">T (°C) <span class="val" id="t-val">25</span></div>
+        <input type="range" id="t-slider" min="10" max="40" step="0.5" value="25" oninput="updateTSlider()">
+      </div>
+      <div id="t-fn-ctrl" style="display:none">
+        <div class="ctrl-label" style="margin-bottom:4px">T(t) = </div>
+        <input class="fn-input" id="t-fn" type="text" value="25 + 5 * Math.sin(2*Math.PI*t/7)" spellcheck="false" oninput="validateFn('t')">
+        <div class="fn-hint" id="t-fn-hint">t en días · retorna °C</div>
+      </div>
+    </div>
+
+    <!-- TIEMPO SIM -->
+    <div class="section">
+      <div class="section-title">Tiempo de simulación</div>
+      <div class="mode-toggle" style="margin-bottom:8px">
+        <button class="mode-btn active" id="tm-mode-finite" onclick="setTmMode('finite')">Fijo</button>
+        <button class="mode-btn" id="tm-mode-infinite" onclick="setTmMode('infinite')">∞ Continuo</button>
+      </div>
+      <div id="tmax-ctrl" class="ctrl-item">
+        <div class="ctrl-label">Tiempo final (d) <span class="val" id="tmax-val">15</span></div>
+        <input type="range" id="tmax-slider" min="1" max="60" step="1" value="15" oninput="updateTmax()">
+      </div>
+      <div class="toggle-row" style="margin-bottom:8px">
+        <label class="toggle"><input type="checkbox" id="noise-chk"><span class="slider-t"></span></label>
+        <span class="toggle-label">Ruido log-normal CV 5%</span>
+      </div>
+      <button class="sim-btn" id="sim-btn" onclick="toggleSim()">▶ Simular</button>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: BIO + CHARTS + STATS -->
+  <div class="right-panel">
+    <div class="viz-area">
+      <div class="bio-panel">
+        <div class="section-title" style="padding:0 2px 4px">Fotobiorreactor</div>
+        <canvas id="bio-canvas"></canvas>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title" style="color:#60a5fa">X — Biomasa</div><canvas id="chart-X"></canvas></div>
+        <div class="chart-card"><div class="chart-title" style="color:#fbbf24">Q — Cuota N</div><canvas id="chart-Q"></canvas></div>
+        <div class="chart-card"><div class="chart-title" style="color:#f87171">S — Sustrato</div><canvas id="chart-S"></canvas></div>
+        <div class="chart-card"><div class="chart-title" style="color:#4ade80">Chl — Clorofila</div><canvas id="chart-Chl"></canvas></div>
+        <div class="chart-card"><div class="chart-title" style="color:#2dd4bf">D(t) — Dilución</div><canvas id="chart-D"></canvas></div>
+        <div class="chart-card"><div class="chart-title" style="color:#fbbf24">I₀(t) — Irradiancia</div><canvas id="chart-I0"></canvas></div>
+        <div class="chart-card" style="grid-column: span 2"><div class="chart-title" style="color:#fb923c">T(t) — Temperatura</div><canvas id="chart-T"></canvas></div>
+      </div>
+    </div>
+    <div class="time-bar-wrap">
+      <span class="time-label" id="time-label">t = 0.00 d</span>
+      <div class="time-bar-bg"><div class="time-bar-fill" id="time-bar"></div></div>
+      <span class="time-label" id="tmax-label">15 d</span>
+    </div>
+    <div class="stats-bar">
+      <div class="stat"><div class="lbl">X·biomasa</div><div class="num" style="color:#60a5fa" id="st-X">—</div><div class="unit">g_X/m³</div></div>
+      <div class="stat"><div class="lbl">Q·cuota N</div><div class="num" style="color:#fbbf24" id="st-Q">—</div><div class="unit">g_N/g_X</div></div>
+      <div class="stat"><div class="lbl">S·sustrato</div><div class="num" style="color:#f87171" id="st-S">—</div><div class="unit">g_N/m³</div></div>
+      <div class="stat"><div class="lbl">Chl</div><div class="num" style="color:#4ade80" id="st-Chl">—</div><div class="unit">g_Chl/m³</div></div>
+      <div class="stat"><div class="lbl">μ·crec</div><div class="num" style="color:#2dd4bf" id="st-mu">—</div><div class="unit">d⁻¹</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══ PARAMS PAGE ══ -->
+<div class="page" id="page-params">
+<div class="params-page">
+  <div class="params-grid-2col">
+
+    <div class="param-group">
+      <div class="param-group-title">Condiciones iniciales</div>
+      <div class="param-row">
+        <span class="param-label">X₀ (g_X/m³)</span>
+        <input class="param-input" id="p-X0" type="number" value="10.1" step="0.1" oninput="updateParam('X0')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">Q₀ (g_N/g_X)</span>
+        <input class="param-input" id="p-Q0ic" type="number" value="0.025" step="0.001" oninput="updateParam('Q0ic')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">S₀ (g_N/m³)</span>
+        <input class="param-input" id="p-S0" type="number" value="33.2" step="0.1" oninput="updateParam('S0')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">I*₀ (µmol/m²s)</span>
+        <input class="param-input" id="p-Istar0" type="number" value="100" step="10" oninput="updateParam('Istar0')">
+      </div>
+    </div>
+
+    <div class="param-group">
+      <div class="param-group-title">Parámetros cinéticos</div>
+      <div class="param-row">
+        <span class="param-label">μ̄ — crec. máx. (d⁻¹)</span>
+        <input class="param-input" id="p-mu_bar" type="number" value="1.69" step="0.01" oninput="updateParam('mu_bar')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">R — respiración (d⁻¹)</span>
+        <input class="param-input" id="p-R" type="number" value="0.0779" step="0.001" oninput="updateParam('R')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">ρ̄ — capt. N máx.</span>
+        <input class="param-input" id="p-rho_bar" type="number" value="0.0573" step="0.001" oninput="updateParam('rho_bar')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">k_s — afinidad N</span>
+        <input class="param-input" id="p-k_s" type="number" value="17.69" step="0.1" oninput="updateParam('k_s')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">Q₀ — cuota mín.</span>
+        <input class="param-input" id="p-Q0" type="number" value="0.0104" step="0.0001" oninput="updateParam('Q0')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">Q_l — cuota máx.</span>
+        <input class="param-input" id="p-Q_l" type="number" value="0.1172" step="0.001" oninput="updateParam('Q_l')">
+      </div>
+    </div>
+
+    <div class="param-group">
+      <div class="param-group-title">Parámetros de luz</div>
+      <div class="param-row">
+        <span class="param-label">k_sI* — afinidad luz</span>
+        <input class="param-input" id="p-k_sIstar" type="number" value="1.36" step="0.01" oninput="updateParam('k_sIstar')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">k_iI — fotoinhibición</span>
+        <input class="param-input" id="p-k_iI" type="number" value="94.3" step="1" oninput="updateParam('k_iI')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">γ_max — Chl máx.</span>
+        <input class="param-input" id="p-gamma_max" type="number" value="1.158" step="0.01" oninput="updateParam('gamma_max')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">k_I* — adapt. clorofila</span>
+        <input class="param-input" id="p-k_Istar" type="number" value="184.0" step="1" oninput="updateParam('k_Istar')">
+      </div>
+    </div>
+
+    <div class="param-group">
+      <div class="param-group-title">Atenuación lumínica</div>
+      <div class="param-row">
+        <span class="param-label">a — coef. Chl</span>
+        <input class="param-input" id="p-a" type="number" value="12.6" step="0.1" oninput="updateParam('a')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">b — coef. X</span>
+        <input class="param-input" id="p-b" type="number" value="0.72" step="0.01" oninput="updateParam('b')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">c — offset</span>
+        <input class="param-input" id="p-c" type="number" value="15.1" step="0.1" oninput="updateParam('c')">
+      </div>
+      <div class="param-row">
+        <span class="param-label">K_g — geom. reactor</span>
+        <input class="param-input" id="p-K_g" type="number" value="10.6" step="0.1" oninput="updateParam('K_g')">
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ══ RUNS PAGE ══ -->
+<div class="page" id="page-runs">
+<div class="runs-page">
+  <div class="runs-grid" id="runs-grid"></div>
+</div>
+</div>
+
+<!-- ══ HISTORY PAGE ══ -->
+<div class="page" id="page-history">
+<div class="history-page">
+  <div id="history-empty" class="history-empty">
+    <span style="font-size:24px">📊</span>
+    <span>Aún no hay experimentos registrados.</span>
+    <span>Ejecuta una simulación y espera que termine.</span>
+  </div>
+  <div id="history-content" style="display:none">
+    <div class="history-header">
+      <div>
+        <div class="history-title" id="history-title">Último experimento</div>
+        <div class="history-meta" id="history-meta"></div>
+      </div>
+      <button class="clear-btn" onclick="clearHistory()">✕ Limpiar</button>
+    </div>
+    <div class="history-grid">
+      <div class="history-chart-card"><div class="chart-title" style="color:#60a5fa">X — Biomasa</div><canvas id="h-chart-X"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#fbbf24">Q — Cuota N</div><canvas id="h-chart-Q"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#f87171">S — Sustrato</div><canvas id="h-chart-S"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#4ade80">Chl — Clorofila</div><canvas id="h-chart-Chl"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#2dd4bf">D(t) — Dilución</div><canvas id="h-chart-D"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#fbbf24">I₀(t) — Irradiancia</div><canvas id="h-chart-I0"></canvas></div>
+      <div class="history-chart-card" style="grid-column: span 2"><div class="chart-title" style="color:#fb923c">T(t) — Temperatura</div><canvas id="h-chart-T"></canvas></div>
+      <div class="history-chart-card"><div class="chart-title" style="color:#a78bfa">μ(t) — Tasa de crec.</div><canvas id="h-chart-mu"></canvas></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  MODEL PARAMETERS
+// ══════════════════════════════════════════════
+const params = {
+  mu_bar:1.69, k_s:17.69, Q0:0.0104, Q_l:0.1172,
+  rho_bar:0.0573, k_sIstar:1.36, k_iI:94.3, R:0.0779,
+  gamma_max:1.158, k_Istar:184.0, a:12.6, b:0.72, c:15.1, K_g:10.6,
+};
+const ic = { X0:10.1, Q0ic:0.025, S0:33.2, Istar0:100 };
+
+// ══════════════════════════════════════════════
+//  RUNS (Tabla 2 + operating conditions)
+// ══════════════════════════════════════════════
+const RUNS = [
+  { name:'Run 1', X0:10.1,  Q0ic:0.025, S0:33.2, Istar0:100, I0:100,  D:0,    T:25, note:'Batch · baja luz' },
+  { name:'Run 2', X0:12.3,  Q0ic:0.030, S0:36.5, Istar0:100, I0:150,  D:0,    T:25, note:'Batch · luz media' },
+  { name:'Run 3', X0:30.7,  Q0ic:0.061, S0:41.3, Istar0:200, I0:200,  D:0,    T:25, note:'Batch · alta biomasa' },
+  { name:'Run 4', X0:18.7,  Q0ic:0.069, S0:39.4, Istar0:200, I0:250,  D:0.05, T:25, note:'Quimiostato lento' },
+  { name:'Run 5', X0:60.3,  Q0ic:0.026, S0:44.8, Istar0:100, I0:220,  D:0,    T:25, note:'Alta X₀ batch' },
+  { name:'Run 6', X0:76.7,  Q0ic:0.023, S0:47.5, Istar0:100, I0:350,  D:0.10, T:25, note:'Quimiostato + luz alta' },
+  { name:'Run 7', X0:225.0, Q0ic:0.016, S0:49.9, Istar0:250, I0:520,  D:0,    T:28, note:'Alta densidad batch' },
+  { name:'Run 8', X0:255.0, Q0ic:0.017, S0:52.0, Istar0:150, I0:600,  D:0.15, T:30, note:'Quimiostato alta luz+T' },
+  { name:'Run 9', X0:183.8, Q0ic:0.022, S0:42.6, Istar0:200, I0:750,  D:0,    T:22, note:'Muy alta irradiancia' },
+];
+
+// ══════════════════════════════════════════════
+//  OPERATING CONDITIONS STATE
+// ══════════════════════════════════════════════
+let opD = { mode:'slider', sliderVal:0, fn:'0' };
+let opI = { mode:'slider', sliderVal:200, fn:'200 + 150*Math.sin(2*Math.PI*t)' };
+let opT = { mode:'slider', sliderVal:25, fn:'25 + 5*Math.sin(2*Math.PI*t/7)' };
+let tmax = 15;
+let selectedRun = 0;
+
+function evalFn(fnStr, t) {
+  try { return Math.max(0, new Function('t','Math',`return ${fnStr}`)(t, Math)); }
+  catch(e) { return 0; }
+}
+function getD(t) { return opD.mode==='slider' ? opD.sliderVal : evalFn(opD.fn, t); }
+function getI(t) { return opI.mode==='slider' ? opI.sliderVal : evalFn(opI.fn, t); }
+function getT(t) { return opT.mode==='slider' ? opT.sliderVal : evalFn(opT.fn, t); }
+
+// Temperature effect on mu (Q10 factor ~1.8, ref 25°C)
+function tempFactor(T) { return Math.pow(1.8, (T - 25) / 10); }
+
+// ══════════════════════════════════════════════
+//  MODEL
+// ══════════════════════════════════════════════
+function chl(X,Q,Is,p){ return p.gamma_max * p.k_Istar / (p.k_Istar + Is) * X * Q; }
+function avgLight(I0,X,Q,Is,p){ const C=chl(X,Q,Is,p); const lam=p.a*C+p.b*X+p.c; return I0*p.K_g/(p.K_g+lam); }
+function muRate(X,Q,Is,I0,p,T){
+  const eps=1e-12;
+  const Qs=Math.max(Q,p.Q0+eps);
+  const C=chl(X,Qs,Is,p);
+  const th=Math.max(C/Math.max(X,eps),eps);
+  const Ia=avgLight(I0,X,Qs,Is,p);
+  const qf=Math.max(0,1-p.Q0/Qs);
+  const ksI=p.k_sIstar/th;
+  return Math.max(p.mu_bar * qf * Ia/(ksI+Ia+Ia*Ia/p.k_iI) * tempFactor(T), 0);
+}
+function rhoRate(Q,S,p){ const Ss=Math.max(S,0),eps=1e-12; return Math.max(p.rho_bar*Ss/(p.k_s+Ss+eps)*Math.max(0,1-Q/p.Q_l),0); }
+
+function odeRHS(X,Q,S,Is,t,p){
+  X=Math.max(X,1e-12); Q=Math.max(Q,p.Q0+1e-12); S=Math.max(S,0); Is=Math.max(Is,0);
+  const I0=getI(t), D=getD(t), T=getT(t);
+  const m=muRate(X,Q,Is,I0,p,T), r=rhoRate(Q,S,p), Ia=avgLight(I0,X,Q,Is,p);
+  // D affects Q (dilution washes out internal quota toward feed Q0) and S (feed S_in = S0)
+  const Sin = ic.S0; // feed substrate = initial S0
+  return {
+    dX: (m - p.R - D) * X,
+    dQ: r - m*(Q-p.Q0) - D*(Q - p.Q0),
+    dS: -r*X + D*(Sin - S),
+    dIs: m*(Ia - Is),
+    mu: m, I0, D, T
+  };
+}
+
+function rk4step(X,Q,S,Is,t,p,dt){
+  const k1=odeRHS(X,Q,S,Is,t,p);
+  const k2=odeRHS(X+dt/2*k1.dX, Q+dt/2*k1.dQ, S+dt/2*k1.dS, Is+dt/2*k1.dIs, t+dt/2, p);
+  const k3=odeRHS(X+dt/2*k2.dX, Q+dt/2*k2.dQ, S+dt/2*k2.dS, Is+dt/2*k2.dIs, t+dt/2, p);
+  const k4=odeRHS(X+dt*k3.dX,   Q+dt*k3.dQ,   S+dt*k3.dS,   Is+dt*k3.dIs,   t+dt,   p);
+  return {
+    X: Math.max(0,X+dt/6*(k1.dX+2*k2.dX+2*k3.dX+k4.dX)),
+    Q: Math.max(p.Q0,Q+dt/6*(k1.dQ+2*k2.dQ+2*k3.dQ+k4.dQ)),
+    S: Math.max(0,S+dt/6*(k1.dS+2*k2.dS+2*k3.dS+k4.dS)),
+    Is:Math.max(0,Is+dt/6*(k1.dIs+2*k2.dIs+2*k3.dIs+k4.dIs)),
+    t: t+dt,
+    mu: k1.mu, I0: k1.I0, D: k1.D, T: k1.T
+  };
+}
+
+// ══════════════════════════════════════════════
+//  NOISE
+// ══════════════════════════════════════════════
+function seededRng(seed){ let s=seed%2147483647; if(s<=0) s+=2147483646; return ()=>{s=s*16807%2147483647; return (s-1)/2147483646;}; }
+function addNoise(arr,cv=0.05,seed=42){ const rng=seededRng(seed); function randn(){ const u=rng(),v=rng(); return Math.sqrt(-2*Math.log(Math.max(u,1e-12)))*Math.cos(2*Math.PI*v); } return arr.map(v=>Math.max(0,v*Math.exp(-0.5*cv*cv+cv*randn()))); }
+
+// ══════════════════════════════════════════════
+//  SIM STATE
+// ══════════════════════════════════════════════
+let simData=null, animId=null, animStep=0, running=false, bioT=0;
+let cellPool=[], bubblePool=[];
+const MAX_CELLS=180, MAX_BUBBLES=24;
+const SIM_DT = 0.02; // integration step (days)
+const STEPS_PER_FRAME = 3; // how many integration steps per animation frame
+let tmMode = 'finite'; // 'finite' | 'infinite'
+
+// Continuous mode live state
+let liveState = null; // {X,Q,S,Is,t}
+
+function setTmMode(m){
+  tmMode = m;
+  document.getElementById('tm-mode-finite').classList.toggle('active', m==='finite');
+  document.getElementById('tm-mode-infinite').classList.toggle('active', m==='infinite');
+  document.getElementById('tmax-ctrl').style.display = m==='finite' ? '' : 'none';
+  document.getElementById('tmax-label').textContent = m==='infinite' ? '∞' : tmax+' d';
+  document.getElementById('time-bar').style.width = '0%';
+}
+
+function runSim(){
+  if(animId) cancelAnimationFrame(animId);
+  running = true;
+  bioT = 0;
+  cellPool = []; bubblePool = [];
+  document.getElementById('sim-btn').textContent = '■ Detener';
+  document.getElementById('sim-btn').classList.add('running');
+
+  if(tmMode === 'finite'){
+    // Pre-calculate all steps then animate through them
+    const steps = Math.round(tmax / SIM_DT);
+    let X=ic.X0, Q=ic.Q0ic, S=ic.S0, Is=ic.Istar0;
+    const ts=[],Xs=[],Qs=[],Ss=[],Chls=[],mus=[],I0s=[],Ds=[],Ts=[];
+    for(let i=0;i<=steps;i++){
+      ts.push(i*SIM_DT); Xs.push(X); Qs.push(Q); Ss.push(S);
+      Chls.push(chl(X,Q,Is,params));
+      const rhs=odeRHS(X,Q,S,Is,i*SIM_DT,params);
+      mus.push(rhs.mu); I0s.push(rhs.I0); Ds.push(rhs.D); Ts.push(rhs.T);
+      if(i<steps){ const n=rk4step(X,Q,S,Is,i*SIM_DT,params,SIM_DT); X=n.X; Q=n.Q; S=n.S; Is=n.Is; }
+    }
+    const showNoise=document.getElementById('noise-chk').checked;
+    simData={
+      ts, mode:'finite',
+      Xs: showNoise?addNoise(Xs,0.05,11):Xs, rawXs:Xs,
+      Qs: showNoise?addNoise(Qs,0.05,22):Qs, rawQs:Qs,
+      Ss: showNoise?addNoise(Ss,0.05,33):Ss, rawSs:Ss,
+      Chls:showNoise?addNoise(Chls,0.05,44):Chls, rawChls:Chls,
+      mus, I0s, Ds, Ts
+    };
+    animStep = 0;
+    animateFinite();
+  } else {
+    // Continuous: integrate live frame by frame, keep a rolling window of history
+    liveState = {X:ic.X0, Q:ic.Q0ic, S:ic.S0, Is:ic.Istar0, t:0};
+    const showNoise = document.getElementById('noise-chk').checked;
+    simData = {
+      mode:'infinite',
+      ts:[], Xs:[], Qs:[], Ss:[], Chls:[], mus:[], I0s:[], Ds:[], Ts:[],
+      rawXs:[], rawQs:[], rawSs:[], rawChls:[],
+      // full unbounded history for saving (separate from rolling display window)
+      fullTs:[], fullRawXs:[], fullRawQs:[], fullRawSs:[], fullRawChls:[],
+      fullMus:[], fullI0s:[], fullDs:[], fullTs2:[],
+      showNoise
+    };
+    animateContinuous();
+  }
+}
+
+function stopSim(natural=false){
+  running = false;
+  if(animId) cancelAnimationFrame(animId);
+  document.getElementById('sim-btn').textContent = '▶ Simular';
+  document.getElementById('sim-btn').classList.remove('running');
+  saveHistory(); // always save, whether stopped manually or naturally
+}
+
+function toggleSim(){
+  if(running) stopSim();
+  else runSim();
+}
+
+// ── FINITE ANIMATION ──
+function animateFinite(){
+  if(!running||!simData) return;
+  const total = simData.ts.length;
+  const speed = Math.max(1, Math.floor(total/300));
+  animStep = Math.min(animStep+speed, total-1);
+  bioT += 0.04;
+  drawBio(animStep);
+  drawAllCharts(animStep);
+  updateStats(animStep);
+  // time bar
+  const pct = 100*(animStep/(total-1));
+  document.getElementById('time-bar').style.width = pct+'%';
+  document.getElementById('time-label').textContent = `t = ${simData.ts[animStep].toFixed(2)} d`;
+  if(animStep < total-1) animId = requestAnimationFrame(animateFinite);
+  else stopSim(true);
+}
+
+// ── CONTINUOUS ANIMATION ──
+const MAX_HISTORY = 600; // points kept in rolling window
+function noiseSample(seed){ // simple per-point noise
+  const rng = seededRng(Math.round(seed*1e6)%2147483647);
+  const u=rng(),v=rng();
+  const cv=0.05;
+  return Math.exp(-0.5*cv*cv + cv*Math.sqrt(-2*Math.log(Math.max(u,1e-12)))*Math.cos(2*Math.PI*v));
+}
+
+function animateContinuous(){
+  if(!running||!simData||!liveState) return;
+  bioT += 0.04;
+
+  // Integrate STEPS_PER_FRAME steps
+  for(let s=0; s<STEPS_PER_FRAME; s++){
+    const {X,Q,S,Is,t} = liveState;
+    const rhs = odeRHS(X,Q,S,Is,t,params);
+    const n = rk4step(X,Q,S,Is,t,params,SIM_DT);
+    const Chl = chl(n.X,n.Q,n.Is,params);
+    const noise = simData.showNoise ? noiseSample(t*137.3+s*7.1) : 1;
+
+    simData.ts.push(n.t ?? t+SIM_DT);
+    simData.rawXs.push(n.X); simData.Xs.push(n.X*noise);
+    simData.rawQs.push(n.Q); simData.Qs.push(n.Q*noise);
+    simData.rawSs.push(n.S); simData.Ss.push(n.S*noise);
+    simData.rawChls.push(Chl); simData.Chls.push(Chl*noise);
+    simData.mus.push(rhs.mu); simData.I0s.push(rhs.I0);
+    simData.Ds.push(rhs.D); simData.Ts.push(rhs.T);
+
+    // Also push to unbounded full history (for saving)
+    const nt = n.t ?? t+SIM_DT;
+    simData.fullTs.push(nt);
+    simData.fullRawXs.push(n.X); simData.fullRawQs.push(n.Q);
+    simData.fullRawSs.push(n.S); simData.fullRawChls.push(Chl);
+    simData.fullMus.push(rhs.mu); simData.fullI0s.push(rhs.I0);
+    simData.fullDs.push(rhs.D); simData.fullTs2.push(rhs.T);
+
+    liveState = {...n, t: t+SIM_DT};
+
+    // Rolling window: trim if too long
+    if(simData.ts.length > MAX_HISTORY){
+      const trim = simData.ts.length - MAX_HISTORY;
+      for(const k of ['ts','Xs','Qs','Ss','Chls','rawXs','rawQs','rawSs','rawChls','mus','I0s','Ds','Ts'])
+        simData[k].splice(0, trim);
+    }
+  }
+
+  const last = simData.ts.length - 1;
+  animStep = last;
+  drawBio(last);
+  drawAllCharts(last);
+  updateStats(last);
+
+  // time indicator (no progress bar in infinite mode, just time)
+  document.getElementById('time-bar').style.width = '100%';
+  document.getElementById('time-label').textContent = `t = ${liveState.t.toFixed(2)} d`;
+
+  animId = requestAnimationFrame(animateContinuous);
+}
+
+// ══════════════════════════════════════════════
+//  CHARTS
+// ══════════════════════════════════════════════
+function setupCanvas(c){
+  const dpr=window.devicePixelRatio||1;
+  const w=c.offsetWidth*dpr, h=c.offsetHeight*dpr;
+  if(c.width!==w || c.height!==h){ c.width=w; c.height=h; }
+  const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); return ctx;
+}
+
+function drawChart(canvasId, tsArr, dataArr, color, step, yLabel=''){
+  const c=document.getElementById(canvasId); if(!c.offsetWidth) return;
+  const ctx=setupCanvas(c);
+  const W=c.offsetWidth, H=c.offsetHeight;
+  const pad={l:32,r:6,t:4,b:18};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  ctx.fillStyle='#141614'; ctx.fillRect(0,0,W,H);
+  const ymax=Math.max(...dataArr.slice(0,step+1))*1.15||1;
+  const tmin2=tsArr[0];
+  const tmax2=tsArr[tsArr.length-1];
+  const tspan=Math.max(tmax2-tmin2, 0.001);
+  ctx.strokeStyle='#2a2e2a'; ctx.lineWidth=0.5;
+  for(let i=0;i<=3;i++){
+    const y=pad.t+ph*i/3;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y); ctx.stroke();
+    ctx.fillStyle='#5a6a5a'; ctx.font="8px 'JetBrains Mono',monospace"; ctx.textAlign='right';
+    ctx.fillText((ymax*(1-i/3)).toFixed(ymax<1?3:1), pad.l-2, y+3);
+  }
+  for(let i=0;i<=3;i++){
+    const x=pad.l+pw*i/3;
+    ctx.beginPath(); ctx.moveTo(x,pad.t); ctx.lineTo(x,pad.t+ph); ctx.stroke();
+    ctx.fillStyle='#5a6a5a'; ctx.font="8px 'JetBrains Mono',monospace"; ctx.textAlign='center';
+    ctx.fillText((tmin2+tspan*i/3).toFixed(1)+'d', x, pad.t+ph+13);
+  }
+  const tx=t=>pad.l+pw*((t-tmin2)/tspan);
+  const ty=v=>pad.t+ph*(1-v/ymax);
+  // fill
+  ctx.beginPath();
+  ctx.moveTo(tx(tsArr[0]),ty(0));
+  for(let i=0;i<=step;i++) ctx.lineTo(tx(tsArr[i]),ty(dataArr[i]));
+  ctx.lineTo(tx(tsArr[step]),ty(0)); ctx.closePath();
+  ctx.fillStyle=color+'18'; ctx.fill();
+  // line
+  ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=1.5;
+  for(let i=0;i<=step;i++) i===0?ctx.moveTo(tx(tsArr[i]),ty(dataArr[i])):ctx.lineTo(tx(tsArr[i]),ty(dataArr[i]));
+  ctx.stroke();
+  // current dot
+  if(step>0){
+    ctx.beginPath(); ctx.arc(tx(tsArr[step]),ty(dataArr[step]),3,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.strokeStyle=color+'33'; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(tx(tsArr[step]),ty(dataArr[step]),3,0,Math.PI*2); ctx.stroke();
+  }
+}
+
+
+function drawAllCharts(step){
+  if(!simData) return;
+  drawChart('chart-X',   simData.ts, simData.Xs,    '#60a5fa', step);
+  drawChart('chart-Q',   simData.ts, simData.Qs,    '#fbbf24', step);
+  drawChart('chart-S',   simData.ts, simData.Ss,    '#f87171', step);
+  drawChart('chart-Chl', simData.ts, simData.Chls,  '#4ade80', step);
+  drawChart('chart-D',   simData.ts, simData.Ds,    '#2dd4bf', step);
+  drawChart('chart-I0',  simData.ts, simData.I0s,   '#fbbf24', step);
+  drawChart('chart-T',   simData.ts, simData.Ts,    '#fb923c', step);
+}
+
+function updateStats(step){
+  if(!simData) return;
+  document.getElementById('st-X').textContent=simData.rawXs[step].toFixed(1);
+  document.getElementById('st-Q').textContent=simData.rawQs[step].toFixed(4);
+  document.getElementById('st-S').textContent=simData.rawSs[step].toFixed(2);
+  document.getElementById('st-Chl').textContent=simData.rawChls[step].toFixed(2);
+  document.getElementById('st-mu').textContent=simData.mus[step].toFixed(3);
+}
+
+// ══════════════════════════════════════════════
+//  HISTORY
+// ══════════════════════════════════════════════
+let historySnapshot = null;
+
+function saveHistory(){
+  if(!simData || simData.ts.length < 2) return;
+  historySnapshot = {};
+  if(simData.mode === 'infinite'){
+    // Use full unbounded buffer
+    historySnapshot.ts      = [...simData.fullTs];
+    historySnapshot.rawXs   = [...simData.fullRawXs];
+    historySnapshot.rawQs   = [...simData.fullRawQs];
+    historySnapshot.rawSs   = [...simData.fullRawSs];
+    historySnapshot.rawChls = [...simData.fullRawChls];
+    historySnapshot.mus     = [...simData.fullMus];
+    historySnapshot.I0s     = [...simData.fullI0s];
+    historySnapshot.Ds      = [...simData.fullDs];
+    historySnapshot.Ts      = [...simData.fullTs2];
+  } else {
+    const keys = ['ts','rawXs','rawQs','rawSs','rawChls','mus','I0s','Ds','Ts'];
+    keys.forEach(k => historySnapshot[k] = [...simData[k]]);
+  }
+  historySnapshot.mode = simData.mode;
+  historySnapshot.duration = historySnapshot.ts[historySnapshot.ts.length-1] - historySnapshot.ts[0];
+  historySnapshot.savedAt = new Date().toLocaleTimeString();
+  document.getElementById('tab-history').style.color = 'var(--green)';
+}
+
+function clearHistory(){
+  historySnapshot = null;
+  document.getElementById('history-empty').style.display = 'flex';
+  document.getElementById('history-content').style.display = 'none';
+  document.getElementById('tab-history').style.color = '';
+}
+
+function renderHistory(){
+  if(!historySnapshot){
+    document.getElementById('history-empty').style.display = 'flex';
+    document.getElementById('history-content').style.display = 'none';
+    return;
+  }
+  document.getElementById('history-empty').style.display = 'none';
+  document.getElementById('history-content').style.display = 'block';
+  const h = historySnapshot;
+  const n = h.ts.length;
+  document.getElementById('history-title').textContent =
+    `Experimento completo — ${h.mode === 'infinite' ? '∞ Continuo' : 'Fijo'}`;
+  document.getElementById('history-meta').textContent =
+    `${n} puntos · duración ${h.duration.toFixed(2)} d · guardado ${h.savedAt}`;
+  // Draw all history charts with full data
+  setTimeout(()=>{
+    drawHistoryChart('h-chart-X',   h.ts, h.rawXs,   '#60a5fa');
+    drawHistoryChart('h-chart-Q',   h.ts, h.rawQs,   '#fbbf24');
+    drawHistoryChart('h-chart-S',   h.ts, h.rawSs,   '#f87171');
+    drawHistoryChart('h-chart-Chl', h.ts, h.rawChls, '#4ade80');
+    drawHistoryChart('h-chart-D',   h.ts, h.Ds,      '#2dd4bf');
+    drawHistoryChart('h-chart-I0',  h.ts, h.I0s,     '#fbbf24');
+    drawHistoryChart('h-chart-T',   h.ts, h.Ts,      '#fb923c');
+    drawHistoryChart('h-chart-mu',  h.ts, h.mus,     '#a78bfa');
+  }, 60);
+}
+
+function drawHistoryChart(canvasId, tsArr, dataArr, color){
+  const c = document.getElementById(canvasId);
+  if(!c || !c.offsetWidth) return;
+  const ctx = setupCanvas(c);
+  const W = c.offsetWidth, H = c.offsetHeight;
+  const pad = {l:36,r:8,t:6,b:20};
+  const pw = W-pad.l-pad.r, ph = H-pad.t-pad.b;
+  ctx.fillStyle = '#141614'; ctx.fillRect(0,0,W,H);
+  if(!tsArr.length) return;
+  const tmin = tsArr[0], tmax2 = tsArr[tsArr.length-1];
+  const tspan = Math.max(tmax2-tmin, 0.001);
+  const ymax = Math.max(...dataArr)*1.12 || 1;
+  const ymin = Math.min(...dataArr);
+  const yspan = Math.max(ymax - (ymin < 0 ? ymin*1.1 : 0), 0.001);
+  const ybase = ymin < 0 ? ymin*1.1 : 0;
+  // grid
+  ctx.strokeStyle='#2a2e2a'; ctx.lineWidth=0.5;
+  for(let i=0;i<=3;i++){
+    const y=pad.t+ph*i/3;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y); ctx.stroke();
+    ctx.fillStyle='#5a6a5a'; ctx.font="8px 'JetBrains Mono',monospace"; ctx.textAlign='right';
+    const val = ybase + yspan*(1-i/3);
+    ctx.fillText(val.toFixed(yspan<1?3:1), pad.l-2, y+3);
+  }
+  for(let i=0;i<=4;i++){
+    const x=pad.l+pw*i/4;
+    ctx.beginPath(); ctx.moveTo(x,pad.t); ctx.lineTo(x,pad.t+ph); ctx.stroke();
+    ctx.fillStyle='#5a6a5a'; ctx.font="8px 'JetBrains Mono',monospace"; ctx.textAlign='center';
+    ctx.fillText((tmin+tspan*i/4).toFixed(1)+'d', x, pad.t+ph+14);
+  }
+  const tx = t => pad.l+pw*((t-tmin)/tspan);
+  const ty = v => pad.t+ph*(1-(v-ybase)/yspan);
+  // fill
+  ctx.beginPath();
+  ctx.moveTo(tx(tsArr[0]), ty(ybase));
+  for(let i=0;i<tsArr.length;i++) ctx.lineTo(tx(tsArr[i]), ty(dataArr[i]));
+  ctx.lineTo(tx(tsArr[tsArr.length-1]), ty(ybase));
+  ctx.closePath(); ctx.fillStyle=color+'18'; ctx.fill();
+  // line — downsample if too many points for performance
+  const stride = Math.max(1, Math.floor(tsArr.length/800));
+  ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=1.5;
+  for(let i=0;i<tsArr.length;i+=stride){
+    i===0 ? ctx.moveTo(tx(tsArr[i]),ty(dataArr[i])) : ctx.lineTo(tx(tsArr[i]),ty(dataArr[i]));
+  }
+  // ensure last point
+  const last=tsArr.length-1;
+  ctx.lineTo(tx(tsArr[last]),ty(dataArr[last]));
+  ctx.stroke();
+}
+// ══════════════════════════════════════════════
+function seededRand(seed){ let s=seed%2147483647; if(s<=0) s+=2147483646; return ()=>{s=s*16807%2147483647; return (s-1)/2147483646;}; }
+function rndrect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r); ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r); ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r); ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath(); }
+
+function getFlatGeo(W,H){
+  const fw=6;
+  const hx=W*0.06, hy=H*0.04;
+  const hw=W*0.88, hh=H*0.76;
+  const ledW=Math.round(hw*0.14);
+  const hdrH=20;
+  const cx2=hx+fw+ledW+3;
+  const cy2=hy+fw+hdrH;
+  const cw=hw-2*(fw+ledW+3);
+  const ch=hh-fw-hdrH-fw;
+  const midX=hx+hw/2;
+  return{hx,hy,hw,hh,fw,ledW,hdrH,cx2,cy2,cw,ch,midX};
+}
+
+function buildPools(cx2,cy2,cw,ch){
+  const r1=seededRand(77);
+  cellPool=Array.from({length:MAX_CELLS},()=>({px:cx2+r1()*cw,py:cy2+r1()*ch,r:1.2+r1()*1.8,angle:r1()*Math.PI,dividing:r1()<0.11}));
+  const r2=seededRand(33);
+  bubblePool=Array.from({length:MAX_BUBBLES},()=>({x:cx2+r2()*cw,baseY:cy2+ch-4,r:0.8+r2()*1.6,speed:0.28+r2()*0.65,phase:r2()*Math.PI*2,wobble:0.4+r2()*1.4}));
+}
+
+function drawLEDStrip(ctx,x,y,w,h,i0frac){
+  rndrect(ctx,x,y,w,h,3); ctx.fillStyle='#0a0a0a'; ctx.fill();
+  const cols=2, rows=Math.floor(h/12);
+  const dx=w/(cols+1), dy=h/(rows+1);
+  const brightness=0.3+i0frac*0.7;
+  for(let r=1;r<=rows;r++) for(let c=1;c<=cols;c++){
+    const lx2=x+c*dx, ly2=y+r*dy;
+    const grad=ctx.createRadialGradient(lx2,ly2,0,lx2,ly2,8);
+    grad.addColorStop(0,`rgba(255,80,10,${brightness*0.65})`);
+    grad.addColorStop(1,'rgba(255,40,0,0)');
+    ctx.beginPath(); ctx.arc(lx2,ly2,8,0,Math.PI*2); ctx.fillStyle=grad; ctx.fill();
+    ctx.beginPath(); ctx.arc(lx2,ly2,2,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,${Math.round(100+i0frac*80)},20,${brightness})`; ctx.fill();
+  }
+  ctx.strokeStyle='#222'; ctx.lineWidth=0.6; rndrect(ctx,x,y,w,h,3); ctx.stroke();
+}
+
+function drawBio(step){
+  const c=document.getElementById('bio-canvas'); if(!c.offsetWidth) return;
+  const ctx=setupCanvas(c);
+  const W=c.offsetWidth, H=c.offsetHeight;
+  const g=getFlatGeo(W,H);
+  if(!cellPool.length) buildPools(g.cx2,g.cy2,g.cw,g.ch);
+  const{hx,hy,hw,hh,fw,ledW,hdrH,cx2,cy2,cw,ch,midX}=g;
+
+  ctx.fillStyle='#0d0f0e'; ctx.fillRect(0,0,W,H);
+
+  const currentI0 = simData ? simData.I0s[step] : getI(0);
+  const i0frac=Math.min(1, currentI0/800);
+
+  // housing
+  const hShadow=ctx.createLinearGradient(hx,hy,hx+hw,hy+hh);
+  hShadow.addColorStop(0,'#222'); hShadow.addColorStop(1,'#111');
+  rndrect(ctx,hx,hy,hw,hh,6); ctx.fillStyle=hShadow; ctx.fill();
+  ctx.strokeStyle='#333'; ctx.lineWidth=0.7; ctx.stroke();
+
+  // header
+  const hdGrad=ctx.createLinearGradient(hx+fw,hy+fw,hx+fw,hy+fw+hdrH);
+  hdGrad.addColorStop(0,'#3a3a3a'); hdGrad.addColorStop(1,'#222');
+  rndrect(ctx,hx+fw,hy+fw,hw-fw*2,hdrH,3); ctx.fillStyle=hdGrad; ctx.fill();
+
+  // ports
+  [0.25,0.50,0.75].forEach(frac=>{
+    const px2=cx2+cw*frac, py2=hy+fw;
+    ctx.strokeStyle='#888'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(px2,hy-1); ctx.lineTo(px2,hy+fw+2); ctx.stroke();
+    const pg=ctx.createLinearGradient(px2-3,py2,px2+3,py2);
+    pg.addColorStop(0,'#666'); pg.addColorStop(0.5,'#aaa'); pg.addColorStop(1,'#666');
+    rndrect(ctx,px2-3,py2,7,9,2); ctx.fillStyle=pg; ctx.fill();
+  });
+
+  // LEDs
+  drawLEDStrip(ctx,hx+fw,hy+fw+hdrH,ledW,hh-fw*2-hdrH,i0frac);
+  drawLEDStrip(ctx,hx+hw-fw-ledW,hy+fw+hdrH,ledW,hh-fw*2-hdrH,i0frac);
+
+  // light spill
+  if(i0frac>0.05){
+    const spL=ctx.createLinearGradient(cx2,cy2,cx2+cw*0.45,cy2);
+    spL.addColorStop(0,`rgba(255,60,10,${i0frac*0.10})`); spL.addColorStop(1,'rgba(255,60,10,0)');
+    ctx.fillStyle=spL; ctx.fillRect(cx2,cy2,cw*0.45,ch);
+    const spR=ctx.createLinearGradient(cx2+cw,cy2,cx2+cw*0.55,cy2);
+    spR.addColorStop(0,`rgba(255,60,10,${i0frac*0.10})`); spR.addColorStop(1,'rgba(255,60,10,0)');
+    ctx.fillStyle=spR; ctx.fillRect(cx2+cw*0.55,cy2,cw*0.45,ch);
+  }
+
+  // liquid
+  ctx.fillStyle='rgba(180,200,220,0.10)'; ctx.fillRect(cx2,cy2,cw,ch);
+  let sfrac=0.5, cfrac=0;
+  if(simData){
+    sfrac=Math.max(0,Math.min(1,simData.rawSs[step]/Math.max(ic.S0,1)));
+    const cmax=Math.max(...simData.rawChls)||1;
+    cfrac=Math.max(0,Math.min(1,simData.rawChls[step]/cmax));
+  }
+  const lr=Math.round(30+cfrac*10); const lg=Math.round(80*cfrac+50*sfrac); const lb=Math.round(30*(1-cfrac));
+  const la=0.40+sfrac*0.15+cfrac*0.30;
+  ctx.fillStyle=`rgba(${lr},${lg+30},${lb+10},${la})`; ctx.fillRect(cx2,cy2,cw,ch);
+
+  // bubbles + cells
+  ctx.save(); ctx.beginPath(); ctx.rect(cx2,cy2,cw,ch); ctx.clip();
+  bubblePool.forEach(b=>{
+    const travel=ch-4;
+    const dy=((bioT*b.speed*28)+b.phase*10)%travel;
+    const bx=b.x+Math.sin(bioT*b.wobble+b.phase)*2.5;
+    const by=b.baseY-dy;
+    const al=0.10+0.20*(dy/travel);
+    ctx.beginPath(); ctx.arc(bx,by,b.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${al})`; ctx.fill();
+  });
+  const xfrac=simData?Math.max(0,Math.min(1,simData.rawXs[step]/Math.max(Math.max(...simData.rawXs)*1.1,1))):0;
+  const nCells=Math.min(Math.round(xfrac*MAX_CELLS)+2, MAX_CELLS);
+  for(let i=0;i<nCells;i++){
+    const{px,py,r,angle,dividing}=cellPool[i];
+    ctx.beginPath();
+    if(dividing) ctx.ellipse(px,py,r*1.5,r*0.65,angle,0,Math.PI*2);
+    else ctx.ellipse(px,py,r,r*0.88,angle,0,Math.PI*2);
+    ctx.fillStyle=`rgba(30,120,60,${0.45+xfrac*0.45})`; ctx.fill();
+    ctx.strokeStyle=`rgba(10,60,25,${0.25+xfrac*0.25})`; ctx.lineWidth=0.3; ctx.stroke();
+  }
+  ctx.restore();
+
+  // sparger
+  const sgrY=cy2+ch-3;
+  ctx.fillStyle='#444'; ctx.fillRect(cx2+cw*0.1,sgrY-2,cw*0.8,3);
+  for(let i=0;i<9;i++){ ctx.beginPath(); ctx.arc(cx2+cw*0.12+i*(cw*0.76/8),sgrY,0.9,0,Math.PI*2); ctx.fillStyle='#222'; ctx.fill(); }
+
+  // glass border
+  ctx.strokeStyle='rgba(150,170,190,0.3)'; ctx.lineWidth=1;
+  ctx.strokeRect(cx2,cy2,cw,ch);
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=0.8;
+  ctx.beginPath(); ctx.moveTo(cx2+2,cy2+3); ctx.lineTo(cx2+2,cy2+ch-3); ctx.stroke();
+
+  // base controller
+  const baseY=hy+hh+3, baseH=H-baseY-3;
+  if(baseH>8){
+    rndrect(ctx,hx,baseY,hw,Math.max(baseH,12),3);
+    ctx.fillStyle='#111'; ctx.fill(); ctx.strokeStyle='#2a2a2a'; ctx.lineWidth=0.5; ctx.stroke();
+    rndrect(ctx,hx+hw*0.28,baseY+2,hw*0.44,Math.max(baseH-4,6),2);
+    ctx.fillStyle='#050e08'; ctx.fill();
+    if(simData && baseH>10){
+      ctx.font=`bold ${Math.min(8,baseH-4)}px 'JetBrains Mono',monospace`; ctx.textAlign='center';
+      ctx.fillStyle='#22cc66'; ctx.fillText(`X=${simData.rawXs[step].toFixed(0)}`,midX-28,baseY+baseH*0.65);
+      ctx.fillStyle='#cc4422'; ctx.fillText(`S=${simData.rawSs[step].toFixed(1)}`,midX+26,baseY+baseH*0.65);
+    }
+  }
+
+  // I0 label
+  ctx.font="9px 'JetBrains Mono',monospace"; ctx.textAlign='left';
+  ctx.fillStyle='rgba(251,191,36,0.8)';
+  ctx.fillText(`I₀=${currentI0.toFixed(0)}`, hx+fw+2, hy+fw+hdrH-4);
+
+  // D label
+  const currentD = simData ? simData.Ds[step] : getD(0);
+  if(currentD>0.001){
+    ctx.fillStyle='rgba(45,212,191,0.8)';
+    ctx.fillText(`D=${currentD.toFixed(2)}`, cx2+cw-38, hy+fw+hdrH-4);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  UI CONTROLS
+// ══════════════════════════════════════════════
+function setDMode(m){
+  opD.mode=m;
+  document.getElementById('d-mode-slider').classList.toggle('active',m==='slider');
+  document.getElementById('d-mode-fn').classList.toggle('active',m==='fn');
+  document.getElementById('d-slider-ctrl').style.display=m==='slider'?'':'none';
+  document.getElementById('d-fn-ctrl').style.display=m==='fn'?'':'none';
+}
+function setIMode(m){
+  opI.mode=m;
+  document.getElementById('i-mode-slider').classList.toggle('active',m==='slider');
+  document.getElementById('i-mode-fn').classList.toggle('active',m==='fn');
+  document.getElementById('i-slider-ctrl').style.display=m==='slider'?'':'none';
+  document.getElementById('i-fn-ctrl').style.display=m==='fn'?'':'none';
+}
+function setTMode(m){
+  opT.mode=m;
+  document.getElementById('t-mode-slider').classList.toggle('active',m==='slider');
+  document.getElementById('t-mode-fn').classList.toggle('active',m==='fn');
+  document.getElementById('t-slider-ctrl').style.display=m==='slider'?'':'none';
+  document.getElementById('t-fn-ctrl').style.display=m==='fn'?'':'none';
+}
+
+function updateDSlider(){ const v=parseFloat(document.getElementById('d-slider').value); opD.sliderVal=v; document.getElementById('d-val').textContent=v.toFixed(2); }
+function updateISlider(){ const v=parseFloat(document.getElementById('i-slider').value); opI.sliderVal=v; document.getElementById('i-val').textContent=v.toFixed(0); }
+function updateTSlider(){ const v=parseFloat(document.getElementById('t-slider').value); opT.sliderVal=v; document.getElementById('t-val').textContent=v.toFixed(1); }
+function updateTmax(){ tmax=parseInt(document.getElementById('tmax-slider').value); document.getElementById('tmax-val').textContent=tmax; document.getElementById('tmax-label').textContent=tmax+' d'; }
+
+function validateFn(which){
+  const id = which==='d'?'d-fn':which==='i'?'i-fn':'t-fn';
+  const hintId = which==='d'?'d-fn-hint':which==='i'?'i-fn-hint':'t-fn-hint';
+  const el=document.getElementById(id);
+  const hint=document.getElementById(hintId);
+  try {
+    const v=new Function('t','Math',`return ${el.value}`)(1,Math);
+    if(typeof v!=='number'||isNaN(v)) throw new Error();
+    el.classList.remove('error');
+    hint.classList.remove('err');
+    hint.textContent = which==='d'?'t en días · retorna d⁻¹':which==='i'?'t en días · retorna µmol/m²s':'t en días · retorna °C';
+    if(which==='d') opD.fn=el.value;
+    else if(which==='i') opI.fn=el.value;
+    else opT.fn=el.value;
+  } catch(e) {
+    el.classList.add('error');
+    hint.classList.add('err'); hint.textContent='⚠ Error en la función';
+  }
+}
+
+function updateParam(key){
+  const el=document.getElementById('p-'+key);
+  const v=parseFloat(el.value);
+  if(isNaN(v)) return;
+  if(key==='X0'||key==='Q0ic'||key==='S0'||key==='Istar0') ic[key]=v;
+  else params[key]=v;
+}
+
+// ══════════════════════════════════════════════
+//  RUNS
+// ══════════════════════════════════════════════
+function buildRunsGrid(){
+  const grid=document.getElementById('runs-grid');
+  RUNS.forEach((r,i)=>{
+    const card=document.createElement('div');
+    card.className='run-card'+(i===0?' active':'');
+    card.id='run-card-'+i;
+    card.innerHTML=`
+      <div class="run-card-header">
+        <span class="run-card-title">${r.name}</span>
+        <span class="run-card-i0">I₀=${r.I0}</span>
+      </div>
+      <div class="run-card-vals">
+        <span class="k">X₀</span><span class="v">${r.X0} g/m³</span>
+        <span class="k">Q₀</span><span class="v">${r.Q0ic}</span>
+        <span class="k">S₀</span><span class="v">${r.S0} g/m³</span>
+        <span class="k">T</span><span class="v">${r.T} °C</span>
+        <span class="k">D</span><span class="v">${r.D} d⁻¹</span>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-top:6px">${r.note}</div>
+      <button class="run-load-btn" onclick="loadRun(${i})">Cargar configuración</button>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function loadRun(i){
+  selectedRun=i;
+  const r=RUNS[i];
+  // update ICs
+  ic.X0=r.X0; ic.Q0ic=r.Q0ic; ic.S0=r.S0; ic.Istar0=r.Istar0;
+  document.getElementById('p-X0').value=r.X0;
+  document.getElementById('p-Q0ic').value=r.Q0ic;
+  document.getElementById('p-S0').value=r.S0;
+  document.getElementById('p-Istar0').value=r.Istar0;
+  // update D
+  opD.sliderVal=r.D;
+  document.getElementById('d-slider').value=r.D;
+  document.getElementById('d-val').textContent=r.D.toFixed(2);
+  setDMode('slider');
+  // update I
+  opI.sliderVal=r.I0;
+  document.getElementById('i-slider').value=r.I0;
+  document.getElementById('i-val').textContent=r.I0;
+  setIMode('slider');
+  // update T
+  opT.sliderVal=r.T;
+  document.getElementById('t-slider').value=r.T;
+  document.getElementById('t-val').textContent=r.T;
+  setTMode('slider');
+  // highlight card
+  document.querySelectorAll('.run-card').forEach((c,j)=>c.classList.toggle('active',j===i));
+  // go to sim
+  showPage('sim');
+}
+
+// ══════════════════════════════════════════════
+//  PAGES
+// ══════════════════════════════════════════════
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['sim','params','runs','history'][i]===name));
+  document.getElementById('page-'+name).classList.add('active');
+  if(name==='sim') setTimeout(()=>{ initBio(); },50);
+  if(name==='history') renderHistory();
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+function initBio(){
+  const c=document.getElementById('bio-canvas');
+  if(!c.offsetWidth){ setTimeout(initBio,60); return; }
+  const W=c.offsetWidth, H=c.offsetHeight;
+  const g=getFlatGeo(W,H);
+  buildPools(g.cx2,g.cy2,g.cw,g.ch);
+  drawBio(0);
+}
+
+buildRunsGrid();
+loadRun(0);
+setTimeout(initBio, 100);
+</script>
+</body>
+</html>
