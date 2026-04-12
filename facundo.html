@@ -782,6 +782,10 @@ input[type=range] {
         <input class="param-input" id="p-S0" type="number" value="33.2" step="0.1" oninput="updateParam('S0')">
       </div>
       <div class="param-row">
+        <span class="param-label">S<sub>in</sub> — feed (g_N/m³)</span>
+        <input class="param-input" id="p-Sin" type="number" value="33.2" step="0.1" oninput="updateParam('Sin')">
+      </div>
+      <div class="param-row">
         <span class="param-label">I*₀ (µmol/m²s)</span>
         <input class="param-input" id="p-Istar0" type="number" value="100" step="10" oninput="updateParam('Istar0')">
       </div>
@@ -906,7 +910,7 @@ const params = {
   rho_bar:0.0573, k_sIstar:1.36, k_iI:94.3, R:0.0779,
   gamma_max:1.158, k_Istar:184.0, a:12.6, b:0.72, c:15.1, K_g:10.6,
 };
-const ic = { X0:10.1, Q0ic:0.025, S0:33.2, Istar0:100 };
+const ic = { X0:10.1, Q0ic:0.025, S0:33.2, Sin:33.2, Istar0:100 };
 
 // ══════════════════════════════════════════════
 //  RUNS (Tabla 2 + operating conditions)
@@ -965,7 +969,7 @@ function odeRHS(X,Q,S,Is,t,p){
   const I0=getI(t), D=getD(t), T=getT(t);
   const m=muRate(X,Q,Is,I0,p,T), r=rhoRate(Q,S,p), Ia=avgLight(I0,X,Q,Is,p);
   // D affects Q (dilution washes out internal quota toward feed Q0) and S (feed S_in = S0)
-  const Sin = ic.S0; // feed substrate = initial S0
+  const Sin = ic.Sin; // feed substrate concentration
   return {
     dX: (m - p.R - D) * X,
     dQ: r - m*(Q-p.Q0) - D*(Q - p.Q0),
@@ -1174,25 +1178,35 @@ function drawChart(canvasId, tsArr, dataArr, color, step, yLabel=''){
   const pad={l:32,r:6,t:4,b:18};
   const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
   ctx.fillStyle='#141614'; ctx.fillRect(0,0,W,H);
-  const ymax=Math.max(...dataArr.slice(0,step+1))*1.15||1;
+  // Use full array for axis range so decreasing variables (like S) show properly
+  const visData = dataArr.slice(0, step+1);
+  const allMax = visData.length ? Math.max(...visData) : 1;
+  const allMin = visData.length ? Math.min(...visData) : 0;
+  // Also peek at future values in finite mode so axis doesn't rescale mid-animation
+  const fullMax = Math.max(...dataArr);
+  const fullMin = Math.min(...dataArr);
+  const ymax = (Math.max(allMax, fullMax) * 1.12) || 1;
+  const ymin = Math.min(0, Math.min(allMin, fullMin) * 0.95);
+  const yspan = Math.max(ymax - ymin, 1e-9);
   const tmin2=tsArr[0];
   const tmax2=tsArr[tsArr.length-1];
-  const tspan=Math.max(tmax2-tmin2, 0.001);
+  const tspan2=Math.max(tmax2-tmin2, 0.001);
   ctx.strokeStyle='#2a2e2a'; ctx.lineWidth=0.5;
   for(let i=0;i<=3;i++){
     const y=pad.t+ph*i/3;
     ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y); ctx.stroke();
     ctx.fillStyle='#5a6a5a'; ctx.font="8px 'JetBrains Mono',monospace"; ctx.textAlign='right';
-    ctx.fillText((ymax*(1-i/3)).toFixed(ymax<1?3:1), pad.l-2, y+3);
+    const val = ymax - (yspan * i/3);
+    ctx.fillText(val.toFixed(yspan<1?3:1), pad.l-2, y+3);
   }
   for(let i=0;i<=3;i++){
     const x=pad.l+pw*i/3;
     ctx.beginPath(); ctx.moveTo(x,pad.t); ctx.lineTo(x,pad.t+ph); ctx.stroke();
     ctx.fillStyle='#5a6a5a'; ctx.font="8px 'JetBrains Mono',monospace"; ctx.textAlign='center';
-    ctx.fillText((tmin2+tspan*i/3).toFixed(1)+'d', x, pad.t+ph+13);
+    ctx.fillText((tmin2+tspan2*i/3).toFixed(1)+'d', x, pad.t+ph+13);
   }
-  const tx=t=>pad.l+pw*((t-tmin2)/tspan);
-  const ty=v=>pad.t+ph*(1-v/ymax);
+  const tx=t=>pad.l+pw*((t-tmin2)/tspan2);
+  const ty=v=>pad.t+ph*(1-(v-ymin)/yspan);
   // fill
   ctx.beginPath();
   ctx.moveTo(tx(tsArr[0]),ty(0));
@@ -1563,7 +1577,7 @@ function updateParam(key){
   const el=document.getElementById('p-'+key);
   const v=parseFloat(el.value);
   if(isNaN(v)) return;
-  if(key==='X0'||key==='Q0ic'||key==='S0'||key==='Istar0') ic[key]=v;
+  if(key==='X0'||key==='Q0ic'||key==='S0'||key==='Sin'||key==='Istar0') ic[key]=v;
   else params[key]=v;
 }
 
@@ -1599,10 +1613,11 @@ function loadRun(i){
   selectedRun=i;
   const r=RUNS[i];
   // update ICs
-  ic.X0=r.X0; ic.Q0ic=r.Q0ic; ic.S0=r.S0; ic.Istar0=r.Istar0;
+  ic.X0=r.X0; ic.Q0ic=r.Q0ic; ic.S0=r.S0; ic.Sin=r.Sin||r.S0; ic.Istar0=r.Istar0;
   document.getElementById('p-X0').value=r.X0;
   document.getElementById('p-Q0ic').value=r.Q0ic;
   document.getElementById('p-S0').value=r.S0;
+  document.getElementById('p-Sin').value=r.Sin||r.S0;
   document.getElementById('p-Istar0').value=r.Istar0;
   // update D
   opD.sliderVal=r.D;
