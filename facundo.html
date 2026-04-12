@@ -40,13 +40,13 @@ body {
 
 /* ── HEADER ── */
 .header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+}
+.header-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg2);
-  gap: 10px;
+  padding: 8px 14px 0;
 }
 .header-title {
   font-family: 'JetBrains Mono', monospace;
@@ -59,25 +59,25 @@ body {
 
 .tab-bar {
   display: flex;
-  gap: 2px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 2px;
+  gap: 0;
+  padding: 6px 10px 0;
+  border-bottom: none;
 }
 .tab-btn {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border: none;
-  border-radius: 4px;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
   background: transparent;
   color: var(--text3);
   transition: all 0.15s;
   white-space: nowrap;
+  flex: 1;
+  text-align: center;
 }
-.tab-btn.active { background: var(--bg); color: var(--green); }
+.tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
 .tab-btn:hover:not(.active) { color: var(--text2); }
 
 /* ── LAYOUT ── */
@@ -89,13 +89,13 @@ body {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0;
-  height: calc(100vh - 46px);
+  height: calc(100vh - 62px);
   overflow: hidden;
 }
 
 @media (min-width: 768px) {
   .sim-layout {
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 220px 1fr;
   }
 }
 
@@ -112,11 +112,42 @@ body {
 }
 
 @media (max-width: 767px) {
-  .sim-layout { height: auto; overflow: visible; }
+  .sim-layout {
+    height: auto;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+  }
+  /* on mobile, ctrl panel goes BELOW the viz, as compact horizontal strips */
   .ctrl-panel {
+    order: 2;
     border-right: none;
-    border-bottom: 1px solid var(--border);
-    max-height: 420px;
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px;
+    flex-direction: column;
+    gap: 6px;
+    max-height: none;
+  }
+  .right-panel { order: 1; }
+  /* compact sections on mobile */
+  .section {
+    padding: 7px 8px;
+  }
+  .section-title { margin-bottom: 5px; }
+  /* 3 input sections in a row */
+  .ctrl-inputs-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  /* time+sim section full width */
+  .ctrl-sim-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+    align-items: end;
   }
 }
 
@@ -341,7 +372,7 @@ input[type=range] {
 .params-page {
   padding: 12px;
   overflow-y: auto;
-  height: calc(100vh - 46px);
+  height: calc(100vh - 62px);
 }
 .params-grid-2col {
   display: grid;
@@ -407,7 +438,7 @@ input[type=range] {
 .runs-page {
   padding: 12px;
   overflow-y: auto;
-  height: calc(100vh - 46px);
+  height: calc(100vh - 62px);
 }
 .runs-grid {
   display: grid;
@@ -511,7 +542,16 @@ input[type=range] {
   white-space: nowrap;
 }
 
-/* scrollbar */
+/* desktop: inputs stack vertically in sidebar */
+@media (min-width: 768px) {
+  .ctrl-inputs-row {
+    display: contents; /* children become direct flex children of ctrl-panel */
+  }
+  .ctrl-sim-row {
+    display: contents;
+  }
+  #sim-btn { width: 100% !important; padding: 10px !important; font-size: 13px !important; }
+}
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
@@ -520,7 +560,7 @@ input[type=range] {
 .history-page {
   padding: 12px;
   overflow-y: auto;
-  height: calc(100vh - 46px);
+  height: calc(100vh - 62px);
 }
 .history-empty {
   display: flex;
@@ -587,7 +627,9 @@ input[type=range] {
 
 <!-- ══ HEADER ══ -->
 <div class="header">
-  <div class="header-title"><em>Scenedesmus obliquus</em> · FBR dinámico</div>
+  <div class="header-top">
+    <div class="header-title"><em>Scenedesmus obliquus</em> · FBR dinámico</div>
+  </div>
   <div class="tab-bar">
     <button class="tab-btn active" onclick="showPage('sim')">Simular</button>
     <button class="tab-btn" onclick="showPage('params')">Parámetros</button>
@@ -603,11 +645,12 @@ input[type=range] {
   <!-- CONTROL PANEL -->
   <div class="ctrl-panel">
 
+  <div class="ctrl-inputs-row">
     <!-- DILUCIÓN -->
     <div class="section">
-      <div class="section-title">Tasa de Dilución D</div>
+      <div class="section-title">D — Dilución</div>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="d-mode-slider" onclick="setDMode('slider')">Slider</button>
+        <button class="mode-btn active" id="d-mode-slider" onclick="setDMode('slider')">Slide</button>
         <button class="mode-btn" id="d-mode-fn" onclick="setDMode('fn')">f(t)</button>
       </div>
       <div id="d-slider-ctrl" class="ctrl-item">
@@ -615,67 +658,71 @@ input[type=range] {
         <input type="range" id="d-slider" min="0" max="2" step="0.01" value="0" oninput="updateDSlider()">
       </div>
       <div id="d-fn-ctrl" style="display:none">
-        <div class="ctrl-label" style="margin-bottom:4px">D(t) = </div>
-        <div class="fn-input-wrap">
-          <input class="fn-input" id="d-fn" type="text" value="0.1 * Math.sin(t/3) + 0.15" spellcheck="false" oninput="validateFn('d')">
-        </div>
-        <div class="fn-hint" id="d-fn-hint">t en días · retorna d⁻¹</div>
+        <div class="ctrl-label" style="margin-bottom:3px">D(t) =</div>
+        <input class="fn-input" id="d-fn" type="text" value="0.1 * Math.sin(t/3) + 0.15" spellcheck="false" oninput="validateFn('d')">
+        <div class="fn-hint" id="d-fn-hint">d⁻¹</div>
       </div>
     </div>
 
     <!-- LUZ -->
     <div class="section">
-      <div class="section-title">Irradiancia I₀</div>
+      <div class="section-title">I₀ — Luz</div>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="i-mode-slider" onclick="setIMode('slider')">Slider</button>
+        <button class="mode-btn active" id="i-mode-slider" onclick="setIMode('slider')">Slide</button>
         <button class="mode-btn" id="i-mode-fn" onclick="setIMode('fn')">f(t)</button>
       </div>
       <div id="i-slider-ctrl" class="ctrl-item">
-        <div class="ctrl-label">I₀ (µmol/m²s) <span class="val" id="i-val">200</span></div>
+        <div class="ctrl-label">µmol/m²s <span class="val" id="i-val">200</span></div>
         <input type="range" id="i-slider" min="50" max="1000" step="10" value="200" oninput="updateISlider()">
       </div>
       <div id="i-fn-ctrl" style="display:none">
-        <div class="ctrl-label" style="margin-bottom:4px">I₀(t) = </div>
+        <div class="ctrl-label" style="margin-bottom:3px">I₀(t) =</div>
         <input class="fn-input" id="i-fn" type="text" value="200 + 150 * Math.sin(2*Math.PI*t)" spellcheck="false" oninput="validateFn('i')">
-        <div class="fn-hint" id="i-fn-hint">t en días · retorna µmol/m²s</div>
+        <div class="fn-hint" id="i-fn-hint">µmol/m²s</div>
       </div>
     </div>
 
     <!-- TEMPERATURA -->
     <div class="section">
-      <div class="section-title">Temperatura T</div>
+      <div class="section-title">T — Temp.</div>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="t-mode-slider" onclick="setTMode('slider')">Slider</button>
+        <button class="mode-btn active" id="t-mode-slider" onclick="setTMode('slider')">Slide</button>
         <button class="mode-btn" id="t-mode-fn" onclick="setTMode('fn')">f(t)</button>
       </div>
       <div id="t-slider-ctrl" class="ctrl-item">
-        <div class="ctrl-label">T (°C) <span class="val" id="t-val">25</span></div>
+        <div class="ctrl-label">°C <span class="val" id="t-val">25</span></div>
         <input type="range" id="t-slider" min="10" max="40" step="0.5" value="25" oninput="updateTSlider()">
       </div>
       <div id="t-fn-ctrl" style="display:none">
-        <div class="ctrl-label" style="margin-bottom:4px">T(t) = </div>
+        <div class="ctrl-label" style="margin-bottom:3px">T(t) =</div>
         <input class="fn-input" id="t-fn" type="text" value="25 + 5 * Math.sin(2*Math.PI*t/7)" spellcheck="false" oninput="validateFn('t')">
-        <div class="fn-hint" id="t-fn-hint">t en días · retorna °C</div>
+        <div class="fn-hint" id="t-fn-hint">°C</div>
+      </div>
+    </div>
+  </div><!-- end ctrl-inputs-row -->
+
+  <div class="ctrl-sim-row">
+    <!-- TIEMPO SIM -->
+    <div class="section" style="flex:1">
+      <div class="section-title">Tiempo</div>
+      <div class="mode-toggle" style="margin-bottom:6px">
+        <button class="mode-btn active" id="tm-mode-finite" onclick="setTmMode('finite')">Fijo</button>
+        <button class="mode-btn" id="tm-mode-infinite" onclick="setTmMode('infinite')">∞</button>
+      </div>
+      <div id="tmax-ctrl" class="ctrl-item">
+        <div class="ctrl-label">Final (d) <span class="val" id="tmax-val">15</span></div>
+        <input type="range" id="tmax-slider" min="1" max="60" step="1" value="15" oninput="updateTmax()">
+      </div>
+      <div class="toggle-row" style="margin-top:5px">
+        <label class="toggle"><input type="checkbox" id="noise-chk"><span class="slider-t"></span></label>
+        <span class="toggle-label">Ruido</span>
       </div>
     </div>
 
-    <!-- TIEMPO SIM -->
-    <div class="section">
-      <div class="section-title">Tiempo de simulación</div>
-      <div class="mode-toggle" style="margin-bottom:8px">
-        <button class="mode-btn active" id="tm-mode-finite" onclick="setTmMode('finite')">Fijo</button>
-        <button class="mode-btn" id="tm-mode-infinite" onclick="setTmMode('infinite')">∞ Continuo</button>
-      </div>
-      <div id="tmax-ctrl" class="ctrl-item">
-        <div class="ctrl-label">Tiempo final (d) <span class="val" id="tmax-val">15</span></div>
-        <input type="range" id="tmax-slider" min="1" max="60" step="1" value="15" oninput="updateTmax()">
-      </div>
-      <div class="toggle-row" style="margin-bottom:8px">
-        <label class="toggle"><input type="checkbox" id="noise-chk"><span class="slider-t"></span></label>
-        <span class="toggle-label">Ruido log-normal CV 5%</span>
-      </div>
-      <button class="sim-btn" id="sim-btn" onclick="toggleSim()">▶ Simular</button>
+    <div style="display:flex;align-items:center;padding-bottom:2px">
+      <button class="sim-btn" id="sim-btn" onclick="toggleSim()" style="width:72px;padding:10px 6px;font-size:12px">▶ Sim</button>
     </div>
+  </div><!-- end ctrl-sim-row -->
 
   </div>
 
