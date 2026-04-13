@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Newton vs LM</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:system-ui,sans-serif; background:#f8f7f4; color:#1a1a1a; min-height:100vh; padding:0.75rem; }
+h1 { font-size:1.1rem; font-weight:500; text-align:center; margin-bottom:0.15rem; }
+.sub { font-size:0.72rem; color:#555; text-align:center; margin-bottom:0.6rem; }
+.card { background:#fff; border-radius:12px; border:0.5px solid rgba(0,0,0,0.12); padding:0.75rem; margin-bottom:0.55rem; }
+.row { display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; margin-bottom:0.38rem; }
+label { font-size:0.76rem; color:#444; white-space:nowrap; }
+select,input[type=number] { font-size:0.78rem; padding:5px 7px; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; background:#fff; color:#1a1a1a; flex:1; min-width:75px; }
+.btn-row { display:flex; gap:0.4rem; flex-wrap:wrap; }
+button { font-size:0.78rem; padding:6px 10px; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; background:#fff; color:#1a1a1a; cursor:pointer; flex:1; min-width:52px; transition:background 0.1s; }
+button:hover { background:#f0ede8; }
+button:active { transform:scale(0.97); }
+button.primary { background:#3c3489; color:#fff; border-color:#3c3489; }
+button.primary:hover { background:#2e276b; }
+button.danger { background:#a32d2d; color:#fff; border-color:#a32d2d; }
+button.danger:hover { background:#7a1f1f; }
+button:disabled { opacity:0.35; cursor:not-allowed; transform:none; }
+.toggle { display:flex; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; overflow:hidden; margin-bottom:0.38rem; }
+.toggle button { border:none; border-radius:0; flex:1; margin:0; padding:6px 4px; font-size:0.76rem; }
+.toggle button.active { background:#3c3489; color:#fff; }
+.tabs { display:flex; border:0.5px solid rgba(0,0,0,0.15); border-radius:10px; overflow:hidden; margin-bottom:0.55rem; }
+.tabs button { border:none; border-radius:0; flex:1; margin:0; padding:8px 4px; font-size:0.8rem; background:#f0ede8; color:#444; }
+.tabs button.active { background:#3c3489; color:#fff; font-weight:500; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+canvas { width:100%; display:block; border-radius:8px; background:#fff; }
+.zoom-row { display:flex; gap:0.35rem; align-items:center; margin-top:0.4rem; }
+.zoom-row button { flex:0 0 auto; min-width:32px; max-width:38px; padding:4px 5px; font-size:1rem; font-weight:500; }
+.zlabel { font-size:0.7rem; color:#666; flex:1; text-align:center; }
+.info-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0.3rem; margin-top:0.35rem; }
+.metric { background:#f4f2ec; border-radius:8px; padding:0.38rem 0.35rem; text-align:center; }
+.ml { font-size:0.58rem; color:#666; margin-bottom:1px; }
+.mv { font-size:0.78rem; font-weight:500; font-family:monospace; color:#1a1a1a; }
+.metric.warn { background:#faece7; } .metric.warn .ml { color:#993c1d; } .metric.warn .mv { color:#993c1d; }
+.metric.ok   { background:#e1f5ee; } .metric.ok .ml   { color:#0f6e56; } .metric.ok .mv   { color:#0f6e56; }
+.metric.info { background:#e6f1fb; } .metric.info .ml { color:#185fa5; } .metric.info .mv { color:#185fa5; }
+.history { max-height:90px; overflow-y:auto; font-size:0.68rem; font-family:monospace; color:#333; line-height:1.85; }
+.hr.active { color:#3c3489; font-weight:500; } .hr.warn { color:#993c1d; }
+.status { font-size:0.76rem; text-align:center; margin-top:0.28rem; padding:3px 8px; border-radius:6px; color:#444; min-height:1rem; }
+.status.converged { color:#0f6e56; font-weight:500; background:#e1f5ee; }
+.status.diverged  { color:#a32d2d; font-weight:500; background:#fcebeb; }
+.status.warn      { color:#854f0b; font-weight:500; background:#faeeda; }
+.status.stopped   { color:#534ab7; font-weight:500; background:#eeedfe; }
+.banner { display:none; border-radius:8px; padding:5px 9px; font-size:0.73rem; margin-top:0.32rem; line-height:1.5; }
+.banner.show { display:block; }
+.banner.warn { background:#faeeda; border:0.5px solid #ef9f27; color:#633806; }
+.banner.info { background:#e6f1fb; border:0.5px solid #378add; color:#0c447c; }
+.viz-toggles { display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.4rem; }
+.viz-toggles label { font-size:0.74rem; display:flex; align-items:center; gap:4px; cursor:pointer; color:#333; }
+.viz-toggles input[type=checkbox] { width:14px; height:14px; cursor:pointer; accent-color:#3c3489; }
+</style>
+</head>
+<body>
+<h1>Newton vs Levenberg-Marquardt</h1>
+<p class="sub">iterative optimization — visual explorer</p>
+
+<div class="card">
+  <div class="row"><label>Method:</label></div>
+  <div class="toggle">
+    <button id="btnN" class="active" onclick="setMethod('newton')">Newton</button>
+    <button id="btnLM" onclick="setMethod('lm')">Levenberg-Marquardt</button>
+  </div>
+  <div class="row" id="row1d">
+    <label>Function 1D:</label>
+    <select id="fn1d" onchange="resetAll()">
+      <option value="cubic">θ³ − 3θ² + 2</option>
+      <option value="weird">sin(θ) + 0.3θ²</option>
+    </select>
+  </div>
+  <div class="row" id="row2d" style="display:none">
+    <label>Function 2D:</label>
+    <select id="fn2d" onchange="resetAll()">
+      <option value="himmelblau">Himmelblau</option>
+      <option value="bowl">Bowl x²+3y²</option>
+    </select>
+  </div>
+  <div class="row" id="rowT1">
+    <label>θ₀:</label>
+    <input type="number" id="theta0_1d" value="3.5" step="0.1" onchange="resetAll()">
+    <label id="lbl_lam" style="display:none">λ₀:</label>
+    <input type="number" id="lambda0" value="1" step="0.1" min="0.001" style="display:none" onchange="resetAll()">
+  </div>
+  <div class="row" id="rowT2" style="display:none">
+    <label>θ₁₀:</label><input type="number" id="t2x" value="-1.5" step="0.1" onchange="resetAll()">
+    <label>θ₂₀:</label><input type="number" id="t2y" value="2.5" step="0.1" onchange="resetAll()">
+  </div>
+  <div class="btn-row row">
+    <button class="primary" id="btnStep" onclick="step()">Step →</button>
+    <button id="btnRun" onclick="runAll()">Run all</button>
+    <button class="danger" id="btnStop" onclick="stopRun()" disabled>Stop</button>
+    <button id="btnReset" onclick="resetAll()">Reset</button>
+  </div>
+  <p class="status" id="status">Press Step to begin</p>
+  <div class="banner" id="banner"></div>
+</div>
+
+<div class="tabs">
+  <button class="active" onclick="switchTab('1d')">1D curve</button>
+  <button onclick="switchTab('2d')">2D contour</button>
+  <button onclick="switchTab('3d')">3D surface</button>
+</div>
+
+<div class="tab-panel active" id="tab1d">
+  <div class="card" style="padding:0.6rem;">
+    <canvas id="cv1d"></canvas>
+    <div class="zoom-row">
+      <button onclick="zoom1d(1.5)">+</button>
+      <button onclick="zoom1d(1/1.5)">-</button>
+      <span class="zlabel" id="zl1d">zoom 1.0x</span>
+      <button style="flex:0 0 auto;min-width:55px;font-size:0.72rem;" onclick="resetZoom1d()">reset</button>
+    </div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab2d">
+  <div class="card" style="padding:0.6rem;">
+    <div class="viz-toggles">
+      <label><input type="checkbox" id="tog2d_par" checked onchange="draw2d()"> paraboloid contours</label>
+      <label><input type="checkbox" id="tog2d_path" checked onchange="draw2d()"> trajectory</label>
+    </div>
+    <canvas id="cv2d"></canvas>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab3d">
+  <div class="card" style="padding:0.6rem;">
+    <div class="viz-toggles">
+      <label><input type="checkbox" id="tog3d_surf" checked onchange="update3d()"> surface F</label>
+      <label><input type="checkbox" id="tog3d_par"  checked onchange="update3d()"> paraboloid</label>
+      <label><input type="checkbox" id="tog3d_path" checked onchange="update3d()"> trajectory</label>
+    </div>
+    <canvas id="cv3d" style="touch-action:none;"></canvas>
+    <p style="font-size:0.68rem;color:#888;text-align:center;margin-top:4px;">drag to rotate · scroll/pinch to zoom</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info-grid">
+    <div class="metric" id="c0"><div class="ml">iter</div><div class="mv" id="mIter">—</div></div>
+    <div class="metric" id="c1"><div class="ml">theta_k</div><div class="mv" id="mTheta">—</div></div>
+    <div class="metric" id="c2"><div class="ml">|grad F|</div><div class="mv" id="mGrad">—</div></div>
+    <div class="metric" id="c3"><div class="ml" id="c3l">F''</div><div class="mv" id="mCurv">—</div></div>
+  </div>
+</div>
+<div class="card">
+  <div style="font-size:0.68rem;color:#888;margin-bottom:3px;">history</div>
+  <div class="history" id="history"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ── COLORS (light mode only) ──────────────────────────────────────────────
+const C = {
+  bg:'#ffffff', bg2:'#f8f7f4', grid:'rgba(0,0,0,0.07)', axis:'rgba(0,0,0,0.2)',
+  text:'#333', fnCurve:'#534ab7', parN:'#ba7517', parLM:'#0f6e56',
+  parBad:'#a32d2d', cur:'#0f6e56', nxt:'#ba7517', nxtLM:'#185fa5',
+  path:'#ba7517', arrow:'#a32d2d'
+};
+
+// ── FUNCTIONS ─────────────────────────────────────────────────────────────
+const fns1d = {
+  cubic:{ F:t=>t**3-3*t**2+2, dF:t=>3*t**2-6*t, d2F:t=>6*t-6,
+          xmin:-1.2,xmax:3.8,ymin:-3,ymax:4, label:'theta^3 - 3*theta^2 + 2' },
+  weird:{ F:t=>Math.sin(t)+0.3*t**2, dF:t=>Math.cos(t)+0.6*t, d2F:t=>-Math.sin(t)+0.6,
+          xmin:-5,xmax:5,ymin:-1.5,ymax:9, label:'sin(theta) + 0.3*theta^2' }
+};
+const fns2d = {
+  himmelblau:{
+    F:(x,y)=>(x*x+y-11)**2+(x+y*y-7)**2,
+    dF:(x,y)=>[4*x*(x*x+y-11)+2*(x+y*y-7), 2*(x*x+y-11)+4*y*(x+y*y-7)],
+    H:(x,y)=>[[12*x*x+4*y-44+2,4*x+4*y],[4*x+4*y,4*x+12*y*y-28+2]],
+    xmin:-5,xmax:5,ymin:-5,ymax:5,zmax:500, label:'Himmelblau'
+  },
+  bowl:{
+    F:(x,y)=>x*x+3*y*y,
+    dF:(x,y)=>[2*x,6*y],
+    H:()=>[[2,0],[0,6]],
+    xmin:-3,xmax:3,ymin:-3,ymax:3,zmax:30, label:'x^2 + 3y^2'
+  }
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let method='newton', activeTab='1d';
+let theta1d, hist1d=[], converged=false, autoIv=null;
+let theta2d, hist2d=[];
+let lm_lambda, zoom1dLevel=1;
+const LM_UP=4, LM_DN=0.3, LM_MIN=1e-8, LM_MAX=1e8;
+let three={init:false,renderer:null,scene:null,camera:null,
+           meshSurf:null,meshPar:null,pathLine:null,curDot:null,
+           drag:{active:false,x:0,y:0},rotX:0.5,rotY:0.4,dist:5,pinch:0};
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+const g1d=()=>fns1d[document.getElementById('fn1d').value];
+const g2d=()=>fns2d[document.getElementById('fn2d').value];
+const gLam=()=>parseFloat(document.getElementById('lambda0').value)||1;
+function niceTick(r,n){const p=Math.pow(10,Math.floor(Math.log10(r/n))),m=r/n/p;return(m<1.5?1:m<3?2:m<7?5:10)*p;}
+
+function setMethod(m){
+  method=m;
+  document.getElementById('btnN').classList.toggle('active',m==='newton');
+  document.getElementById('btnLM').classList.toggle('active',m==='lm');
+  document.getElementById('lbl_lam').style.display=m==='lm'?'':'none';
+  document.getElementById('lambda0').style.display=m==='lm'?'':'none';
+  document.getElementById('c3l').textContent=m==='lm'?'F\"+lambda':'F\"';
+  resetAll();
+}
+
+function switchTab(t){
+  activeTab=t;
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tabs button').forEach((b,i)=>b.classList.toggle('active',['1d','2d','3d'][i]===t));
+  document.getElementById('tab'+t).classList.add('active');
+  document.getElementById('row1d').style.display=t==='1d'?'':'none';
+  document.getElementById('row2d').style.display=t!=='1d'?'':'none';
+  document.getElementById('rowT1').style.display=t==='1d'?'':'none';
+  document.getElementById('rowT2').style.display=t!=='1d'?'':'none';
+  resetAll();
+  if(t==='3d'&&!three.init) init3d();
+}
+
+function setSt(m,c){const e=document.getElementById('status');e.textContent=m;e.className='status '+c;}
+function setBn(m,c){const b=document.getElementById('banner');if(!m){b.classList.remove('show');return;}b.textContent=m;b.className='banner show '+c;}
+function setButtons(r){
+  document.getElementById('btnStep').disabled=r||converged;
+  document.getElementById('btnRun').disabled=r||converged;
+  document.getElementById('btnStop').disabled=!r;
+  document.getElementById('btnReset').disabled=r;
+}
+
+function resetAll(){
+  clearInterval(autoIv); converged=false;
+  lm_lambda=gLam();
+  if(activeTab==='1d'){
+    theta1d=parseFloat(document.getElementById('theta0_1d').value)||2;
+    hist1d=[];
+    draw1d(theta1d,null,null);
+  } else {
+    theta2d=[parseFloat(document.getElementById('t2x').value)||0,
+             parseFloat(document.getElementById('t2y').value)||0];
+    hist2d=[];
+    draw2d(); if(three.init) update3d();
+  }
+  setSt('Press Step to begin',''); setBn('','');
+  ['mIter','mTheta','mGrad','mCurv'].forEach(id=>document.getElementById(id).textContent='—');
+  ['c0','c1','c2','c3'].forEach(id=>document.getElementById(id).className='metric');
+  document.getElementById('history').innerHTML='';
+  setButtons(false);
+}
+
+// ── STEP 1D ───────────────────────────────────────────────────────────────
+function step(){if(converged)return; if(activeTab==='1d')step1d(); else step2d();}
+
+function step1d(){
+  const fn=g1d(), t=theta1d, dF=fn.dF(t), d2F=fn.d2F(t);
+  if(Math.abs(d2F)<1e-10){setSt('F\'\'~0 — cannot continue','diverged');return;}
+  const concave=d2F<0;
+  let delta,tNew,lam=null,effC=d2F;
+  if(method==='newton'){
+    delta=-dF/d2F; tNew=t+delta;
+    if(concave){setSt('F\'\'<0 — parabola concave, stepping to max','warn');
+      setBn('Negative curvature: Newton steps toward a maximum of the local parabola.','warn');
+    } else {setSt('','');setBn('','');}
+  } else {
+    lam=lm_lambda; let ok=false;
+    for(let i=0;i<40;i++){
+      effC=d2F+lam;
+      if(effC<=0){lam=Math.min(lam*LM_UP,LM_MAX);continue;}  // enforce convex parabola
+      delta=-dF/effC; tNew=t+delta;
+      if(fn.F(tNew)<fn.F(t)){ok=true;break;}
+      lam=Math.min(lam*LM_UP,LM_MAX);
+    }
+    if(!ok){setSt('LM could not find descent','diverged');return;}
+    const nextLam=Math.max(lam*LM_DN,LM_MIN);
+    const msg=concave?'F\'\'<0 but lambda='+lam.toFixed(3)+' compensates, eff. curv='+(effC).toFixed(3):
+      'lambda='+lam.toFixed(4)+' -> next lambda='+nextLam.toFixed(4);
+    setSt(concave?'F\'\'<0, lambda compensates':'lambda='+lam.toFixed(4),concave?'warn':'');
+    setBn(msg,concave?'info':'');
+  }
+  hist1d.push({iter:hist1d.length+1,theta:t,dF,d2F,delta,tNew,concave,lam,effC});
+  theta1d=tNew;
+  draw1d(t,tNew,hist1d[hist1d.length-1]);
+  updateM1d(dF,d2F,effC,concave);
+  updateH1d();
+  if(method==='lm') lm_lambda=Math.max(lam*LM_DN,LM_MIN);
+  if(Math.abs(dF)<1e-6){converged=true;setSt('Converged at theta*~'+theta1d.toFixed(6),'converged');setBn('','');setButtons(false);}
+  else if(Math.abs(theta1d)>1e6){converged=true;setSt('Diverged','diverged');setButtons(false);}
+}
+
+// ── STEP 2D ───────────────────────────────────────────────────────────────
+function step2d(){
+  const fn=g2d(),[x,y]=theta2d;
+  const [gx,gy]=fn.dF(x,y), H=fn.H(x,y);
+  const gnorm=Math.sqrt(gx*gx+gy*gy);
+  let dx,dy,lam=null,effH=null;
+  if(method==='newton'){
+    const det=H[0][0]*H[1][1]-H[0][1]*H[1][0];
+    if(Math.abs(det)<1e-10){setSt('H singular','diverged');return;}
+    const Hi=[[H[1][1]/det,-H[0][1]/det],[-H[1][0]/det,H[0][0]/det]];
+    dx=-(Hi[0][0]*gx+Hi[0][1]*gy); dy=-(Hi[1][0]*gx+Hi[1][1]*gy);
+    const posdef=H[0][0]>0&&(H[0][0]*H[1][1]-H[0][1]**2)>0;
+    if(!posdef){setSt('H not positive definite','warn');
+      setBn('Hessian has non-positive eigenvalue. Newton may move toward a saddle or maximum.','warn');
+    } else {setSt('','');setBn('','');}
+  } else {
+    lam=lm_lambda; let ok=false;
+    for(let i=0;i<50;i++){
+      const A=[[H[0][0]+lam,H[0][1]],[H[1][0],H[1][1]+lam]];
+      const det=A[0][0]*A[1][1]-A[0][1]*A[1][0];
+      if(Math.abs(det)<1e-12){lam*=LM_UP;continue;}
+      const Ai=[[A[1][1]/det,-A[0][1]/det],[-A[1][0]/det,A[0][0]/det]];
+      dx=-(Ai[0][0]*gx+Ai[0][1]*gy); dy=-(Ai[1][0]*gx+Ai[1][1]*gy);
+      if(fn.F(x+dx,y+dy)<fn.F(x,y)){ok=true;break;}
+      lam=Math.min(lam*LM_UP,LM_MAX);
+    }
+    if(!ok){setSt('LM could not find descent','diverged');return;}
+    const nextLam2=Math.max(lam*LM_DN,LM_MIN);
+    setSt('lambda='+lam.toFixed(4),''); setBn('','');
+    // store effective Hessian used for this step
+    effH=[[H[0][0]+lam,H[0][1]],[H[1][0],H[1][1]+lam]];
+  }
+  const tNew=[x+dx,y+dy];
+  hist2d.push({iter:hist2d.length+1,theta:[x,y],grad:[gx,gy],H,effH:effH||H,dx,dy,tNew,lam,gnorm,F:fn.F(x,y)});
+  theta2d=tNew;
+  draw2d(); if(three.init)update3d();
+  updateM2d(gnorm,H,lam); updateH2d();
+  if(method==='lm') lm_lambda=Math.max(lam*LM_DN,LM_MIN);
+  if(gnorm<1e-5){converged=true;setSt('Converged at ('+tNew[0].toFixed(4)+','+tNew[1].toFixed(4)+')','converged');setBn('','');setButtons(false);}
+  else if(Math.abs(tNew[0])>1e5||Math.abs(tNew[1])>1e5){converged=true;setSt('Diverged','diverged');setButtons(false);}
+}
+
+function runAll(){if(converged)return;setButtons(true);let i=0;
+  autoIv=setInterval(()=>{step();if(converged||++i>100){clearInterval(autoIv);setButtons(false);}},500);}
+function stopRun(){clearInterval(autoIv);setButtons(false);if(!converged)setSt('Stopped at iter '+(activeTab==='1d'?hist1d.length:hist2d.length),'stopped');}
+
+// ── METRICS ───────────────────────────────────────────────────────────────
+function updateM1d(dF,d2F,effC,concave){
+  const h=hist1d[hist1d.length-1];
+  document.getElementById('mIter').textContent=h.iter;
+  document.getElementById('mTheta').textContent=h.theta.toFixed(4);
+  document.getElementById('mGrad').textContent=dF.toFixed(4);
+  document.getElementById('mCurv').textContent=(method==='lm'?effC:d2F).toFixed(4);
+  document.getElementById('c2').className='metric '+(Math.abs(dF)<1e-4?'ok':'');
+  document.getElementById('c3').className='metric '+(method==='lm'?'info':(concave?'warn':'ok'));
+}
+function updateM2d(gn,H,lam){
+  const h=hist2d[hist2d.length-1];
+  document.getElementById('mIter').textContent=h.iter;
+  document.getElementById('mTheta').textContent='('+h.theta[0].toFixed(3)+','+h.theta[1].toFixed(3)+')';
+  document.getElementById('mGrad').textContent=gn.toFixed(5);
+  const det=H[0][0]*H[1][1]-H[0][1]**2;
+  document.getElementById('mCurv').textContent=det.toFixed(3);
+  document.getElementById('c2').className='metric '+(gn<1e-3?'ok':'');
+  document.getElementById('c3').className='metric '+(det>0&&H[0][0]>0?'ok':(method==='lm'?'info':'warn'));
+  document.getElementById('c3l').textContent=method==='lm'?'det(H+lI)':'det(H)';
+}
+function updateH1d(){
+  const d=document.getElementById('history');
+  d.innerHTML=hist1d.map((h,i)=>{
+    const a=i===hist1d.length-1?' active':'',w=h.concave&&method==='newton'?' warn':'';
+    const ls=h.lam!==null?', l='+h.lam.toFixed(3):'';
+    return '<div class="hr'+a+w+'">k='+h.iter+': th='+h.theta.toFixed(4)+', F\'='+h.dF.toFixed(4)+', F\'\'='+h.d2F.toFixed(3)+ls+' -> '+h.tNew.toFixed(4)+'</div>';
+  }).join(''); d.scrollTop=d.scrollHeight;
+}
+function updateH2d(){
+  const d=document.getElementById('history');
+  d.innerHTML=hist2d.map((h,i)=>{
+    const a=i===hist2d.length-1?' active':'';
+    const ls=h.lam?', l='+h.lam.toFixed(3):'';
+    return '<div class="hr'+a+'">k='+h.iter+': ('+h.theta[0].toFixed(3)+','+h.theta[1].toFixed(3)+'), |g|='+h.gnorm.toFixed(4)+ls+'</div>';
+  }).join(''); d.scrollTop=d.scrollHeight;
+}
+
+// ── 1D DRAW ───────────────────────────────────────────────────────────────
+function zoom1d(f){zoom1dLevel=Math.min(Math.max(zoom1dLevel*f,0.3),30);document.getElementById('zl1d').textContent='zoom '+zoom1dLevel.toFixed(1)+'x';draw1d(theta1d,null,null);}
+function resetZoom1d(){zoom1dLevel=1;document.getElementById('zl1d').textContent='zoom 1.0x';draw1d(theta1d,null,null);}
+
+function draw1d(tCur,tNew,entry){
+  const cv=document.getElementById('cv1d');
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.parentElement.clientWidth-12, H=Math.min(W*0.52,280);
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.width=W+'px'; cv.style.height=H+'px';
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  const fn=g1d();
+  const mid=(fn.xmin+fn.xmax)/2;
+  const hw=(fn.xmax-fn.xmin)/(2*zoom1dLevel);
+  const xL=mid-hw, xR=mid+hw;
+  const yL=fn.ymin-(fn.ymax-fn.ymin)*0.08, yR=fn.ymax+(fn.ymax-fn.ymin)*0.08;
+  const PAD={l:44,r:14,t:12,b:32};
+  const pw=W-PAD.l-PAD.r, ph=H-PAD.t-PAD.b;
+  const tx=x=>PAD.l+(x-xL)/(xR-xL)*pw;
+  const ty=y=>PAD.t+(1-(y-yL)/(yR-yL))*ph;
+  const inX=x=>x>=xL&&x<=xR;
+  const inY=y=>y>yL-(yR-yL)&&y<yR+(yR-yL);
+  const cy=y=>Math.max(yL,Math.min(yR,y));
+
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  // grid
+  const yst=niceTick(yR-yL,5); let yS=Math.ceil(yL/yst)*yst;
+  ctx.strokeStyle=C.grid; ctx.lineWidth=0.5;
+  for(let y=yS;y<=yR+1e-9;y+=yst){
+    ctx.beginPath(); ctx.moveTo(PAD.l,ty(y)); ctx.lineTo(PAD.l+pw,ty(y)); ctx.stroke();
+    ctx.fillStyle=C.text; ctx.font='10px system-ui'; ctx.textAlign='right';
+    ctx.fillText(y.toFixed(1),PAD.l-3,ty(y)+4);
+  }
+  const xst=niceTick(xR-xL,5); let xS=Math.ceil(xL/xst)*xst;
+  for(let x=xS;x<=xR+1e-9;x+=xst){
+    ctx.beginPath(); ctx.moveTo(tx(x),PAD.t); ctx.lineTo(tx(x),PAD.t+ph); ctx.stroke();
+    ctx.fillStyle=C.text; ctx.font='10px system-ui'; ctx.textAlign='center';
+    ctx.fillText(x.toFixed(2),tx(x),PAD.t+ph+12);
+  }
+
+  // axes
+  const y0=Math.max(yL,Math.min(yR,0));
+  ctx.strokeStyle=C.axis; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD.l,ty(y0)); ctx.lineTo(PAD.l+pw,ty(y0)); ctx.stroke();
+  const x0c=Math.max(xL,Math.min(xR,0));
+  ctx.beginPath(); ctx.moveTo(tx(x0c),PAD.t); ctx.lineTo(tx(x0c),PAD.t+ph); ctx.stroke();
+
+  // F curve
+  ctx.strokeStyle=C.fnCurve; ctx.lineWidth=2.5; ctx.beginPath();
+  let fp=true;
+  for(let i=0;i<=500;i++){
+    const x=xL+(xR-xL)*i/500, yv=fn.F(x);
+    if(!inY(yv)){fp=true;continue;}
+    fp?ctx.moveTo(tx(x),ty(yv)):ctx.lineTo(tx(x),ty(yv)); fp=false;
+  }
+  ctx.stroke();
+
+  if(tNew!==null&&entry!==null){
+    const {dF,d2F,concave,lam,effC}=entry;
+    const Fc=fn.F(tCur);
+    // Newton parabola
+    const colPN=concave?C.parBad:C.parN;
+    parCurve(ctx,tx,ty,xL,xR,tCur,Fc,dF,d2F,colPN,[6,4],inY);
+    // LM parabola
+    if(method==='lm'&&lam!==null) parCurve(ctx,tx,ty,xL,xR,tCur,Fc,dF,effC,C.parLM,[3,3],inY);
+
+    // next point or out-of-bounds arrow
+    const colNxt=method==='lm'?C.nxtLM:(concave?C.parBad:C.nxt);
+    if(!inX(tNew)){
+      const dir=tNew>xR?1:-1;
+      const ax=dir>0?PAD.l+pw-4:PAD.l+4;
+      const ay=Math.min(PAD.t+ph-10,Math.max(PAD.t+10,ty(cy(fn.F(tCur)))));
+      ctx.fillStyle=C.arrow; ctx.beginPath();
+      ctx.moveTo(ax,ay); ctx.lineTo(ax-dir*14,ay-8); ctx.lineTo(ax-dir*14,ay+8);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle=C.text; ctx.font='9px system-ui';
+      ctx.textAlign=dir>0?'right':'left';
+      ctx.fillText('tk+1='+tNew.toFixed(2)+(dir>0?' ->':'<- '),ax-dir*16,ay+4);
+    } else {
+      const yNc=cy(fn.F(tNew));
+      ctx.strokeStyle=colNxt; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(tx(tNew),ty(y0)); ctx.lineTo(tx(tNew),ty(yNc)); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle=colNxt; ctx.beginPath(); ctx.arc(tx(tNew),ty(yNc),5,0,2*Math.PI); ctx.fill();
+      ctx.fillStyle=C.text; ctx.font='10px system-ui'; ctx.textAlign='center';
+      ctx.fillText('tk+1='+tNew.toFixed(3),tx(tNew),ty(y0)+13);
+    }
+
+    // legend
+    const items=[{c:C.fnCurve,l:'F'},{c:C.cur,l:'theta_k'},
+      {c:colNxt,l:'theta_k+1'},{c:colPN,l:concave?'Newton par (max!)':'Newton par'}];
+    if(method==='lm') items.push({c:C.parLM,l:'LM par (F\'\'+lambda)'});
+    let lx=PAD.l+3,ly=PAD.t+13;
+    items.forEach(it=>{
+      ctx.fillStyle=it.c; ctx.fillRect(lx,ly-6,9,7);
+      ctx.fillStyle=C.text; ctx.font='9px system-ui'; ctx.textAlign='left';
+      ctx.fillText(it.l,lx+12,ly); ly+=12;
+    });
+  }
+
+  // current point
+  if(inX(tCur)){
+    const yCc=cy(fn.F(tCur));
+    ctx.strokeStyle=C.cur; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(tx(tCur),ty(y0)); ctx.lineTo(tx(tCur),ty(yCc)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=C.cur; ctx.beginPath(); ctx.arc(tx(tCur),ty(yCc),6,0,2*Math.PI); ctx.fill();
+    ctx.fillStyle=C.text; ctx.font='10px system-ui'; ctx.textAlign='center';
+    ctx.fillText('tk='+tCur.toFixed(3),tx(tCur),ty(y0)+13);
+  } else {
+    const dir=tCur>xR?1:-1;
+    const ax=dir>0?PAD.l+pw-4:PAD.l+4, ay=H/2;
+    ctx.fillStyle=C.cur; ctx.beginPath();
+    ctx.moveTo(ax,ay); ctx.lineTo(ax-dir*14,ay-8); ctx.lineTo(ax-dir*14,ay+8);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // label
+  ctx.fillStyle=C.fnCurve; ctx.font='10px system-ui'; ctx.textAlign='left';
+  ctx.fillText('F = '+fn.label,PAD.l+3,PAD.t+11);
+  if(method==='lm'){
+    ctx.fillStyle=C.parLM; ctx.textAlign='right';
+    const dispLam = entry && entry.lam!==null ? entry.lam : lm_lambda;
+    ctx.fillText('lambda='+dispLam.toFixed(4),PAD.l+pw,PAD.t+11);
+  }
+}
+
+function parCurve(ctx,tx,ty,xL,xR,tc,Fc,dF,curv,color,dash,inY){
+  ctx.strokeStyle=color; ctx.lineWidth=1.8; ctx.setLineDash(dash); ctx.beginPath();
+  let fp=true;
+  for(let i=0;i<=400;i++){
+    const x=xL+(xR-xL)*i/400, dx=x-tc, yp=Fc+dF*dx+0.5*curv*dx*dx;
+    if(!inY(yp)){fp=true;continue;}
+    fp?ctx.moveTo(tx(x),ty(yp)):ctx.lineTo(tx(x),ty(yp)); fp=false;
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+}
+
+// ── 2D DRAW ───────────────────────────────────────────────────────────────
+function draw2d(){
+  const cv=document.getElementById('cv2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.parentElement.clientWidth-12, H=Math.min(W,360);
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.width=W+'px'; cv.style.height=H+'px';
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  const fn=g2d();
+  const {xmin,xmax,ymin,ymax}=fn;
+  const PAD=36, pw=W-2*PAD, ph=H-2*PAD;
+  const tx=x=>PAD+(x-xmin)/(xmax-xmin)*pw;
+  const ty=y=>PAD+(1-(y-ymin)/(ymax-ymin))*ph;
+
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  // color fill
+  const N=100;
+  let fmin=Infinity, fmax=-Infinity;
+  const grid=[];
+  for(let j=0;j<=N;j++){grid[j]=[];
+    for(let i=0;i<=N;i++){
+      const x=xmin+(xmax-xmin)*i/N, y=ymin+(ymax-ymin)*j/N;
+      const v=Math.min(fn.F(x,y),fn.zmax); grid[j][i]=v;
+      if(v<fmin)fmin=v; if(v>fmax)fmax=v;
+    }
+  }
+
+  const img=ctx.createImageData(W,H);
+  for(let py=0;py<H;py++){for(let px=0;px<W;px++){
+    const fx=xmin+(xmax-xmin)*(px-PAD)/pw;
+    const fy=ymin+(ymax-ymin)*(1-(py-PAD)/ph);
+    const idx=(py*W+px)*4;
+    if(fx<xmin||fx>xmax||fy<ymin||fy>ymax){
+      img.data[idx]=248;img.data[idx+1]=247;img.data[idx+2]=244;img.data[idx+3]=255;
+    } else {
+      const v=Math.min(fn.F(fx,fy),fn.zmax);
+      const t=Math.sqrt(Math.max(0,(v-fmin)/(fmax-fmin)));
+      // light palette: white -> light blue -> purple -> dark purple
+      let r,g,b;
+      if(t<0.33){const s=t/0.33; r=235+s*(176-235);g=237+s*(196-237);b=254+s*(222-254);}
+      else if(t<0.66){const s=(t-0.33)/0.33; r=176+s*(127-176);g=196+s*(119-196);b=222+s*(183-222);}
+      else {const s=(t-0.66)/0.34; r=127+s*(60-127);g=119+s*(52-119);b=183+s*(183-183);}
+      img.data[idx]=r;img.data[idx+1]=g;img.data[idx+2]=b;img.data[idx+3]=255;
+    }
+  }}
+  ctx.putImageData(img,0,0);
+
+  // contour lines
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=0.6;
+  for(let k=1;k<10;k++){
+    const lv=fmin+(fmax-fmin)*k/10;
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+      const x0=xmin+(xmax-xmin)*i/N, x1=xmin+(xmax-xmin)*(i+1)/N;
+      const y0=ymin+(ymax-ymin)*j/N, y1=ymin+(ymax-ymin)*(j+1)/N;
+      marchSq(ctx,tx,ty,x0,x1,y0,y1,grid[j][i],grid[j][i+1],grid[j+1][i],grid[j+1][i+1],lv);
+    }
+  }
+
+  // paraboloid contours
+  if(document.getElementById('tog2d_par').checked&&hist2d.length){
+    const last=hist2d[hist2d.length-1];
+    const [cx,cyv]=last.theta, H=last.H, Fc=last.F;
+    const A=method==='lm'?(last.effH||H):H;
+    const [gx,gy]=last.grad;
+    ctx.strokeStyle='#185fa5'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+    for(let k=1;k<=4;k++){
+      const target=k*Math.max(0.5,(fmax-fmin)*0.05);
+      ctx.beginPath(); let fp=true;
+      for(let a=0;a<=360;a+=2){
+        const ang=a*Math.PI/180;
+        let rlo=0,rhi=4,rm;
+        for(let it=0;it<25;it++){
+          rm=(rlo+rhi)/2;
+          const dx=rm*Math.cos(ang),dy=rm*Math.sin(ang);
+          const q=0.5*(A[0][0]*dx*dx+2*A[0][1]*dx*dy+A[1][1]*dy*dy)+gx*dx+gy*dy;
+          if(q<target)rlo=rm; else rhi=rm;
+        }
+        const px2=cx+rm*Math.cos(ang), py2=cyv+rm*Math.sin(ang);
+        if(px2<xmin||px2>xmax||py2<ymin||py2>ymax){fp=true;continue;}
+        fp?ctx.moveTo(tx(px2),ty(py2)):ctx.lineTo(tx(px2),ty(py2)); fp=false;
+      }
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // trajectory
+  if(document.getElementById('tog2d_path').checked&&hist2d.length){
+    ctx.strokeStyle=C.path; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(tx(hist2d[0].theta[0]),ty(hist2d[0].theta[1]));
+    hist2d.forEach(h=>ctx.lineTo(tx(h.tNew[0]),ty(h.tNew[1])));
+    ctx.stroke();
+    hist2d.forEach((h,i)=>{
+      ctx.fillStyle=i===0?'#333':C.path;
+      ctx.beginPath(); ctx.arc(tx(h.theta[0]),ty(h.theta[1]),i===0?5:3,0,2*Math.PI); ctx.fill();
+    });
+  }
+
+  // current point
+  const [cx2,cy2]=theta2d;
+  ctx.fillStyle=C.cur;
+  ctx.beginPath(); ctx.arc(tx(cx2),ty(cy2),7,0,2*Math.PI); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(tx(cx2),ty(cy2),7,0,2*Math.PI); ctx.stroke();
+
+  // labels
+  ctx.fillStyle=C.text; ctx.font='10px system-ui'; ctx.textAlign='center';
+  ctx.fillText('theta_1',W/2,H-4);
+  ctx.save(); ctx.translate(10,H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('theta_2',0,0); ctx.restore();
+  ctx.textAlign='left'; ctx.fillText(fn.label,PAD,PAD-4);
+
+  // legend
+  const leg=[{c:C.cur,l:'current'},{c:C.path,l:'trajectory'}];
+  if(document.getElementById('tog2d_par').checked&&hist2d.length)
+    leg.push({c:'#185fa5',l:method==='lm'?'LM paraboloid':'Newton paraboloid'});
+  let lx=PAD+4,ly=PAD+14;
+  leg.forEach(it=>{
+    ctx.fillStyle=it.c; ctx.fillRect(lx,ly-6,9,7);
+    ctx.fillStyle=C.text; ctx.font='9px system-ui'; ctx.textAlign='left';
+    ctx.fillText(it.l,lx+13,ly); ly+=12;
+  });
+}
+
+function marchSq(ctx,tx,ty,x0,x1,y0,y1,v00,v10,v01,v11,lv){
+  const pts=[];
+  if((v00<lv)!==(v10<lv)){const t=(lv-v00)/(v10-v00);pts.push([x0+(x1-x0)*t,y0]);}
+  if((v10<lv)!==(v11<lv)){const t=(lv-v10)/(v11-v10);pts.push([x1,y0+(y1-y0)*t]);}
+  if((v01<lv)!==(v11<lv)){const t=(lv-v01)/(v11-v01);pts.push([x0+(x1-x0)*t,y1]);}
+  if((v00<lv)!==(v01<lv)){const t=(lv-v00)/(v01-v00);pts.push([x0,y0+(y1-y0)*t]);}
+  if(pts.length===2){ctx.beginPath();ctx.moveTo(tx(pts[0][0]),ty(pts[0][1]));ctx.lineTo(tx(pts[1][0]),ty(pts[1][1]));ctx.stroke();}
+}
+
+// ── 3D ────────────────────────────────────────────────────────────────────
+function init3d(){
+  three.init=true;
+  const cv=document.getElementById('cv3d');
+  const W=cv.parentElement.clientWidth-12, H=Math.min(W*0.75,420);
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  three.renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+  three.renderer.setPixelRatio(window.devicePixelRatio||1);
+  three.renderer.setSize(W,H);
+  three.renderer.setClearColor(0xf8f7f4,1);
+  three.scene=new THREE.Scene();
+  three.camera=new THREE.PerspectiveCamera(45,W/H,0.01,1000);
+  three.scene.add(new THREE.AmbientLight(0xffffff,0.6));
+  const dl=new THREE.DirectionalLight(0xffffff,0.9);dl.position.set(3,5,3);three.scene.add(dl);
+  const dl2=new THREE.DirectionalLight(0xaabbff,0.3);dl2.position.set(-3,-2,-3);three.scene.add(dl2);
+
+  cv.addEventListener('mousedown',e=>{three.drag.active=true;three.drag.x=e.clientX;three.drag.y=e.clientY;});
+  window.addEventListener('mouseup',()=>{three.drag.active=false;});
+  window.addEventListener('mousemove',e=>{
+    if(!three.drag.active)return;
+    three.rotY+=(e.clientX-three.drag.x)*0.008;
+    three.rotX+=(e.clientY-three.drag.y)*0.008;
+    three.rotX=Math.max(-1.4,Math.min(1.4,three.rotX));
+    three.drag.x=e.clientX;three.drag.y=e.clientY;render3d();
+  });
+  cv.addEventListener('touchstart',e=>{
+    if(e.touches.length===1){three.drag.active=true;three.drag.x=e.touches[0].clientX;three.drag.y=e.touches[0].clientY;}
+    else if(e.touches.length===2){three.pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}
+  },{passive:true});
+  window.addEventListener('touchend',()=>{three.drag.active=false;});
+  window.addEventListener('touchmove',e=>{
+    if(e.touches.length===1&&three.drag.active){
+      three.rotY+=(e.touches[0].clientX-three.drag.x)*0.008;
+      three.rotX+=(e.touches[0].clientY-three.drag.y)*0.008;
+      three.rotX=Math.max(-1.4,Math.min(1.4,three.rotX));
+      three.drag.x=e.touches[0].clientX;three.drag.y=e.touches[0].clientY;render3d();
+    } else if(e.touches.length===2){
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      three.dist*=three.pinch/d;three.dist=Math.max(1,Math.min(20,three.dist));three.pinch=d;render3d();
+    }
+  },{passive:true});
+  cv.addEventListener('wheel',e=>{three.dist+=e.deltaY*0.01;three.dist=Math.max(1,Math.min(20,three.dist));render3d();},{passive:true});
+  update3d();
+}
+
+function buildSurf(fn,N){
+  const {xmin,xmax,ymin,ymax,zmax}=fn;
+  const zs=4/zmax, xc=(xmin+xmax)/2, yc=(ymin+ymax)/2, xw=(xmax-xmin)/2, yw=(ymax-ymin)/2;
+  const verts=[];
+  for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){
+    const x=xmin+(xmax-xmin)*i/N, y=ymin+(ymax-ymin)*j/N;
+    const z=Math.min(fn.F(x,y),zmax)*zs;
+    verts.push((x-xc)/xw, z-1, (y-yc)/yw);
+  }
+  const idxs=[];
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const a=j*(N+1)+i; idxs.push(a,a+1,a+N+1,a+1,a+N+2,a+N+1);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(verts),3));
+  geo.setIndex(new THREE.BufferAttribute(new Uint32Array(idxs),1));
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo,new THREE.MeshPhongMaterial({color:0x7f77dd,opacity:0.85,transparent:true,side:THREE.DoubleSide,shininess:50}));
+}
+
+function buildPar(fn,theta,H,grad,lam,Fc,N){
+  const {xmin,xmax,ymin,ymax,zmax}=fn;
+  const zs=4/zmax, xc=(xmin+xmax)/2, yc=(ymin+ymax)/2, xw=(xmax-xmin)/2, yw=(ymax-ymin)/2;
+  const [cx,cyv]=theta,[gx,gy]=grad;
+  const A=H;  // H passed in is already the effective Hessian (H + lambda*I)
+  const r=Math.min(xw,yw)*0.5;
+  const verts=[];
+  for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){
+    const dx=(i/N-0.5)*2*r, dy=(j/N-0.5)*2*r;
+    const x=cx+dx, y=cyv+dy;
+    const q=Math.min(Fc+gx*dx+gy*dy+0.5*(A[0][0]*dx*dx+2*A[0][1]*dx*dy+A[1][1]*dy*dy),zmax);
+    const z=q*zs;
+    verts.push((x-xc)/xw, z-1, (y-yc)/yw);
+  }
+  const idxs=[];
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const a=j*(N+1)+i; idxs.push(a,a+1,a+N+1,a+1,a+N+2,a+N+1);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(verts),3));
+  geo.setIndex(new THREE.BufferAttribute(new Uint32Array(idxs),1));
+  geo.computeVertexNormals();
+  const col=method==='lm'?0x1d9e75:0xba7517;
+  return new THREE.Mesh(geo,new THREE.MeshPhongMaterial({color:col,opacity:0.55,transparent:true,side:THREE.DoubleSide,shininess:20}));
+}
+
+function update3d(){
+  if(!three.init)return;
+  const sc=three.scene;
+  ['meshSurf','meshPar','pathLine','curDot'].forEach(k=>{if(three[k]){sc.remove(three[k]);three[k]=null;}});
+  const fn=g2d();
+  const {xmin,xmax,ymin,ymax,zmax}=fn;
+  const zs=4/zmax, xc=(xmin+xmax)/2, yc=(ymin+ymax)/2, xw=(xmax-xmin)/2, yw=(ymax-ymin)/2;
+
+  if(document.getElementById('tog3d_surf').checked){
+    three.meshSurf=buildSurf(fn,60); sc.add(three.meshSurf);
+  }
+  if(document.getElementById('tog3d_par').checked&&hist2d.length){
+    const last=hist2d[hist2d.length-1];
+    three.meshPar=buildPar(fn,last.theta,last.effH||last.H,last.grad,0,last.F,30); sc.add(three.meshPar);
+  }
+  if(document.getElementById('tog3d_path').checked&&hist2d.length>0){
+    const pts=hist2d.map(h=>{
+      const [x,y]=h.theta, z=Math.min(fn.F(x,y),zmax)*zs+0.05;
+      return new THREE.Vector3((x-xc)/xw,z-1,(y-yc)/yw);
+    });
+    const geo=new THREE.BufferGeometry().setFromPoints(pts);
+    three.pathLine=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xba7517}));
+    sc.add(three.pathLine);
+    // current dot
+    const [cx2,cy2]=theta2d;
+    const cz=Math.min(fn.F(cx2,cy2),zmax)*zs+0.08;
+    const dg=new THREE.SphereGeometry(0.06,16,16);
+    three.curDot=new THREE.Mesh(dg,new THREE.MeshBasicMaterial({color:0x0f6e56}));
+    three.curDot.position.set((cx2-xc)/xw,cz-1,(cy2-yc)/yw);
+    sc.add(three.curDot);
+  }
+  render3d();
+}
+
+function render3d(){
+  if(!three.renderer)return;
+  const cam=three.camera;
+  cam.position.x=three.dist*Math.sin(three.rotY)*Math.cos(three.rotX);
+  cam.position.y=three.dist*Math.sin(three.rotX);
+  cam.position.z=three.dist*Math.cos(three.rotY)*Math.cos(three.rotX);
+  cam.lookAt(0,0,0);
+  three.renderer.render(three.scene,three.camera);
+}
+
+window.addEventListener('resize',()=>{
+  if(activeTab==='1d') draw1d(theta1d,null,null);
+  else if(activeTab==='2d') draw2d();
+  else if(activeTab==='3d'&&three.init){
+    const cv=document.getElementById('cv3d');
+    const W=cv.parentElement.clientWidth-12, H=Math.min(W*0.75,420);
+    three.renderer.setSize(W,H);
+    three.camera.aspect=W/H; three.camera.updateProjectionMatrix(); render3d();
+  }
+});
+
+resetAll();
+</script>
+</body>
+</html>
