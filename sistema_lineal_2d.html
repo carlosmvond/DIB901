@@ -29,18 +29,7 @@ button.primary:hover{background:#2e276b;}
 .panel{display:none;}
 .panel.active{display:block;}
 canvas{width:100%;display:block;border-radius:8px;}
-.eq-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:500;margin-bottom:0.3rem;}
-.eq-stable{background:#e1f5ee;color:#0f6e56;}
-.eq-unstable{background:#fcebeb;color:#a32d2d;}
-.eq-saddle{background:#faeeda;color:#854f0b;}
-.eq-center{background:#e6f1fb;color:#185fa5;}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;margin-top:0.3rem;}
-.metric{background:#f4f2ec;border-radius:8px;padding:0.3rem;text-align:center;}
-.ml{font-size:0.58rem;color:#666;margin-bottom:1px;}
-.mv{font-size:0.74rem;font-weight:500;font-family:monospace;}
-.metric.ok{background:#e1f5ee;}.metric.ok .ml,.metric.ok .mv{color:#0f6e56;}
-.metric.warn{background:#faece7;}.metric.warn .ml,.metric.warn .mv{color:#993c1d;}
-.metric.info{background:#e6f1fb;}.metric.info .ml,.metric.info .mv{color:#185fa5;}
+
 .vf-toggle{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#555;margin-bottom:6px;}
 .vf-toggle input{cursor:pointer;accent-color:#3c3489;}
 .slabel{font-size:0.62rem;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;}
@@ -99,7 +88,6 @@ canvas{width:100%;display:block;border-radius:8px;}
   </div>
 </div>
 
-<div id="eq-info" style="margin-bottom:0.5rem;padding-left:2px;"></div>
 
 <div class="tabs">
   <button class="active" onclick="switchTab(0)">Series temporales</button>
@@ -142,14 +130,7 @@ canvas{width:100%;display:block;border-radius:8px;}
   </div>
 </div>
 
-<div class="card">
-  <div class="info-grid">
-    <div class="metric" id="m0"><div class="ml">traza τ</div><div class="mv" id="mTr">—</div></div>
-    <div class="metric" id="m1"><div class="ml">det δ</div><div class="mv" id="mDet">—</div></div>
-    <div class="metric" id="m2"><div class="ml">λ₁</div><div class="mv" id="mL1">—</div></div>
-    <div class="metric" id="m3"><div class="ml">λ₂</div><div class="mv" id="mL2">—</div></div>
-  </div>
-</div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -169,22 +150,7 @@ function getA() {
   ];
 }
 
-function classify(tr, det, disc) {
-  if (det < -1e-9) return {label:'Punto silla', cls:'eq-saddle', info:'inestable · λ reales de signos opuestos'};
-  if (Math.abs(det) < 1e-9) return {label:'No aislado', cls:'eq-saddle', info:'det = 0 · línea de equilibrios'};
-  if (disc > 1e-9) {
-    if (tr < -1e-9) return {label:'Nodo estable', cls:'eq-stable', info:'asintóticamente estable · λ reales negativas'};
-    if (tr >  1e-9) return {label:'Nodo inestable', cls:'eq-unstable', info:'inestable · λ reales positivas'};
-  }
-  if (disc < -1e-9) {
-    if (tr < -1e-9) return {label:'Espiral estable', cls:'eq-stable', info:'asintóticamente estable · λ complejas Re < 0'};
-    if (tr >  1e-9) return {label:'Espiral inestable', cls:'eq-unstable', info:'inestable · λ complejas Re > 0'};
-    return {label:'Centro', cls:'eq-center', info:'estable (no asintótico) · λ imaginarias puras'};
-  }
-  if (tr < -1e-9) return {label:'Nodo degenerado estable', cls:'eq-stable', info:'λ repetida negativa'};
-  if (tr >  1e-9) return {label:'Nodo degenerado inestable', cls:'eq-unstable', info:'λ repetida positiva'};
-  return {label:'Centro (λ=0)', cls:'eq-center', info:'estable'};
-}
+
 
 function lamStr(r, im) {
   if (Math.abs(im) < 1e-9) return r.toFixed(3);
@@ -498,25 +464,10 @@ function solve() {
   const tr   = A[0][0]+A[1][1];
   const det  = A[0][0]*A[1][1]-A[0][1]*A[1][0];
   const disc = tr*tr-4*det;
-  const cls  = classify(tr, det, disc);
-
   const sqrtD  = disc >= 0 ? Math.sqrt(disc)  : 0;
   const sqrtND = disc < 0  ? Math.sqrt(-disc) : 0;
   const l1r = tr/2+sqrtD/2, l1i =  sqrtND/2;
   const l2r = tr/2-sqrtD/2, l2i = -sqrtND/2;
-
-  document.getElementById('eq-info').innerHTML =
-    '<div class="eq-badge '+cls.cls+'">'+cls.label+'</div>' +
-    '<div style="font-size:0.68rem;color:#666;margin-left:2px;">'+cls.info+'</div>';
-
-  document.getElementById('mTr').textContent  = tr.toFixed(3);
-  document.getElementById('mDet').textContent = det.toFixed(3);
-  document.getElementById('mL1').textContent  = lamStr(l1r, l1i);
-  document.getElementById('mL2').textContent  = lamStr(l2r, l2i);
-  document.getElementById('m0').className = 'metric';
-  document.getElementById('m1').className = 'metric '+(det>0?'ok':'warn');
-  document.getElementById('m2').className = 'metric '+(l1r<0?'ok':l1r>0?'warn':'info');
-  document.getElementById('m3').className = 'metric '+(l2r<0?'ok':l2r>0?'warn':'info');
 
   const tmax = +document.getElementById('tmax').value;
   const x10  = +document.getElementById('x10').value||0;
