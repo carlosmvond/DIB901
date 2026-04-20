@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sistema Lineal 2×2</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,sans-serif;background:#f8f7f4;color:#1a1a1a;padding:0.6rem;max-width:500px;margin:0 auto;}
+h1{font-size:1rem;font-weight:500;text-align:center;margin-bottom:0.1rem;}
+.sub{font-size:0.7rem;color:#666;text-align:center;margin-bottom:0.5rem;}
+.card{background:#fff;border-radius:12px;border:0.5px solid rgba(0,0,0,0.12);padding:0.65rem;margin-bottom:0.5rem;}
+.row{display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;margin-bottom:0.32rem;}
+label{font-size:0.74rem;color:#555;white-space:nowrap;}
+input[type=number]{font-size:0.78rem;padding:5px 6px;border:0.5px solid rgba(0,0,0,0.18);border-radius:8px;background:#fff;color:#1a1a1a;width:62px;text-align:center;}
+.mat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.mat-wrap{display:flex;align-items:center;gap:3px;}
+.bracket{font-size:28px;color:#888;line-height:1;}
+.btn-row{display:flex;gap:0.35rem;flex-wrap:wrap;}
+button{font-size:0.76rem;padding:6px 9px;border:0.5px solid rgba(0,0,0,0.18);border-radius:8px;background:#fff;color:#1a1a1a;cursor:pointer;flex:1;min-width:48px;}
+button:hover{background:#f0ede8;}
+button:active{transform:scale(0.97);}
+button.primary{background:#3c3489;color:#fff;border-color:#3c3489;}
+button.primary:hover{background:#2e276b;}
+.tabs{display:flex;border:0.5px solid rgba(0,0,0,0.15);border-radius:10px;overflow:hidden;margin-bottom:0.5rem;}
+.tabs button{border:none;border-radius:0;flex:1;margin:0;padding:7px 4px;font-size:0.72rem;background:#f0ede8;color:#555;}
+.tabs button.active{background:#3c3489;color:#fff;font-weight:500;}
+.panel{display:none;}
+.panel.active{display:block;}
+canvas{width:100%;display:block;border-radius:8px;}
+.eq-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:500;margin-bottom:0.3rem;}
+.eq-stable{background:#e1f5ee;color:#0f6e56;}
+.eq-unstable{background:#fcebeb;color:#a32d2d;}
+.eq-saddle{background:#faeeda;color:#854f0b;}
+.eq-center{background:#e6f1fb;color:#185fa5;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;margin-top:0.3rem;}
+.metric{background:#f4f2ec;border-radius:8px;padding:0.3rem;text-align:center;}
+.ml{font-size:0.58rem;color:#666;margin-bottom:1px;}
+.mv{font-size:0.74rem;font-weight:500;font-family:monospace;}
+.metric.ok{background:#e1f5ee;}.metric.ok .ml,.metric.ok .mv{color:#0f6e56;}
+.metric.warn{background:#faece7;}.metric.warn .ml,.metric.warn .mv{color:#993c1d;}
+.metric.info{background:#e6f1fb;}.metric.info .ml,.metric.info .mv{color:#185fa5;}
+.vf-toggle{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#555;margin-bottom:6px;}
+.vf-toggle input{cursor:pointer;accent-color:#3c3489;}
+.slabel{font-size:0.62rem;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;}
+.legend-row{display:flex;gap:12px;margin-top:6px;font-size:0.68rem;color:#555;flex-wrap:wrap;}
+.legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:3px;}
+.legend-line{width:20px;height:2px;display:inline-block;vertical-align:middle;margin-right:3px;}
+.sol-block{margin-bottom:0.9rem;}
+.sol-title{font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;padding-bottom:0.2rem;border-bottom:0.5px solid rgba(0,0,0,0.08);}
+.sol-math{padding:0.3rem 0;font-size:0.84rem;line-height:2;display:flex;flex-wrap:wrap;align-items:center;gap:3px;}
+.sol-math .katex{font-size:0.84rem;vertical-align:middle;}
+.sol-math b{font-weight:600;}
+.case-banner{font-size:0.72rem;padding:4px 10px;border-radius:8px;margin-bottom:0.6rem;font-weight:500;}
+.case-real{background:#eeedfe;color:#3c3489;}
+.case-complex{background:#e6f1fb;color:#185fa5;}
+.case-repeated{background:#faeeda;color:#854f0b;}
+</style>
+</head>
+<body>
+
+<h1>Sistema lineal 2×2</h1>
+<p class="sub">retrato de fase · series temporales · solución analítica</p>
+
+<div class="card">
+  <div class="slabel">Matriz A</div>
+  <div class="row" style="margin-bottom:0.5rem;">
+    <div class="mat-wrap">
+      <div class="bracket">[</div>
+      <div class="mat-grid">
+        <input type="number" id="a11" value="1" step="0.1">
+        <input type="number" id="a12" value="1" step="0.1">
+        <input type="number" id="a21" value="-2" step="0.1">
+        <input type="number" id="a22" value="-1" step="0.1">
+      </div>
+      <div class="bracket">]</div>
+    </div>
+    <div style="flex:1;min-width:110px;">
+      <div class="slabel">Cond. iniciales</div>
+      <div class="row" style="margin-bottom:3px;">
+        <label>x₁(0)</label>
+        <input type="number" id="x10" value="1" step="0.1" style="width:60px;">
+      </div>
+      <div class="row" style="margin-bottom:0;">
+        <label>x₂(0)</label>
+        <input type="number" id="x20" value="0" step="0.1" style="width:60px;">
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <label>t máx:</label>
+    <input type="range" id="tmax" min="2" max="30" value="10" step="1" style="flex:1;">
+    <span id="tmax-out" style="font-size:0.74rem;font-weight:500;min-width:20px;">10</span>
+  </div>
+  <div class="btn-row">
+    <button class="primary" onclick="solve()">Resolver</button>
+    <button onclick="resetInputs()">Reset</button>
+  </div>
+</div>
+
+<div id="eq-info" style="margin-bottom:0.5rem;padding-left:2px;"></div>
+
+<div class="tabs">
+  <button class="active" onclick="switchTab(0)">Series temporales</button>
+  <button onclick="switchTab(1)">Plano de fase</button>
+  <button onclick="switchTab(2)">Solución analítica</button>
+</div>
+
+<div class="panel active" id="panel0">
+  <div class="card" style="padding:0.5rem;">
+    <div style="position:relative;width:100%;height:240px;">
+      <canvas id="chartTime" role="img" aria-label="x1 y x2 vs tiempo"></canvas>
+    </div>
+    <div class="legend-row">
+      <span><span class="legend-line" style="background:#378ADD;"></span>x₁(t)</span>
+      <span><span class="legend-line" style="background:#D85A30;border-top:2px dashed #D85A30;height:0;"></span>x₂(t)</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="panel1">
+  <div class="card" style="padding:0.5rem;">
+    <div class="vf-toggle">
+      <input type="checkbox" id="vfCheck" checked>
+      <label for="vfCheck">Campo vectorial con flechas</label>
+    </div>
+    <div style="position:relative;width:100%;height:300px;">
+      <canvas id="chartPhase" role="img" aria-label="Plano de fase x1 vs x2"></canvas>
+    </div>
+    <div class="legend-row">
+      <span><span class="legend-line" style="background:#534AB7;height:2px;"></span>trayectoria</span>
+      <span><span class="legend-dot" style="background:#D85A30;"></span>x(0)</span>
+      <span><span class="legend-dot" style="background:#1D9E75;"></span>equilibrio</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="panel2">
+  <div class="card" id="sol-card" style="padding:0.75rem;">
+    <p style="font-size:0.75rem;color:#aaa;text-align:center;margin-top:1rem;">Presiona Resolver para ver la solución</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info-grid">
+    <div class="metric" id="m0"><div class="ml">traza τ</div><div class="mv" id="mTr">—</div></div>
+    <div class="metric" id="m1"><div class="ml">det δ</div><div class="mv" id="mDet">—</div></div>
+    <div class="metric" id="m2"><div class="ml">λ₁</div><div class="mv" id="mL1">—</div></div>
+    <div class="metric" id="m3"><div class="ml">λ₂</div><div class="mv" id="mL2">—</div></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+document.getElementById('tmax').addEventListener('input', function(){
+  document.getElementById('tmax-out').textContent = this.value;
+});
+document.getElementById('vfCheck').addEventListener('change', drawPhase);
+
+let chartTime = null;
+let lastData = null;
+
+function getA() {
+  return [
+    [+document.getElementById('a11').value||0, +document.getElementById('a12').value||0],
+    [+document.getElementById('a21').value||0, +document.getElementById('a22').value||0]
+  ];
+}
+
+function classify(tr, det, disc) {
+  if (det < -1e-9) return {label:'Punto silla', cls:'eq-saddle', info:'inestable · λ reales de signos opuestos'};
+  if (Math.abs(det) < 1e-9) return {label:'No aislado', cls:'eq-saddle', info:'det = 0 · línea de equilibrios'};
+  if (disc > 1e-9) {
+    if (tr < -1e-9) return {label:'Nodo estable', cls:'eq-stable', info:'asintóticamente estable · λ reales negativas'};
+    if (tr >  1e-9) return {label:'Nodo inestable', cls:'eq-unstable', info:'inestable · λ reales positivas'};
+  }
+  if (disc < -1e-9) {
+    if (tr < -1e-9) return {label:'Espiral estable', cls:'eq-stable', info:'asintóticamente estable · λ complejas Re < 0'};
+    if (tr >  1e-9) return {label:'Espiral inestable', cls:'eq-unstable', info:'inestable · λ complejas Re > 0'};
+    return {label:'Centro', cls:'eq-center', info:'estable (no asintótico) · λ imaginarias puras'};
+  }
+  if (tr < -1e-9) return {label:'Nodo degenerado estable', cls:'eq-stable', info:'λ repetida negativa'};
+  if (tr >  1e-9) return {label:'Nodo degenerado inestable', cls:'eq-unstable', info:'λ repetida positiva'};
+  return {label:'Centro (λ=0)', cls:'eq-center', info:'estable'};
+}
+
+function lamStr(r, im) {
+  if (Math.abs(im) < 1e-9) return r.toFixed(3);
+  return r.toFixed(3) + (im >= 0 ? '+' : '') + im.toFixed(3) + 'i';
+}
+
+function rk4(A, x, dt) {
+  const f = v => [A[0][0]*v[0]+A[0][1]*v[1], A[1][0]*v[0]+A[1][1]*v[1]];
+  const k1 = f(x);
+  const k2 = f([x[0]+.5*dt*k1[0], x[1]+.5*dt*k1[1]]);
+  const k3 = f([x[0]+.5*dt*k2[0], x[1]+.5*dt*k2[1]]);
+  const k4 = f([x[0]+dt*k3[0], x[1]+dt*k3[1]]);
+  return [x[0]+dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]),
+          x[1]+dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1])];
+}
+
+function integrate(A, x0, tmax) {
+  const dt=0.025, ts=[], x1s=[], x2s=[];
+  let x=[x0[0],x0[1]], t=0;
+  while (t <= tmax+1e-9) {
+    ts.push(+t.toFixed(4)); x1s.push(+x[0].toFixed(5)); x2s.push(+x[1].toFixed(5));
+    x = rk4(A, x, dt); t += dt;
+    if (Math.abs(x[0])>1e5 || Math.abs(x[1])>1e5) break;
+  }
+  return {ts, x1s, x2s};
+}
+
+function switchTab(i) {
+  document.querySelectorAll('.panel').forEach((p,j) => p.classList.toggle('active', j===i));
+  document.querySelectorAll('.tabs button').forEach((b,j) => b.classList.toggle('active', j===i));
+  if (i===1 && lastData) setTimeout(drawPhase, 30);
+}
+
+function resetInputs() {
+  const d = {a11:1,a12:1,a21:-2,a22:-1,x10:1,x20:0};
+  Object.entries(d).forEach(([id,val]) => document.getElementById(id).value = val);
+  document.getElementById('tmax').value = 10;
+  document.getElementById('tmax-out').textContent = '10';
+  solve();
+}
+
+// ── numero a string LaTeX ─────────────────────────────────────────────────
+function n(v, digits) {
+  const d = digits !== undefined ? digits : 4;
+  const r = parseFloat(v.toFixed(d));
+  return r.toString();
+}
+
+function nf(v) {
+  const r = parseFloat(v.toFixed(4));
+  if (r === 0) return '0';
+  return r > 0 ? '+' + r : r.toString();
+}
+
+function nabs(v, digits) {
+  return n(Math.abs(v), digits);
+}
+
+// ── eigenvector para valor propio real ────────────────────────────────────
+function eigenvector(A, lam) {
+  // (A - lam I) v = 0, buscar v no nulo
+  const a = A[0][0]-lam, b = A[0][1];
+  const c = A[1][0],     d = A[1][1]-lam;
+  if (Math.abs(b) > 1e-9 || Math.abs(a) > 1e-9) {
+    if (Math.abs(b) >= Math.abs(a)) return [-b, a];
+    return [d, -c];
+  }
+  return [1, 0];
+}
+
+// ── resolver c1, c2 desde condiciones iniciales ───────────────────────────
+function solveConstants(v1, v2, x0) {
+  const det = v1[0]*v2[1] - v1[1]*v2[0];
+  if (Math.abs(det) < 1e-12) return [1, 0];
+  const c1 = (x0[0]*v2[1] - x0[1]*v2[0]) / det;
+  const c2 = (v1[0]*x0[1] - v1[1]*x0[0]) / det;
+  return [c1, c2];
+}
+
+// ── KaTeX scalar helper ───────────────────────────────────────────────────
+function tex(str) {
+  const span = document.createElement('span');
+  katex.render(str, span, {displayMode:false, throwOnError:false, output:'html'});
+  return span.outerHTML;
+}
+
+// ── HTML vector y matriz ──────────────────────────────────────────────────
+const NUM = `style="font-size:0.82rem;font-family:monospace;line-height:1.35;white-space:nowrap;text-align:right;"`;
+const BRACE_S = `style="display:inline-flex;flex-direction:column;justify-content:space-between;font-size:1.1rem;line-height:1;color:#333;font-weight:200;margin:0 1px;"`;
+
+function paren(rows) {
+  const inner = `<span style="display:inline-flex;flex-direction:column;align-items:flex-end;gap:3px;padding:2px 4px;">${rows}</span>`;
+  const lp = `<span ${BRACE_S}><span>⎛</span>${rows.split('</span><span').length > 2 ? '<span>⎜</span>'.repeat(rows.split('</span><span').length - 2) : ''}<span>⎝</span></span>`;
+  const rp = `<span ${BRACE_S}><span>⎞</span>${rows.split('</span><span').length > 2 ? '<span>⎟</span>'.repeat(rows.split('</span><span').length - 2) : ''}<span>⎠</span></span>`;
+  return `<span style="display:inline-flex;align-items:center;vertical-align:middle;">${lp}${inner}${rp}</span>`;
+}
+
+function htmlVec(a, b) {
+  const rows = `<span ${NUM}>${a}</span><span ${NUM}>${b}</span>`;
+  const inner = `<span style="display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px;padding:2px 5px;">${rows}</span>`;
+  const lp = `<span style="display:inline-flex;flex-direction:column;justify-content:space-between;font-size:1.5rem;line-height:0.9;color:#333;font-weight:100;margin:0 0px;"><span>⎛</span><span>⎝</span></span>`;
+  const rp = `<span style="display:inline-flex;flex-direction:column;justify-content:space-between;font-size:1.5rem;line-height:0.9;color:#333;font-weight:100;margin:0 0px;"><span>⎞</span><span>⎠</span></span>`;
+  return `<span style="display:inline-flex;align-items:center;vertical-align:middle;">${lp}${inner}${rp}</span>`;
+}
+
+function htmlMat(a, b, c, d) {
+  const row1 = `<span style="display:flex;gap:12px;"><span ${NUM}>${a}</span><span ${NUM}>${b}</span></span>`;
+  const row2 = `<span style="display:flex;gap:12px;"><span ${NUM}>${c}</span><span ${NUM}>${d}</span></span>`;
+  const inner = `<span style="display:inline-flex;flex-direction:column;gap:4px;padding:2px 5px;">${row1}${row2}</span>`;
+  const lp = `<span style="display:inline-flex;flex-direction:column;justify-content:space-between;font-size:1.5rem;line-height:0.9;color:#333;font-weight:100;"><span>⎛</span><span>⎝</span></span>`;
+  const rp = `<span style="display:inline-flex;flex-direction:column;justify-content:space-between;font-size:1.5rem;line-height:0.9;color:#333;font-weight:100;"><span>⎞</span><span>⎠</span></span>`;
+  return `<span style="display:inline-flex;align-items:center;vertical-align:middle;">${lp}${inner}${rp}</span>`;
+}
+
+// fila de ecuación: mezcla HTML libre
+function block(title, htmlContent) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sol-block';
+  const t = document.createElement('div');
+  t.className = 'sol-title';
+  t.textContent = title;
+  const m = document.createElement('div');
+  m.className = 'sol-math';
+  m.innerHTML = htmlContent;
+  wrap.appendChild(t); wrap.appendChild(m);
+  return wrap;
+}
+
+// exponencial como KaTeX inline
+function expT(lam) {
+  const s = n(lam);
+  if (Math.abs(lam) < 1e-9) return tex('1');
+  return tex(`e^{${s}t}`);
+}
+
+function cosT(b)  { return tex(`\\cos(${n(b)}t)`); }
+function sinT(b)  { return tex(`\\sin(${n(b)}t)`); }
+function eaT(a,b) { return tex(`e^{${n(a)}t}`); }
+
+// ── generador de solución analítica ──────────────────────────────────────
+function buildAnalytic(A, x0) {
+  const tr   = A[0][0]+A[1][1];
+  const det  = A[0][0]*A[1][1]-A[0][1]*A[1][0];
+  const disc = tr*tr - 4*det;
+  const card = document.getElementById('sol-card');
+  card.innerHTML = '';
+
+  // sistema
+  card.appendChild(block('Sistema',
+    `<b>A</b> = ${htmlMat(n(A[0][0]),n(A[0][1]),n(A[1][0]),n(A[1][1]))} &nbsp; <b>x</b>(0) = ${htmlVec(n(x0[0]),n(x0[1]))}`
+  ));
+
+  card.appendChild(block('Polinomio característico',
+    tex(`\\lambda^2 - ${n(tr)}\\lambda + ${n(det)} = 0`)
+  ));
+
+  if (disc > 1e-9) {
+    const banner = document.createElement('div');
+    banner.className = 'case-banner case-real';
+    banner.textContent = 'Caso: valores propios reales distintos';
+    card.appendChild(banner);
+
+    const l1 = (tr + Math.sqrt(disc)) / 2;
+    const l2 = (tr - Math.sqrt(disc)) / 2;
+    const v1 = eigenvector(A, l1);
+    const v2 = eigenvector(A, l2);
+    const [c1, c2] = solveConstants(v1, v2, x0);
+
+    card.appendChild(block('Valores propios',
+      tex(`\\lambda_1 = ${n(l1)}, \\quad \\lambda_2 = ${n(l2)}`)
+    ));
+
+    card.appendChild(block('Vectores propios',
+      `<b>v</b><sub>1</sub> = ${htmlVec(n(v1[0]),n(v1[1]))} &nbsp;&nbsp; <b>v</b><sub>2</sub> = ${htmlVec(n(v2[0]),n(v2[1]))}`
+    ));
+
+    card.appendChild(block('Solución general',
+      `<b>x</b>(t) = c<sub>1</sub> ${htmlVec(n(v1[0]),n(v1[1]))} ${tex(`e^{${n(l1)}t}`)}
+       &nbsp;+&nbsp; c<sub>2</sub> ${htmlVec(n(v2[0]),n(v2[1]))} ${tex(`e^{${n(l2)}t}`)}`
+    ));
+
+    card.appendChild(block('Constantes (desde x(0))',
+      tex(`c_1 = ${n(c1)}, \\quad c_2 = ${n(c2)}`)
+    ));
+
+    card.appendChild(block('Solución particular',
+      `<div style="line-height:2.2;">`+
+      `x<sub>1</sub>(t) = ${tex(`${n(c1*v1[0])}\\,e^{${n(l1)}t} ${nf(c2*v2[0])}\\,e^{${n(l2)}t}`)}<br>`+
+      `x<sub>2</sub>(t) = ${tex(`${n(c1*v1[1])}\\,e^{${n(l1)}t} ${nf(c2*v2[1])}\\,e^{${n(l2)}t}`)}</div>`
+    ));
+
+  } else if (disc < -1e-9) {
+    const banner = document.createElement('div');
+    banner.className = 'case-banner case-complex';
+    banner.textContent = 'Caso: valores propios complejos conjugados';
+    card.appendChild(banner);
+
+    const alpha = tr / 2;
+    const beta  = Math.sqrt(-disc) / 2;
+
+    card.appendChild(block('Valores propios',
+      tex(`\\lambda_{1,2} = ${n(alpha)} \\pm ${n(beta)}\\,i`)
+    ));
+
+    const ar = A[0][0]-alpha, ai = -beta;
+    const br = A[0][1];
+    let pr, pi2, qr, qi;
+    if (Math.abs(br) > 1e-9) {
+      pr = -br; pi2 = 0; qr = ar; qi = ai;
+    } else {
+      pr = -A[1][1]+alpha; pi2 = beta; qr = A[1][0]; qi = 0;
+    }
+
+    card.appendChild(block('Vectores p, q  (eigenvector = p + qi)',
+      `<b>p</b> = ${htmlVec(n(pr),n(qr))} &nbsp;&nbsp; <b>q</b> = ${htmlVec(n(pi2),n(qi))}`
+    ));
+
+    card.appendChild(block('Solución general (forma real)',
+      `<b>x</b>(t) = ${tex(`e^{${n(alpha)}t}`)} `+
+      `[ c<sub>1</sub>(<b>p</b>${tex(`\\cos ${n(beta)}t`)} − <b>q</b>${tex(`\\sin ${n(beta)}t`)}) `+
+      `+ c<sub>2</sub>(<b>p</b>${tex(`\\sin ${n(beta)}t`)} + <b>q</b>${tex(`\\cos ${n(beta)}t`)}) ]`
+    ));
+
+    const detpq = pr*qi - pi2*qr;
+    let c1, c2;
+    if (Math.abs(detpq) > 1e-12) {
+      c1 = (x0[0]*qi - x0[1]*pi2) / detpq;
+      c2 = (pr*x0[1] - qr*x0[0]) / detpq;
+    } else {
+      c1 = x0[0] / (Math.abs(pr)>1e-9 ? pr : 1);
+      c2 = 0;
+    }
+
+    card.appendChild(block('Constantes (desde x(0))',
+      tex(`c_1 = ${n(c1)}, \\quad c_2 = ${n(c2)}`)
+    ));
+
+    const cosCo1 = c1*pr + c2*pi2;
+    const sinCo1 = -c1*pi2 + c2*pr;
+    const cosCo2 = c1*qr + c2*qi;
+    const sinCo2 = -c1*qi + c2*qr;
+    const eStr = Math.abs(alpha)<1e-9 ? '' : tex(`e^{${n(alpha)}t}`);
+
+    card.appendChild(block('Solución particular',
+      `<div style="line-height:2.4;">`+
+      `x<sub>1</sub>(t) = ${eStr}(${tex(`${n(cosCo1)}\\cos ${n(beta)}t ${nf(sinCo1)}\\sin ${n(beta)}t`)})<br>`+
+      `x<sub>2</sub>(t) = ${eStr}(${tex(`${n(cosCo2)}\\cos ${n(beta)}t ${nf(sinCo2)}\\sin ${n(beta)}t`)})</div>`
+    ));
+
+  } else {
+    const banner = document.createElement('div');
+    banner.className = 'case-banner case-repeated';
+    banner.textContent = 'Caso: valor propio repetido';
+    card.appendChild(banner);
+
+    const lam = tr / 2;
+    card.appendChild(block('Valor propio',
+      tex(`\\lambda = ${n(lam)} \\;(\\text{repetido})`)
+    ));
+
+    const isScalar = Math.abs(A[0][1])<1e-9 && Math.abs(A[1][0])<1e-9
+                  && Math.abs(A[0][0]-lam)<1e-9 && Math.abs(A[1][1]-lam)<1e-9;
+
+    if (isScalar) {
+      card.appendChild(block('Tipo', 'Nodo estrella: <b>A</b> = λ<b>I</b>'));
+      card.appendChild(block('Solución general',
+        `<b>x</b>(t) = ${tex(`e^{${n(lam)}t}`)} [ c<sub>1</sub>${htmlVec('1','0')} + c<sub>2</sub>${htmlVec('0','1')} ]`
+      ));
+      card.appendChild(block('Solución particular',
+        `<b>x</b>(t) = ${tex(`e^{${n(lam)}t}`)} ${htmlVec(n(x0[0]),n(x0[1]))}`
+      ));
+    } else {
+      const v = eigenvector(A, lam);
+      const vn = Math.sqrt(v[0]*v[0]+v[1]*v[1]) || 1;
+      const v1n = [v[0]/vn, v[1]/vn];
+
+      const B = [[A[0][0]-lam, A[0][1], v1n[0]],[A[1][0], A[1][1]-lam, v1n[1]]];
+      let w;
+      if (Math.abs(B[0][0]) >= Math.abs(B[1][0])) {
+        w = Math.abs(B[0][0])>1e-12 ? [(B[0][2]-B[0][1]*0)/B[0][0], 0] : [0,0];
+      } else {
+        w = Math.abs(B[1][0])>1e-12 ? [(B[1][2]-B[1][1]*0)/B[1][0], 0] : [0,0];
+      }
+
+      card.appendChild(block('Vector propio y generalizado',
+        `<b>v</b> = ${htmlVec(n(v1n[0]),n(v1n[1]))} &nbsp;&nbsp; <b>w</b> = ${htmlVec(n(w[0]),n(w[1]))} &nbsp; ${tex(`(\\mathbf{A}{-}\\lambda I)\\mathbf{w}=\\mathbf{v}`)}`
+      ));
+
+      card.appendChild(block('Solución general',
+        `<b>x</b>(t) = ${tex(`e^{${n(lam)}t}`)} [ c<sub>1</sub>${htmlVec(n(v1n[0]),n(v1n[1]))}
+         + c<sub>2</sub>( ${htmlVec(n(w[0]),n(w[1]))} + t · ${htmlVec(n(v1n[0]),n(v1n[1]))} ) ]`
+      ));
+
+      const [c1, c2] = solveConstants(v1n, w, x0);
+      card.appendChild(block('Constantes (desde x(0))',
+        tex(`c_1 = ${n(c1)}, \\quad c_2 = ${n(c2)}`)
+      ));
+
+      card.appendChild(block('Solución particular',
+        `<div style="line-height:2.4;">`+
+        `x<sub>1</sub>(t) = ${tex(`e^{${n(lam)}t}`)}&thinsp;(${tex(`${n(c1*v1n[0]+c2*w[0])} + ${n(c2*v1n[0])}\\,t`)})<br>`+
+        `x<sub>2</sub>(t) = ${tex(`e^{${n(lam)}t}`)}&thinsp;(${tex(`${n(c1*v1n[1]+c2*w[1])} + ${n(c2*v1n[1])}\\,t`)})</div>`
+      ));
+    }
+  }
+}
+
+// ── SOLVE ─────────────────────────────────────────────────────────────────
+function solve() {
+  const A = getA();
+  const tr   = A[0][0]+A[1][1];
+  const det  = A[0][0]*A[1][1]-A[0][1]*A[1][0];
+  const disc = tr*tr-4*det;
+  const cls  = classify(tr, det, disc);
+
+  const sqrtD  = disc >= 0 ? Math.sqrt(disc)  : 0;
+  const sqrtND = disc < 0  ? Math.sqrt(-disc) : 0;
+  const l1r = tr/2+sqrtD/2, l1i =  sqrtND/2;
+  const l2r = tr/2-sqrtD/2, l2i = -sqrtND/2;
+
+  document.getElementById('eq-info').innerHTML =
+    '<div class="eq-badge '+cls.cls+'">'+cls.label+'</div>' +
+    '<div style="font-size:0.68rem;color:#666;margin-left:2px;">'+cls.info+'</div>';
+
+  document.getElementById('mTr').textContent  = tr.toFixed(3);
+  document.getElementById('mDet').textContent = det.toFixed(3);
+  document.getElementById('mL1').textContent  = lamStr(l1r, l1i);
+  document.getElementById('mL2').textContent  = lamStr(l2r, l2i);
+  document.getElementById('m0').className = 'metric';
+  document.getElementById('m1').className = 'metric '+(det>0?'ok':'warn');
+  document.getElementById('m2').className = 'metric '+(l1r<0?'ok':l1r>0?'warn':'info');
+  document.getElementById('m3').className = 'metric '+(l2r<0?'ok':l2r>0?'warn':'info');
+
+  const tmax = +document.getElementById('tmax').value;
+  const x10  = +document.getElementById('x10').value||0;
+  const x20  = +document.getElementById('x20').value||0;
+  const {ts, x1s, x2s} = integrate(A, [x10, x20], tmax);
+  lastData = {A, ts, x1s, x2s, x10, x20};
+
+  drawTime(ts, x1s, x2s);
+  if (document.getElementById('panel1').classList.contains('active')) drawPhase();
+  buildAnalytic(A, [x10, x20]);
+}
+
+// ── DRAW TIME ─────────────────────────────────────────────────────────────
+function drawTime(ts, x1s, x2s) {
+  const cv = document.getElementById('chartTime');
+  if (chartTime) { chartTime.destroy(); chartTime = null; }
+  const step = Math.max(1, Math.floor(x1s.length/200));
+  chartTime = new Chart(cv, {
+    type:'line',
+    data:{
+      labels: ts.filter((_,i)=>i%step===0).map(v=>v.toFixed(1)),
+      datasets:[
+        {label:'x₁(t)', data:x1s.filter((_,i)=>i%step===0),
+         borderColor:'#378ADD', borderWidth:2, pointRadius:0, tension:0.3, backgroundColor:'transparent'},
+        {label:'x₂(t)', data:x2s.filter((_,i)=>i%step===0),
+         borderColor:'#D85A30', borderWidth:2, pointRadius:0, tension:0.3,
+         borderDash:[5,3], backgroundColor:'transparent'}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{title:{display:true,text:'t',font:{size:11}}, ticks:{maxTicksLimit:7,font:{size:10}}},
+        y:{title:{display:true,text:'x₁, x₂',font:{size:11}}, ticks:{maxTicksLimit:6,font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ── DRAW ARROW ────────────────────────────────────────────────────────────
+function drawArrow(ctx, x1, y1, x2, y2, color, size) {
+  const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+  if (len<1e-6) return;
+  const ux=dx/len, uy=dy/len, s=size||5;
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-ux*s-uy*s*0.5, y2-uy*s+ux*s*0.5);
+  ctx.lineTo(x2-ux*s+uy*s*0.5, y2-uy*s-ux*s*0.5);
+  ctx.closePath(); ctx.fill();
+}
+
+function niceTick(range, n) {
+  const p=Math.pow(10,Math.floor(Math.log10(range/n)));
+  const m=range/n/p;
+  return (m<1.5?1:m<3?2:m<7?5:10)*p;
+}
+
+// ── DRAW PHASE ────────────────────────────────────────────────────────────
+function drawPhase() {
+  if (!lastData) return;
+  const {A, x1s, x2s, x10, x20} = lastData;
+  const cv = document.getElementById('chartPhase');
+  const dpr = window.devicePixelRatio||1;
+  const W = cv.parentElement.clientWidth-4;
+  const H = 300;
+  cv.width=W*dpr; cv.height=H*dpr;
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  const ctx = cv.getContext('2d'); ctx.scale(dpr,dpr);
+
+  const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const bgCol   = isDark?'#1e1e1e':'#ffffff';
+  const gridCol = isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.07)';
+  const axisCol = isDark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.2)';
+  const textCol = isDark?'#ccc':'#444';
+
+  const allX=[...x1s,x10], allY=[...x2s,x20];
+  const xc=(Math.max(...allX)+Math.min(...allX))/2;
+  const yc=(Math.max(...allY)+Math.min(...allY))/2;
+  const xrng=Math.max(Math.max(...allX)-Math.min(...allX),2)*0.65;
+  const yrng=Math.max(Math.max(...allY)-Math.min(...allY),2)*0.65;
+  const rng=Math.max(xrng,yrng);
+  const xlo=xc-rng, xhi=xc+rng, ylo=yc-rng, yhi=yc+rng;
+
+  const PAD={l:36,r:12,t:10,b:30};
+  const pw=W-PAD.l-PAD.r, ph=H-PAD.t-PAD.b;
+  const tx=x=>PAD.l+(x-xlo)/(xhi-xlo)*pw;
+  const ty=y=>PAD.t+(1-(y-ylo)/(yhi-ylo))*ph;
+
+  ctx.fillStyle=bgCol; ctx.fillRect(0,0,W,H);
+
+  ctx.strokeStyle=gridCol; ctx.lineWidth=0.5;
+  const xs=niceTick(xhi-xlo,5); let xS=Math.ceil(xlo/xs)*xs;
+  for (let x=xS; x<=xhi+1e-9; x+=xs) {
+    ctx.beginPath(); ctx.moveTo(tx(x),PAD.t); ctx.lineTo(tx(x),PAD.t+ph); ctx.stroke();
+    ctx.fillStyle=textCol; ctx.font='9px system-ui'; ctx.textAlign='center';
+    ctx.fillText(x.toFixed(1),tx(x),PAD.t+ph+12);
+  }
+  const ys=niceTick(yhi-ylo,5); let yS=Math.ceil(ylo/ys)*ys;
+  for (let y=yS; y<=yhi+1e-9; y+=ys) {
+    ctx.beginPath(); ctx.moveTo(PAD.l,ty(y)); ctx.lineTo(PAD.l+pw,ty(y)); ctx.stroke();
+    ctx.fillStyle=textCol; ctx.font='9px system-ui'; ctx.textAlign='right';
+    ctx.fillText(y.toFixed(1),PAD.l-3,ty(y)+3);
+  }
+
+  ctx.strokeStyle=axisCol; ctx.lineWidth=0.8;
+  const y0=Math.max(ylo,Math.min(yhi,0));
+  ctx.beginPath(); ctx.moveTo(PAD.l,ty(y0)); ctx.lineTo(PAD.l+pw,ty(y0)); ctx.stroke();
+  const x0=Math.max(xlo,Math.min(xhi,0));
+  ctx.beginPath(); ctx.moveTo(tx(x0),PAD.t); ctx.lineTo(tx(x0),PAD.t+ph); ctx.stroke();
+
+  ctx.fillStyle=textCol; ctx.font='10px system-ui';
+  ctx.textAlign='center'; ctx.fillText('x₁',PAD.l+pw/2,H-2);
+  ctx.save(); ctx.translate(10,PAD.t+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.fillText('x₂',0,0); ctx.restore();
+
+  if (document.getElementById('vfCheck').checked) {
+    const N=10, scale=rng*0.13;
+    for (let i=0; i<=N; i++) for (let j=0; j<=N; j++) {
+      const xx=xlo+(xhi-xlo)*i/N, yy=ylo+(yhi-ylo)*j/N;
+      const dx=A[0][0]*xx+A[0][1]*yy, dy=A[1][0]*xx+A[1][1]*yy;
+      const mag=Math.sqrt(dx*dx+dy*dy)||1;
+      const sx=dx/mag*scale, sy=dy/mag*scale;
+      const cx1=tx(xx), cy1=ty(yy), cx2=tx(xx+sx), cy2=ty(yy+sy);
+      ctx.strokeStyle='rgba(29,158,117,0.5)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(cx1,cy1); ctx.lineTo(cx2,cy2); ctx.stroke();
+      drawArrow(ctx,cx1,cy1,cx2,cy2,'rgba(29,158,117,0.75)',4);
+    }
+  }
+
+  const step=Math.max(1,Math.floor(x1s.length/400));
+  const pts=x1s.filter((_,i)=>i%step===0)
+               .map((v,i)=>({x:v, y:x2s.filter((_,j)=>j%step===0)[i]}));
+
+  if (pts.length>1) {
+    ctx.strokeStyle='#534AB7'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(tx(pts[0].x),ty(pts[0].y));
+    pts.forEach(p=>ctx.lineTo(tx(p.x),ty(p.y)));
+    ctx.stroke();
+    const numArrows=Math.min(8,Math.floor(pts.length/10));
+    for (let k=1; k<=numArrows; k++) {
+      const idx=Math.floor(pts.length*k/(numArrows+1));
+      if (idx<1||idx>=pts.length) continue;
+      const p=pts[idx], pp=pts[idx-1];
+      drawArrow(ctx,tx(pp.x),ty(pp.y),tx(p.x),ty(p.y),'#534AB7',7);
+    }
+  }
+
+  ctx.fillStyle='#D85A30';
+  ctx.beginPath(); ctx.arc(tx(x10),ty(x20),6,0,2*Math.PI); ctx.fill();
+  ctx.strokeStyle=bgCol; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(tx(x10),ty(x20),6,0,2*Math.PI); ctx.stroke();
+
+  ctx.fillStyle='#1D9E75';
+  ctx.beginPath(); ctx.arc(tx(0),ty(0),5,0,2*Math.PI); ctx.fill();
+  ctx.strokeStyle=bgCol; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(tx(0),ty(0),5,0,2*Math.PI); ctx.stroke();
+}
+
+window.addEventListener('resize', ()=>{
+  if (lastData && document.getElementById('panel1').classList.contains('active')) drawPhase();
+});
+
+solve();
+</script>
+</body>
+</html>
