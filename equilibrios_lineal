@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Plano de fase</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,sans-serif;background:#f8f7f4;color:#1a1a1a;padding:0.6rem;max-width:500px;margin:0 auto;}
+h1{font-size:1rem;font-weight:500;text-align:center;margin-bottom:0.1rem;}
+.sub{font-size:0.7rem;color:#666;text-align:center;margin-bottom:0.5rem;}
+.card{background:#fff;border-radius:12px;border:0.5px solid rgba(0,0,0,0.12);padding:0.65rem;margin-bottom:0.5rem;}
+.row{display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;margin-bottom:0.32rem;}
+label{font-size:0.74rem;color:#555;white-space:nowrap;}
+input[type=number]{font-size:0.78rem;padding:5px 6px;border:0.5px solid rgba(0,0,0,0.18);border-radius:8px;background:#fff;color:#1a1a1a;width:62px;text-align:center;}
+.mat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.mat-wrap{display:flex;align-items:center;gap:3px;}
+.bracket{font-size:28px;color:#888;line-height:1;}
+.btn-row{display:flex;gap:0.35rem;flex-wrap:wrap;}
+button{font-size:0.76rem;padding:6px 9px;border:0.5px solid rgba(0,0,0,0.18);border-radius:8px;background:#fff;color:#1a1a1a;cursor:pointer;flex:1;min-width:48px;transition:background 0.1s;}
+button:hover{background:#f0ede8;}
+button:active{transform:scale(0.97);}
+button.primary{background:#3c3489;color:#fff;border-color:#3c3489;}
+button.primary:hover{background:#2e276b;}
+button.danger{background:#a32d2d;color:#fff;border-color:#a32d2d;}
+.slabel{font-size:0.62rem;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;}
+.examples-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;margin-top:0.3rem;}
+.ex-btn{font-size:0.7rem;padding:5px 7px;border:0.5px solid rgba(0,0,0,0.15);border-radius:8px;background:#fff;color:#1a1a1a;cursor:pointer;text-align:left;line-height:1.3;}
+.ex-btn:active{transform:scale(0.97);}
+.ex-btn .ex-name{font-weight:500;display:block;font-size:0.72rem;}
+.ex-btn .ex-sub{color:#888;font-size:0.62rem;display:block;margin-top:1px;}
+.canvas-wrap{position:relative;width:100%;border-radius:10px;overflow:hidden;border:0.5px solid rgba(0,0,0,0.12);background:#fff;touch-action:none;}
+canvas{width:100%;display:block;}
+.hint{font-size:0.68rem;color:#888;text-align:center;margin-top:4px;}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.7rem;font-weight:500;margin-top:2px;}
+.badge-saddle{background:#faeeda;color:#854f0b;}
+.badge-stable{background:#e1f5ee;color:#0f6e56;}
+.badge-unstable{background:#fcebeb;color:#a32d2d;}
+.badge-center{background:#e6f1fb;color:#185fa5;}
+.info-row{font-size:0.67rem;color:#777;margin-top:2px;}
+.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:0.32rem;flex-wrap:wrap;}
+.toggle-row label{font-size:0.74rem;color:#555;}
+.toggle-row input[type=checkbox]{cursor:pointer;accent-color:#3c3489;}
+.seg-ctrl{display:flex;border:0.5px solid rgba(0,0,0,0.18);border-radius:8px;overflow:hidden;flex:1;min-width:160px;}
+.seg-ctrl button{border:none;border-radius:0;flex:1;margin:0;padding:5px 4px;font-size:0.72rem;background:#f0ede8;color:#555;}
+.seg-ctrl button.active{background:#3c3489;color:#fff;font-weight:500;}
+</style>
+</head>
+<body>
+
+<h1>Plano de fase interactivo</h1>
+<p class="sub">toca el plano para elegir condición inicial</p>
+
+<div class="card">
+  <div class="slabel">Matriz A</div>
+  <div class="row" style="margin-bottom:0.4rem;">
+    <div class="mat-wrap">
+      <div class="bracket">[</div>
+      <div class="mat-grid">
+        <input type="number" id="a11" value="1" step="0.1">
+        <input type="number" id="a12" value="1" step="0.1">
+        <input type="number" id="a21" value="-2" step="0.1">
+        <input type="number" id="a22" value="-1" step="0.1">
+      </div>
+      <div class="bracket">]</div>
+    </div>
+    <div style="flex:1;min-width:90px;">
+      <div id="eq-badge-wrap"></div>
+      <div id="eq-info" class="info-row"></div>
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <input type="checkbox" id="vfCheck" checked>
+    <label for="vfCheck">Campo vectorial</label>
+  </div>
+
+  <div class="toggle-row" style="margin-bottom:0.4rem;">
+    <span style="font-size:0.74rem;color:#555;white-space:nowrap;">Modo:</span>
+    <div class="seg-ctrl">
+      <button class="active" id="btn-static"  onclick="setMode('static')">Estática</button>
+      <button id="btn-anim" onclick="setMode('animated')">Animada</button>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="primary" onclick="redraw()">Actualizar</button>
+    <button class="danger"  onclick="clearTrajs()">Borrar</button>
+  </div>
+</div>
+
+<div class="card" style="padding:0.5rem;">
+  <div class="canvas-wrap">
+    <canvas id="phase" role="img" aria-label="Plano de fase interactivo"></canvas>
+  </div>
+  <p class="hint" id="hint-text">Toca el plano para agregar trayectorias</p>
+</div>
+
+<div class="card" style="padding:0.6rem;">
+  <div class="slabel">Ejemplos predefinidos</div>
+  <div class="examples-grid" id="examples-grid"></div>
+</div>
+
+<script>
+const EXAMPLES = [
+  {name:'Punto silla',    sub:'δ < 0',                    A:[[ 1, 1],[ 1,-1]]},
+  {name:'Nodo estable',   sub:'δ > 0, τ²−4δ > 0, τ < 0', A:[[-2, 0],[ 0,-1]]},
+  {name:'Nodo inestable', sub:'δ > 0, τ²−4δ > 0, τ > 0', A:[[ 2, 0],[ 0, 1]]},
+  {name:'Foco estable',   sub:'δ > 0, τ²−4δ < 0, τ < 0', A:[[-0.3, 1],[-1,-0.3]]},
+  {name:'Foco inestable', sub:'δ > 0, τ²−4δ < 0, τ > 0', A:[[ 0.3, 1],[-1, 0.3]]},
+  {name:'Centro',         sub:'δ > 0, τ = 0',             A:[[ 0, 1],[-1, 0]]},
+];
+
+const grid = document.getElementById('examples-grid');
+EXAMPLES.forEach((ex, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'ex-btn';
+  btn.innerHTML = `<span class="ex-name">${ex.name}</span><span class="ex-sub">${ex.sub}</span>`;
+  btn.onclick = () => loadExample(i);
+  grid.appendChild(btn);
+});
+
+// ── State ─────────────────────────────────────────────────────
+let trajs   = [];   // [{pts_fwd, pts_bwd, drawn}]
+let mode    = 'static';  // 'static' | 'animated'
+let animRAF = null;      // requestAnimationFrame handle
+let W, H, ctx;
+let wlo = -3, whi = 3;
+const DPR = window.devicePixelRatio || 1;
+
+const TRAJ_COLORS = [
+  '#534AB7','#D85A30','#1D9E75','#185FA5','#854F0B',
+  '#993556','#3B6D11','#A32D2D','#0C447C','#633806',
+];
+
+// ── Mode switching ────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-static').classList.toggle('active', m==='static');
+  document.getElementById('btn-anim').classList.toggle('active', m==='animated');
+  document.getElementById('hint-text').textContent =
+    m === 'static'
+      ? 'Toca el plano para agregar trayectorias'
+      : 'Toca el plano — la trayectoria se anima en el tiempo';
+  cancelAnim();
+  trajs = [];
+  draw();
+}
+
+// ── Matrix & classification ───────────────────────────────────
+function getA() {
+  return [
+    [+document.getElementById('a11').value||0, +document.getElementById('a12').value||0],
+    [+document.getElementById('a21').value||0, +document.getElementById('a22').value||0],
+  ];
+}
+
+function classify(A) {
+  const tr  = A[0][0]+A[1][1];
+  const det = A[0][0]*A[1][1]-A[0][1]*A[1][0];
+  const disc = tr*tr - 4*det;
+  let label, cls;
+  if (det < -1e-9) {
+    label='Punto silla'; cls='badge-saddle';
+  } else if (det > 1e-9 && disc > 1e-9) {
+    label = tr < -1e-9 ? 'Nodo estable' : 'Nodo inestable';
+    cls   = tr < -1e-9 ? 'badge-stable' : 'badge-unstable';
+  } else if (det > 1e-9 && disc < -1e-9) {
+    if (Math.abs(tr) < 1e-9) { label='Centro'; cls='badge-center'; }
+    else { label = tr < 0 ? 'Foco estable' : 'Foco inestable';
+           cls   = tr < 0 ? 'badge-stable' : 'badge-unstable'; }
+  } else if (det > 1e-9 && Math.abs(tr) < 1e-9) {
+    label='Centro'; cls='badge-center';
+  } else {
+    label='Caso límite'; cls='badge-saddle';
+  }
+  const info = `τ = ${tr.toFixed(3)},  δ = ${det.toFixed(3)}`;
+  return {label, cls, info, tr, det, disc};
+}
+
+function updateBadge() {
+  const {label, cls, info} = classify(getA());
+  document.getElementById('eq-badge-wrap').innerHTML =
+    `<span class="badge ${cls}">${label}</span>`;
+  document.getElementById('eq-info').textContent = info;
+}
+
+function sysInfo(A) {
+  const tr  = A[0][0]+A[1][1];
+  const det = A[0][0]*A[1][1]-A[0][1]*A[1][0];
+  const disc = tr*tr - 4*det;
+  let maxRe;
+  if (disc >= 0) {
+    const l1=(tr+Math.sqrt(Math.abs(disc)))/2, l2=(tr-Math.sqrt(Math.abs(disc)))/2;
+    maxRe = Math.max(Math.abs(l1), Math.abs(l2));
+  } else {
+    maxRe = Math.abs(tr/2);
+  }
+  maxRe = maxRe || 1;
+  const T = Math.min(60, Math.max(12, 12/maxRe));
+  const r = Math.min(4, Math.max(1.5, 2.5/maxRe));
+  return {maxRe, T, r};
+}
+
+// ── RK4 ──────────────────────────────────────────────────────
+function rk4(A, x, dt) {
+  const f = v => [A[0][0]*v[0]+A[0][1]*v[1], A[1][0]*v[0]+A[1][1]*v[1]];
+  const k1=f(x), k2=f([x[0]+.5*dt*k1[0],x[1]+.5*dt*k1[1]]),
+        k3=f([x[0]+.5*dt*k2[0],x[1]+.5*dt*k2[1]]),
+        k4=f([x[0]+dt*k3[0],x[1]+dt*k3[1]]);
+  return [x[0]+dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]),
+          x[1]+dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1])];
+}
+
+function integrate(A, x0, T, dt, clip) {
+  const pts=[[...x0]]; let x=[...x0];
+  const n=Math.round(Math.abs(T/dt));
+  for (let i=0;i<n;i++) {
+    x=rk4(A,x,dt);
+    if (!isFinite(x[0])||!isFinite(x[1])||Math.abs(x[0])>clip||Math.abs(x[1])>clip) break;
+    pts.push([...x]);
+  }
+  return pts;
+}
+
+// ── Canvas ────────────────────────────────────────────────────
+const CV = document.getElementById('phase');
+const PAD = {l:32,r:10,t:10,b:28};
+function pw(){return W-PAD.l-PAD.r;}
+function ph(){return H-PAD.t-PAD.b;}
+function tw(x){return PAD.l+(x-wlo)/(whi-wlo)*pw();}
+function th(y){return PAD.t+(1-(y-wlo)/(whi-wlo))*ph();}
+function sx(px){return wlo+(px-PAD.l)/pw()*(whi-wlo);}
+function sy(py){return wlo+(1-(py-PAD.t)/ph())*(whi-wlo);}
+
+function setupCanvas() {
+  W = CV.parentElement.clientWidth;
+  H = Math.round(W*0.9);
+  CV.width=W*DPR; CV.height=H*DPR;
+  CV.style.width=W+'px'; CV.style.height=H+'px';
+  ctx=CV.getContext('2d');
+  ctx.scale(DPR,DPR);
+}
+
+function niceTick(range,n){
+  const p=Math.pow(10,Math.floor(Math.log10(range/n)));
+  const m=range/n/p;
+  return(m<1.5?1:m<3?2:m<7?5:10)*p;
+}
+
+function arrowHead(x1,y1,x2,y2,color,size){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<1e-6)return;
+  const ux=dx/len,uy=dy/len,s=size||5;
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-ux*s-uy*s*0.5,y2-uy*s+ux*s*0.5);
+  ctx.lineTo(x2-ux*s+uy*s*0.5,y2-uy*s-ux*s*0.5);
+  ctx.closePath(); ctx.fill();
+}
+
+// ── Draw background (axes, grid, vector field) ────────────────
+function drawBg(A) {
+  const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const bgCol   = isDark?'#1e1e1e':'#ffffff';
+  const gridCol = isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)';
+  const axisCol = isDark?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.22)';
+  const textCol = isDark?'#bbb':'#555';
+
+  ctx.fillStyle=bgCol; ctx.fillRect(0,0,W,H);
+
+  const range=whi-wlo;
+  const ts=niceTick(range,5);
+  let xs=Math.ceil(wlo/ts)*ts;
+  ctx.strokeStyle=gridCol; ctx.lineWidth=0.5;
+  for(let v=xs;v<=whi+1e-9;v+=ts){
+    ctx.beginPath();ctx.moveTo(tw(v),PAD.t);ctx.lineTo(tw(v),PAD.t+ph());ctx.stroke();
+    ctx.beginPath();ctx.moveTo(PAD.l,th(v));ctx.lineTo(PAD.l+pw(),th(v));ctx.stroke();
+    ctx.fillStyle=textCol;ctx.font='9px system-ui';
+    ctx.textAlign='center';ctx.fillText(v.toFixed(1),tw(v),PAD.t+ph()+11);
+    ctx.textAlign='right'; ctx.fillText(v.toFixed(1),PAD.l-3,th(v)+3);
+  }
+  ctx.strokeStyle=axisCol;ctx.lineWidth=0.8;
+  const y0=Math.max(wlo,Math.min(whi,0));
+  ctx.beginPath();ctx.moveTo(PAD.l,th(y0));ctx.lineTo(PAD.l+pw(),th(y0));ctx.stroke();
+  const x0=Math.max(wlo,Math.min(whi,0));
+  ctx.beginPath();ctx.moveTo(tw(x0),PAD.t);ctx.lineTo(tw(x0),PAD.t+ph());ctx.stroke();
+  ctx.fillStyle=textCol;ctx.font='10px system-ui';
+  ctx.textAlign='center';ctx.fillText('x₁',PAD.l+pw()/2,H-2);
+  ctx.save();ctx.translate(10,PAD.t+ph()/2);ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center';ctx.fillText('x₂',0,0);ctx.restore();
+
+  if(document.getElementById('vfCheck').checked){
+    const N=11,sc=range*0.09;
+    for(let i=0;i<=N;i++)for(let j=0;j<=N;j++){
+      const wx=wlo+(whi-wlo)*i/N, wy=wlo+(whi-wlo)*j/N;
+      const dx=A[0][0]*wx+A[0][1]*wy, dy=A[1][0]*wx+A[1][1]*wy;
+      const mag=Math.sqrt(dx*dx+dy*dy)||1;
+      const ex=tw(wx),ey=th(wy),nx=tw(wx+dx/mag*sc),ny=th(wy+dy/mag*sc);
+      ctx.strokeStyle='rgba(29,158,117,0.42)';ctx.lineWidth=0.9;
+      ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(nx,ny);ctx.stroke();
+      arrowHead(ex,ey,nx,ny,'rgba(29,158,117,0.62)',3.5);
+    }
+  }
+
+  // Equilibrium
+  const isDarkEq = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  ctx.fillStyle=isDarkEq?'#666':'#bbb';
+  ctx.beginPath();ctx.arc(tw(0),th(0),4,0,2*Math.PI);ctx.fill();
+}
+
+// ── Draw one complete static trajectory ───────────────────────
+function drawStaticTraj(fwd, bwd, col, x0v) {
+  const isDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const showBwd = (mode === 'static');
+
+  // Build path: backward reversed + forward
+  const full = showBwd
+    ? [...bwd.slice().reverse(), ...fwd.slice(1)]
+    : fwd;
+  if(full.length<2) return;
+
+  ctx.strokeStyle=col; ctx.lineWidth=1.8;
+  ctx.beginPath(); ctx.moveTo(tw(full[0][0]),th(full[0][1]));
+  full.forEach(p=>ctx.lineTo(tw(p[0]),th(p[1])));
+  ctx.stroke();
+
+  // Arrows along forward direction only
+  const ae=Math.floor(fwd.length/4);
+  for(let k=ae;k<fwd.length-1;k+=ae)
+    arrowHead(tw(fwd[k-1][0]),th(fwd[k-1][1]),tw(fwd[k][0]),th(fwd[k][1]),col,6);
+
+  // IC dot
+  ctx.fillStyle=col;
+  ctx.beginPath(); ctx.arc(tw(x0v[0]),th(x0v[1]),5,0,2*Math.PI); ctx.fill();
+  ctx.strokeStyle=isDark?'#1e1e1e':'#fff'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(tw(x0v[0]),th(x0v[1]),5,0,2*Math.PI); ctx.stroke();
+}
+
+// ── Draw animated trajectory up to index i ────────────────────
+function drawAnimTrajUpTo(fwd, col, x0v, fwdIdx) {
+  const isDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+
+  if(fwdIdx>0){
+    const fwdSlice=fwd.slice(0,fwdIdx+1);
+    ctx.strokeStyle=col;ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(tw(fwdSlice[0][0]),th(fwdSlice[0][1]));
+    fwdSlice.forEach(p=>ctx.lineTo(tw(p[0]),th(p[1])));
+    ctx.stroke();
+    const tip=fwdSlice[fwdSlice.length-1];
+    ctx.fillStyle=col;
+    ctx.beginPath();ctx.arc(tw(tip[0]),th(tip[1]),4.5,0,2*Math.PI);ctx.fill();
+  }
+
+  ctx.fillStyle=col;
+  ctx.beginPath();ctx.arc(tw(x0v[0]),th(x0v[1]),5,0,2*Math.PI);ctx.fill();
+  ctx.strokeStyle=isDark?'#1e1e1e':'#fff';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(tw(x0v[0]),th(x0v[1]),5,0,2*Math.PI);ctx.stroke();
+}
+
+// ── Static full draw ──────────────────────────────────────────
+function draw() {
+  const A=getA();
+  drawBg(A);
+  const {T}=sysInfo(A);
+  const clip=(whi-wlo)*2.5;
+  trajs.forEach((t,idx)=>{
+    const col=TRAJ_COLORS[idx%TRAJ_COLORS.length];
+    drawStaticTraj(t.fwd,t.bwd,col,t.x0);
+  });
+}
+
+// ── Animation loop ────────────────────────────────────────────
+let animState = null; // {fwdIdx, bwdIdx, traj, trajIdx}
+const ANIM_STEP = 6;  // points to advance per frame
+
+function cancelAnim() {
+  if(animRAF){cancelAnimationFrame(animRAF);animRAF=null;}
+  animState=null;
+}
+
+function animFrame() {
+  const A=getA();
+  drawBg(A);
+
+  // Draw all completed trajs
+  trajs.forEach((t,idx)=>{
+    if(animState && idx===animState.trajIdx) return; // skip current
+    const col=TRAJ_COLORS[idx%TRAJ_COLORS.length];
+    drawStaticTraj(t.fwd,t.bwd,col,t.x0);
+  });
+
+  if(!animState){animRAF=null;return;}
+
+  const {trajIdx}=animState;
+  const t=trajs[trajIdx];
+  const col=TRAJ_COLORS[trajIdx%TRAJ_COLORS.length];
+
+  // Advance
+  animState.fwdIdx=Math.min(animState.fwdIdx+ANIM_STEP, t.fwd.length-1);
+
+  drawAnimTrajUpTo(t.fwd,col,t.x0,animState.fwdIdx);
+
+  if(animState.fwdIdx>=t.fwd.length-1){
+    // Finished — promote to static
+    animState=null;
+    animRAF=null;
+    draw();
+    return;
+  }
+  animRAF=requestAnimationFrame(animFrame);
+}
+
+function startAnim(trajIdx) {
+  cancelAnim();
+  animState={trajIdx, fwdIdx:0};
+  animRAF=requestAnimationFrame(animFrame);
+}
+
+// ── Add trajectory ────────────────────────────────────────────
+function addTraj(wx, wy) {
+  const A=getA();
+  const {T}=sysInfo(A);
+  const clip=(whi-wlo)*2.5;
+  const x0=[wx,wy];
+  const fwd=integrate(A,x0, T, 0.025,clip);
+  const bwd=integrate(A,x0,-T,-0.025,clip);
+  const idx=trajs.length;
+  trajs.push({x0,fwd,bwd});
+
+  if(mode==='static'){
+    draw();
+  } else {
+    // In animated mode, draw all previous statically, animate new one
+    draw();
+    startAnim(idx);
+  }
+}
+
+// ── Touch / click ─────────────────────────────────────────────
+function canvasPoint(e) {
+  const rect=CV.getBoundingClientRect();
+  let cx,cy;
+  if(e.touches){cx=e.touches[0].clientX-rect.left;cy=e.touches[0].clientY-rect.top;}
+  else{cx=e.clientX-rect.left;cy=e.clientY-rect.top;}
+  const scaleX=W/rect.width, scaleY=H/rect.height;
+  return[sx(cx*scaleX),sy(cy*scaleY)];
+}
+
+CV.addEventListener('click',e=>{
+  const[wx,wy]=canvasPoint(e);
+  if(wx<wlo||wx>whi||wy<wlo||wy>whi)return;
+  addTraj(wx,wy);
+});
+
+CV.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  const[wx,wy]=canvasPoint(e);
+  if(wx<wlo||wx>whi||wy<wlo||wy>whi)return;
+  addTraj(wx,wy);
+},{passive:false});
+
+// ── Controls ──────────────────────────────────────────────────
+function loadExample(i) {
+  const ex=EXAMPLES[i];
+  document.getElementById('a11').value=ex.A[0][0];
+  document.getElementById('a12').value=ex.A[0][1];
+  document.getElementById('a21').value=ex.A[1][0];
+  document.getElementById('a22').value=ex.A[1][1];
+  trajs=[]; cancelAnim(); redraw();
+}
+
+function clearTrajs(){trajs=[];cancelAnim();draw();}
+
+function redraw(){
+  const A=getA();
+  const{r}=sysInfo(A);
+  wlo=-r;whi=r;
+  trajs=[];cancelAnim();
+  updateBadge();draw();
+}
+
+['a11','a12','a21','a22'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',updateBadge);
+});
+document.getElementById('vfCheck').addEventListener('change',draw);
+window.addEventListener('resize',()=>{setupCanvas();draw();});
+
+// Init
+setupCanvas();
+redraw();
+</script>
+</body>
+</html>
