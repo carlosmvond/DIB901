@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Farmacocinética 3 Compartimentos</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f7f6f2; --surface: #ffffff; --border: #e0ddd6;
+      --accent: #2563eb; --text: #1a1917; --muted: #6b6860;
+      --c1: #2563eb; --c2: #16a34a; --c3: #dc2626; --radius: 10px;
+    }
+    html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px 8px; flex-shrink: 0; }
+    header h1 { font-size: 15px; font-weight: 700; }
+    header p  { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+    #controls { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px; overflow-y: auto; flex-shrink: 0; max-height: 36vh; }
+    .sec { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin: 8px 0 5px; border-top: 1px solid var(--border); padding-top: 7px; }
+    .sec:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+    .pg { display: flex; flex-direction: column; gap: 2px; }
+    .pg label { font-size: 9px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .pg input { border: 1px solid var(--border); border-radius: 6px; padding: 5px 7px; font-size: 13px; background: var(--bg); color: var(--text); width: 100%; }
+    .pg input:focus { outline: none; border-color: var(--accent); background: #fff; }
+    #btn { width: 100%; padding: 9px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    #btn:disabled { background: #93c5fd; cursor: not-allowed; }
+    #eigenbox { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 7px 10px; font-family: monospace; font-size: 10px; color: #1e40af; margin-top: 7px; white-space: pre-line; line-height: 1.5; }
+
+    #diagram-wrap { background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 14px; flex-shrink: 0; }
+    #dlabel { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; }
+    #diag { width: 100%; height: auto; display: block; }
+
+    #tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .tb { flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 600; border: none; background: none; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+    .tb.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+    #chart-area { flex: 1; position: relative; overflow: hidden; }
+    .panel { position: absolute; inset: 0; display: none; }
+    .panel.on { display: flex; flex-direction: column; }
+
+    .legend { display: flex; gap: 12px; padding: 5px 12px; flex-shrink: 0; flex-wrap: wrap; }
+    .legend span { font-size: 10px; display: flex; align-items: center; gap: 4px; }
+    .legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; }
+
+    canvas.chart { flex: 1; width: 100%; min-height: 0; display: block; }
+    #c3d { width: 100%; height: 100%; display: block; cursor: grab; }
+    #c3d:active { cursor: grabbing; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Farmacocinética — 3 Compartimentos</h1>
+  <p>Bolo IV · RK4 · sin dependencias externas</p>
+</header>
+
+<div id="controls">
+  <div class="sec">Condiciones iniciales</div>
+  <div class="grid">
+    <div class="pg"><label>C₁(0) Plasma</label><input id="C10" type="number" value="5" step="0.1"></div>
+    <div class="pg"><label>C₂(0)</label><input id="C20" type="number" value="0" step="0.1"></div>
+    <div class="pg"><label>C₃(0)</label><input id="C30" type="number" value="0" step="0.1"></div>
+    <div class="pg"><label>I₀ infusión</label><input id="I0" type="number" value="0" step="0.1"></div>
+  </div>
+  <div class="sec">Constantes cinéticas</div>
+  <div class="grid">
+    <div class="pg"><label>k₁₂</label><input id="k12" type="number" value="0.373" step="0.001"></div>
+    <div class="pg"><label>k₂₁</label><input id="k21" type="number" value="0.103" step="0.001"></div>
+    <div class="pg"><label>k₁₃</label><input id="k13" type="number" value="0.0367" step="0.0001"></div>
+    <div class="pg"><label>k₃₁</label><input id="k31" type="number" value="0.0124" step="0.0001"></div>
+    <div class="pg"><label>k₁₀ eliminación</label><input id="k10" type="number" value="0.172" step="0.001"></div>
+  </div>
+  <div class="sec">Simulación</div>
+  <div class="grid">
+    <div class="pg"><label>T final (min)</label><input id="T" type="number" value="60" step="1"></div>
+    <div class="pg"><label>Pasos</label><input id="steps" type="number" value="400" step="10"></div>
+  </div>
+  <button id="btn" onclick="runSim()">▶ Simular</button>
+  <div id="eigenbox">Pulsa Simular para calcular valores propios.</div>
+</div>
+
+<div id="diagram-wrap">
+  <div id="dlabel">Estado actual de los compartimentos</div>
+  <svg id="diag" viewBox="0 0 340 92" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="ah" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#999"/>
+      </marker>
+      <clipPath id="clip3"><rect x="4" y="20" width="90" height="50" rx="7"/></clipPath>
+      <clipPath id="clip1"><rect x="125" y="20" width="90" height="50" rx="7"/></clipPath>
+      <clipPath id="clip2"><rect x="246" y="20" width="90" height="50" rx="7"/></clipPath>
+    </defs>
+    <rect x="4" y="20" width="90" height="50" rx="7" fill="#fef2f2" stroke="#dc2626" stroke-width="1.2"/>
+    <rect id="b3" x="4" y="20" width="0" height="50" rx="7" fill="#fca5a5" clip-path="url(#clip3)"/>
+    <text x="49" y="47" text-anchor="middle" font-size="13" font-weight="700" fill="#dc2626">C₃</text>
+    <text id="v3" x="49" y="62" text-anchor="middle" font-size="9" fill="#991b1b">—</text>
+
+    <rect x="125" y="20" width="90" height="50" rx="7" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <rect id="b1" x="125" y="20" width="0" height="50" rx="7" fill="#93c5fd" clip-path="url(#clip1)"/>
+    <text x="170" y="47" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb">C₁</text>
+    <text id="v1" x="170" y="62" text-anchor="middle" font-size="9" fill="#1d4ed8">—</text>
+
+    <rect x="246" y="20" width="90" height="50" rx="7" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
+    <rect id="b2" x="246" y="20" width="0" height="50" rx="7" fill="#86efac" clip-path="url(#clip2)"/>
+    <text x="291" y="47" text-anchor="middle" font-size="13" font-weight="700" fill="#16a34a">C₂</text>
+    <text id="v2" x="291" y="62" text-anchor="middle" font-size="9" fill="#15803d">—</text>
+
+    <line x1="94" y1="37" x2="124" y2="37" stroke="#aaa" stroke-width="1" marker-end="url(#ah)"/>
+    <text x="109" y="32" text-anchor="middle" font-size="8" fill="#666">k₃₁</text>
+    <line x1="125" y1="53" x2="95" y2="53" stroke="#aaa" stroke-width="1" marker-end="url(#ah)"/>
+    <text x="109" y="66" text-anchor="middle" font-size="8" fill="#666">k₁₃</text>
+    <line x1="215" y1="37" x2="245" y2="37" stroke="#aaa" stroke-width="1" marker-end="url(#ah)"/>
+    <text x="230" y="32" text-anchor="middle" font-size="8" fill="#666">k₁₂</text>
+    <line x1="246" y1="53" x2="216" y2="53" stroke="#aaa" stroke-width="1" marker-end="url(#ah)"/>
+    <text x="230" y="66" text-anchor="middle" font-size="8" fill="#666">k₂₁</text>
+    <line x1="170" y1="70" x2="170" y2="88" stroke="#aaa" stroke-width="1" marker-end="url(#ah)"/>
+    <text x="184" y="85" font-size="8" fill="#666">k₁₀</text>
+    <line x1="170" y1="2" x2="170" y2="19" stroke="#aaa" stroke-width="1" marker-end="url(#ah)"/>
+    <text x="184" y="13" font-size="8" fill="#666">I(t)</text>
+  </svg>
+</div>
+
+<div id="tabs">
+  <button class="tb on" onclick="switchTab('2d',this)">Conc. vs Tiempo</button>
+  <button class="tb"    onclick="switchTab('3d',this)">Trayectoria 3D</button>
+</div>
+
+<div id="chart-area">
+  <div id="panel-2d" class="panel on">
+    <div class="legend">
+      <span><i style="background:#2563eb"></i>C₁ Plasma</span>
+      <span><i style="background:#16a34a"></i>C₂ Tejido rápido</span>
+      <span><i style="background:#dc2626"></i>C₃ Tejido lento</span>
+    </div>
+    <canvas id="c2d" class="chart"></canvas>
+  </div>
+  <div id="panel-3d" class="panel">
+    <canvas id="c3d"></canvas>
+  </div>
+</div>
+
+<script>
+/* ── RK4 ── */
+function rk4(f, t0, t1, y0, n) {
+  const h = (t1 - t0) / n;
+  let t = t0, y = y0.slice(), ts = [t], ys = [y.slice()];
+  for (let i = 0; i < n; i++) {
+    const k1 = f(t, y);
+    const y2 = y.map((v, j) => v + k1[j] * h / 2);
+    const k2 = f(t + h / 2, y2);
+    const y3 = y.map((v, j) => v + k2[j] * h / 2);
+    const k3 = f(t + h / 2, y3);
+    const y4 = y.map((v, j) => v + k3[j] * h);
+    const k4 = f(t + h, y4);
+    y = y.map((v, j) => v + (h / 6) * (k1[j] + 2*k2[j] + 2*k3[j] + k4[j]));
+    t += h; ts.push(t); ys.push(y.slice());
+  }
+  return { t: ts, y: ys };
+}
+
+/* ── Eigenvalues 3×3 via characteristic polynomial ── */
+function eig3(M) {
+  const tr = M[0][0] + M[1][1] + M[2][2];
+  const p  = M[0][0]*M[1][1] - M[0][1]*M[1][0]
+           + M[0][0]*M[2][2] - M[0][2]*M[2][0]
+           + M[1][1]*M[2][2] - M[1][2]*M[2][1];
+  const det = M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1])
+            - M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0])
+            + M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0]);
+  const a = -tr, b = p, c = -det;
+  const p_ = b - a*a/3;
+  const q_ = 2*a*a*a/27 - a*b/3 + c;
+  const D  = (q_/2)*(q_/2) + (p_/3)*(p_/3)*(p_/3);
+  const sh = -a/3;
+  if (D <= 1e-14) {
+    const r     = Math.sqrt(Math.max(0, -p_*p_*p_/27));
+    const theta = Math.acos(Math.max(-1, Math.min(1, r > 0 ? -q_/(2*r) : 0)));
+    const m     = 2 * Math.cbrt(r);
+    return [
+      m*Math.cos(theta/3)+sh,
+      m*Math.cos((theta+2*Math.PI)/3)+sh,
+      m*Math.cos((theta+4*Math.PI)/3)+sh
+    ];
+  } else {
+    const sd = Math.sqrt(D);
+    const u  = Math.cbrt(-q_/2+sd);
+    const v  = Math.cbrt(-q_/2-sd);
+    return [u+v+sh, {re:-(u+v)/2+sh, im:(u-v)*Math.sqrt(3)/2}, {re:-(u+v)/2+sh, im:-(u-v)*Math.sqrt(3)/2}];
+  }
+}
+
+/* ── 2D chart (upTo = index limit for animation) ── */
+function draw2D(canvas, ts, C1, C2, C3, upTo) {
+  const n = upTo !== undefined ? upTo : ts.length - 1;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 300, H = canvas.clientHeight || 200;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+  const pad = { l: 46, r: 10, t: 8, b: 36 };
+  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+  if (cw <= 0 || ch <= 0) return;
+
+  /* always scale axes to full solution range */
+  const all  = [...C1, ...C2, ...C3];
+  const ymax = Math.max(...all) * 1.08 || 1;
+  const tmin = ts[0], tmax = ts[ts.length - 1];
+  const tx = v => pad.l + (v - tmin) / (tmax - tmin) * cw;
+  const ty = v => pad.t + ch * (1 - v / ymax);
+
+  /* grid */
+  ctx.strokeStyle = '#e5e3dc'; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 5; i++) {
+    const yv = ymax * i / 5, yp = ty(yv);
+    ctx.beginPath(); ctx.moveTo(pad.l, yp); ctx.lineTo(pad.l + cw, yp); ctx.stroke();
+    ctx.fillStyle = '#888'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(yv.toFixed(2), pad.l - 4, yp);
+  }
+  for (let i = 0; i <= 5; i++) {
+    const xv = tmin + (tmax - tmin) * i / 5, xp = tx(xv);
+    ctx.beginPath(); ctx.moveTo(xp, pad.t); ctx.lineTo(xp, pad.t + ch); ctx.stroke();
+    ctx.fillStyle = '#888'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(xv.toFixed(0), xp, pad.t + ch + 4);
+  }
+
+  /* axis labels */
+  ctx.save(); ctx.translate(11, pad.t + ch / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#555'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '10px sans-serif'; ctx.fillText('Concentración', 0, 0); ctx.restore();
+  ctx.fillStyle = '#555'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.font = '10px sans-serif'; ctx.fillText('Tiempo (min)', pad.l + cw / 2, H - 2);
+
+  /* curves up to n */
+  const line = (arr, color) => {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    for (let i = 0; i <= n; i++) {
+      if (i === 0) ctx.moveTo(tx(ts[i]), ty(arr[i]));
+      else         ctx.lineTo(tx(ts[i]), ty(arr[i]));
+    }
+    ctx.stroke();
+    /* dot at current tip */
+    if (n > 0 && n < ts.length) {
+      ctx.beginPath(); ctx.fillStyle = color;
+      ctx.arc(tx(ts[n]), ty(arr[n]), 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+  };
+  line(C1, '#2563eb'); line(C2, '#16a34a'); line(C3, '#dc2626');
+
+  /* vertical time cursor */
+  if (n > 0 && n < ts.length - 1) {
+    const xc = tx(ts[n]);
+    ctx.beginPath(); ctx.strokeStyle = '#bbb'; ctx.lineWidth = 0.8; ctx.setLineDash([3, 3]);
+    ctx.moveTo(xc, pad.t); ctx.lineTo(xc, pad.t + ch); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  /* border */
+  ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.8;
+  ctx.strokeRect(pad.l, pad.t, cw, ch);
+}
+
+/* ── 3D canvas (rotate with drag/touch) ── */
+let rot = { ax: -0.4, ay: 0.6 };
+let dragging = false, lastMouse = null;
+let _pts3 = null;
+
+/* ── 3D projection: world coords → canvas px ── */
+function project(x, y, z, cx, cy, scale) {
+  // Rotate Y then X
+  const cosY = Math.cos(rot.ay), sinY = Math.sin(rot.ay);
+  const cosX = Math.cos(rot.ax), sinX = Math.sin(rot.ax);
+  const rx  =  x * cosY + z * sinY;
+  const ry0 = -x * sinY + z * cosY;
+  const ry  =  y * cosX - ry0 * sinX;
+  const rz  =  y * sinX + ry0 * cosX;
+  // Simple perspective (mild)
+  const fov = 3.5;
+  const w   = fov / (fov + rz);
+  return { px: cx + rx * scale * w, py: cy - ry * scale * w, depth: rz };
+}
+
+function draw3D(canvas, upTo) {
+  if (!_pts3) return;
+  const n   = upTo !== undefined ? Math.min(upTo, _pts3.C1.length - 1) : _pts3.C1.length - 1;
+  const dpr = window.devicePixelRatio || 1;
+  const W   = canvas.clientWidth  || 300;
+  const H   = canvas.clientHeight || 200;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#f7f6f2';
+  ctx.fillRect(0, 0, W, H);
+
+  const { C1, C2, C3 } = _pts3;
+
+  // Ranges for axis tick labels
+  const xMax = Math.max(...C1), xMin = 0;
+  const yMax = Math.max(...C2), yMin = 0;
+  const zMax = Math.max(...C3), zMin = 0;
+
+  // Normalize data to [0,1] cube
+  const nx = v => xMax > xMin ? (v - xMin) / (xMax - xMin) : 0;
+  const ny = v => yMax > yMin ? (v - yMin) / (yMax - yMin) : 0;
+  const nz = v => zMax > zMin ? (v - zMin) / (zMax - zMin) : 0;
+
+  const scale = Math.min(W, H) * 0.30;
+  const cx = W * 0.50;
+  const cy = H * 0.50;
+
+  // Project a point in [0,1]³ mapped to [-1,1]³ cube
+  const proj = (x, y, z) => project(x*2-1, y*2-1, z*2-1, cx, cy, scale);
+
+  // Cube corners
+  const corners = [
+    proj(0,0,0), proj(1,0,0), proj(1,1,0), proj(0,1,0),
+    proj(0,0,1), proj(1,0,1), proj(1,1,1), proj(0,1,1)
+  ];
+
+  // We draw 3 "floor" faces (the back walls of the box) to mimic Plotly's grid panes.
+  // Determine which corner is "most back" by depth to pick visible faces.
+  // For simplicity, always draw the three faces adjacent to corner 0 (0,0,0).
+  const NTICKS = 4;
+
+  // Face fill helper
+  function fillFace(pts, color) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].px, pts[0].py);
+    pts.slice(1).forEach(p => ctx.lineTo(p.px, p.py));
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#bbb';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
+  // Grid lines on a face
+  function gridFace(a0, a1, b0, b1, col) {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 0.4;
+    for (let i = 0; i <= NTICKS; i++) {
+      const t = i / NTICKS;
+      // lines parallel to b
+      const pa = lerp3(a0, a1, t), pb = lerp3(b0, b1, t);
+      const ppa = proj(pa[0],pa[1],pa[2]), ppb = proj(pb[0],pb[1],pb[2]);
+      ctx.beginPath(); ctx.moveTo(ppa.px, ppa.py); ctx.lineTo(ppb.px, ppb.py); ctx.stroke();
+    }
+  }
+
+  function lerp3(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+
+  // Sort the three back-wall faces by average depth (draw deepest first)
+  const faceXY = { corners:[proj(0,0,0),proj(1,0,0),proj(1,1,0),proj(0,1,0)], fill:'#e8edf5',
+    grid1:[[0,0,0],[1,0,0],[0,1,0],[1,1,0]], grid2:[[0,0,0],[0,1,0],[1,0,0],[1,1,0]] };
+  const faceXZ = { corners:[proj(0,0,0),proj(1,0,0),proj(1,0,1),proj(0,0,1)], fill:'#e8f0ea',
+    grid1:[[0,0,0],[1,0,0],[0,0,1],[1,0,1]], grid2:[[0,0,0],[0,0,1],[1,0,0],[1,0,1]] };
+  const faceYZ = { corners:[proj(0,0,0),proj(0,1,0),proj(0,1,1),proj(0,0,1)], fill:'#f0e8e8',
+    grid1:[[0,0,0],[0,1,0],[0,0,1],[0,1,1]], grid2:[[0,0,0],[0,0,1],[0,1,0],[0,1,1]] };
+
+  const avgDepth = face => face.corners.reduce((s,p) => s + p.depth, 0) / 4;
+  [faceXY, faceXZ, faceYZ].sort((a,b) => avgDepth(b) - avgDepth(a)).forEach(face => {
+    fillFace(face.corners, face.fill);
+    const g = face.grid1;
+    // Grid along first axis
+    gridFace(g[0], g[1], g[2], g[3], '#ccc');
+    // Grid along second axis
+    const h = face.grid2;
+    gridFace(h[0], h[1], h[2], h[3], '#ccc');
+  });
+
+  // Cube edges
+  const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  ctx.strokeStyle = '#aaa'; ctx.lineWidth = 0.8;
+  edges.forEach(([a,b]) => {
+    ctx.beginPath(); ctx.moveTo(corners[a].px, corners[a].py);
+    ctx.lineTo(corners[b].px, corners[b].py); ctx.stroke();
+  });
+
+  // Axis labels & ticks
+  const tickFmt = v => v < 0.01 ? '0' : v >= 100 ? v.toFixed(0) : v.toFixed(2);
+  ctx.font = '9px sans-serif';
+
+  // X axis (C1): corner 0→1, ticks along bottom face
+  ctx.fillStyle = '#2563eb'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  const xMid = proj(0.5,-0.08,-0.08);
+  ctx.fillText('C₁', xMid.px, xMid.py);
+  for (let i = 0; i <= NTICKS; i++) {
+    const t = i / NTICKS;
+    const p = proj(t, 0, 0);
+    ctx.fillStyle = '#666'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(tickFmt(xMin + (xMax-xMin)*t), p.px, p.py + 2);
+  }
+
+  // Y axis (C2): corner 0→3
+  ctx.fillStyle = '#16a34a'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  const yMid = proj(-0.08, 0.5, -0.08);
+  ctx.fillText('C₂', yMid.px - 2, yMid.py);
+  for (let i = 0; i <= NTICKS; i++) {
+    const t = i / NTICKS;
+    const p = proj(0, t, 0);
+    ctx.fillStyle = '#666'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(tickFmt(yMin + (yMax-yMin)*t), p.px - 3, p.py);
+  }
+
+  // Z axis (C3): corner 0→4
+  ctx.fillStyle = '#dc2626'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  const zMid = proj(-0.08, -0.08, 0.5);
+  ctx.fillText('C₃', zMid.px + 2, zMid.py);
+  for (let i = 0; i <= NTICKS; i++) {
+    const t = i / NTICKS;
+    const p = proj(0, 0, t);
+    ctx.fillStyle = '#666'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(tickFmt(zMin + (zMax-zMin)*t), p.px + 3, p.py);
+  }
+
+  // Ghost trajectory (full, faint)
+  const allPts = C1.map((_, i) => proj(nx(C1[i]), ny(C2[i]), nz(C3[i])));
+  ctx.beginPath(); ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1;
+  allPts.forEach((p, i) => i === 0 ? ctx.moveTo(p.px, p.py) : ctx.lineTo(p.px, p.py));
+  ctx.stroke();
+
+  // Animated portion
+  const end = Math.min(n + 1, allPts.length);
+  for (let i = 1; i < end; i++) {
+    const t = i / allPts.length;
+    ctx.beginPath();
+    ctx.strokeStyle = `hsl(${220 + t * 120},70%,42%)`;
+    ctx.lineWidth = 2;
+    ctx.moveTo(allPts[i-1].px, allPts[i-1].py);
+    ctx.lineTo(allPts[i].px,   allPts[i].py);
+    ctx.stroke();
+  }
+
+  // Start dot
+  ctx.beginPath(); ctx.fillStyle = '#2563eb';
+  ctx.arc(allPts[0].px, allPts[0].py, 4, 0, Math.PI*2); ctx.fill();
+
+  // Moving dot
+  if (end > 1) {
+    const cp = allPts[end - 1];
+    ctx.beginPath(); ctx.fillStyle = '#f59e0b';
+    ctx.arc(cp.px, cp.py, 5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+    ctx.arc(cp.px, cp.py, 5, 0, Math.PI*2); ctx.stroke();
+  }
+
+  ctx.fillStyle = '#aaa'; ctx.font = '9px sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText('Arrastra para rotar', 6, 6);
+}
+
+const c3d = document.getElementById('c3d');
+const on3d = (ex, ey) => { dragging = true; lastMouse = { x: ex, y: ey }; };
+const mv3d = (ex, ey) => {
+  if (!dragging) return;
+  rot.ay += (ex - lastMouse.x) * 0.01;
+  rot.ax += (ey - lastMouse.y) * 0.01;
+  lastMouse = { x: ex, y: ey };
+  draw3D(c3d, _animFrame);
+};
+const up3d = () => { dragging = false; };
+c3d.addEventListener('mousedown', e => on3d(e.clientX, e.clientY));
+c3d.addEventListener('mousemove', e => mv3d(e.clientX, e.clientY));
+c3d.addEventListener('mouseup', up3d);
+c3d.addEventListener('touchstart', e => { e.preventDefault(); on3d(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+c3d.addEventListener('touchmove',  e => { e.preventDefault(); mv3d(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+c3d.addEventListener('touchend', up3d);
+
+/* ── Diagram bars ── */
+const BOX_W = 90;
+let _maxC = 1;
+function updateDiag(c1, c2, c3) {
+  const sc = v => (Math.max(0, Math.min(v, _maxC)) / _maxC * BOX_W).toFixed(1);
+  document.getElementById('b1').setAttribute('width', sc(c1));
+  document.getElementById('b2').setAttribute('width', sc(c2));
+  document.getElementById('b3').setAttribute('width', sc(c3));
+  document.getElementById('v1').textContent = c1.toFixed(3);
+  document.getElementById('v2').textContent = c2.toFixed(3);
+  document.getElementById('v3').textContent = c3.toFixed(3);
+}
+
+/* ── Tabs ── */
+let _sol = null;
+let _animFrame = 0;
+function switchTab(name, btn) {
+  document.querySelectorAll('.tb').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('panel-' + name).classList.add('on');
+  setTimeout(() => {
+    if (name === '3d' && _pts3) draw3D(c3d, _animFrame);
+    if (name === '2d' && _sol)  draw2D(document.getElementById('c2d'), _sol.t, _sol.C1, _sol.C2, _sol.C3, _animFrame);
+  }, 30);
+}
+
+/* ── Synchronized animation via requestAnimationFrame ── */
+let _rafId = null;
+let _animRunning = false;
+
+function startAnimation(C1, C2, C3, ts) {
+  if (_rafId) cancelAnimationFrame(_rafId);
+  const total = C1.length;
+  /* target ~8 seconds for the animation regardless of step count */
+  const ANIM_MS = 8000;
+  const msPerStep = ANIM_MS / total;
+
+  let startTime = null;
+  _animFrame = 0;
+
+  const btn = document.getElementById('btn');
+  const c2d = document.getElementById('c2d');
+
+  function frame(now) {
+    if (!startTime) startTime = now;
+    const elapsed = now - startTime;
+    const idx = Math.min(Math.floor(elapsed / msPerStep), total - 1);
+    _animFrame = idx;
+
+    /* blocks */
+    updateDiag(C1[idx], C2[idx], C3[idx]);
+
+    /* 2D */
+    draw2D(c2d, ts, C1, C2, C3, idx);
+
+    /* 3D */
+    draw3D(c3d, idx);
+
+    if (idx < total - 1) {
+      _rafId = requestAnimationFrame(frame);
+    } else {
+      /* finished — show complete state */
+      _animFrame = total - 1;
+      updateDiag(C1[total-1], C2[total-1], C3[total-1]);
+      draw2D(c2d, ts, C1, C2, C3, total - 1);
+      draw3D(c3d, total - 1);
+      btn.disabled = false; btn.textContent = '▶ Simular';
+    }
+  }
+  _rafId = requestAnimationFrame(frame);
+}
+
+/* ── Main simulation ── */
+let _animTimer = null;
+function runSim() {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = 'Calculando…';
+  if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+
+  setTimeout(() => {
+    const g = id => +document.getElementById(id).value;
+    const p = { k10:g('k10'), k12:g('k12'), k21:g('k21'), k13:g('k13'), k31:g('k31'),
+                I0:g('I0'), C10:g('C10'), C20:g('C20'), C30:g('C30'), T:g('T'), steps:g('steps') };
+
+    const f = (t, y) => {
+      const [C1, C2, C3] = y;
+      return [
+        p.k21*C2 + p.k31*C3 - (p.k10 + p.k12 + p.k13)*C1 + p.I0,
+        p.k12*C1 - p.k21*C2,
+        p.k13*C1 - p.k31*C3
+      ];
+    };
+
+    const sol = rk4(f, 0, p.T, [p.C10, p.C20, p.C30], p.steps);
+    const C1 = [], C2 = [], C3 = [];
+    sol.y.forEach(s => { C1.push(s[0]); C2.push(s[1]); C3.push(s[2]); });
+    _sol = { t: sol.t, C1, C2, C3 };
+    _maxC = Math.max(...C1, ...C2, ...C3, 1e-12);
+
+    /* eigenvalues */
+    const A = [
+      [-(p.k10+p.k12+p.k13), p.k21, p.k31],
+      [p.k12, -p.k21, 0],
+      [p.k13, 0, -p.k31]
+    ];
+    const ev = eig3(A);
+    let msg = 'Valores propios de A:\n';
+    ev.forEach((v, i) => {
+      if (typeof v === 'object') msg += `  λ${i+1} = ${v.re.toFixed(4)} ${v.im >= 0 ? '+' : ''}${v.im.toFixed(4)}i\n`;
+      else msg += `  λ${i+1} = ${v.toFixed(4)}\n`;
+    });
+    const allNeg = ev.every(v => (typeof v === 'object' ? v.re : v) < 0);
+    msg += allNeg ? '→ Equilibrio estable en (0,0,0)' : '→ ¡Revisar parámetros!';
+    document.getElementById('eigenbox').textContent = msg;
+
+    /* prepare 3D data */
+    _pts3 = { C1, C2, C3 };
+
+    /* launch synchronized animation */
+    startAnimation(C1, C2, C3, sol.t);
+  }, 20);
+}
+
+window.addEventListener('resize', () => {
+  if (_sol)  draw2D(document.getElementById('c2d'), _sol.t, _sol.C1, _sol.C2, _sol.C3, _animFrame);
+  if (_pts3) draw3D(c3d, _animFrame);
+});
+
+updateDiag(5, 0, 0);
+</script>
+</body>
+</html>
