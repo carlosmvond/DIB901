@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Osciladores — Sistemas Dinámicos</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #faf9f6;
+  --surface: #ffffff;
+  --border: #e0ddd6;
+  --text: #1a1814;
+  --text2: #6b6760;
+  --red: #c0392b;
+  --blue: #2563a8;
+  --green: #1a7a4a;
+  --amber: #b45309;
+  --mono: 'JetBrains Mono', monospace;
+  --serif: 'Instrument Serif', serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+header h1 {
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text);
+}
+header h1 em { font-style: italic; color: var(--red); }
+header p { font-size: 10px; color: var(--text2); margin-top: 2px; letter-spacing: 0.05em; }
+
+/* TABS */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.tab-btn {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 10px 8px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-btn.active {
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
+
+/* PANEL */
+.tab-panel { display: none; flex: 1; flex-direction: column; }
+.tab-panel.active { display: flex; }
+
+/* SPRING CANVAS */
+.spring-wrap {
+  position: relative;
+  height: 160px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  touch-action: none;
+  cursor: grab;
+  flex-shrink: 0;
+}
+.spring-wrap:active { cursor: grabbing; }
+.spring-canvas { display: block; width: 100%; height: 100%; }
+
+.drag-hint {
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  color: var(--text2);
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+/* PHASE CANVAS */
+.phase-wrap {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  background: #fff;
+}
+.phase-canvas { display: block; width: 100%; height: 100%; }
+
+/* CONTROLS */
+.controls {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ctrl-label {
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  color: var(--text2);
+  text-transform: uppercase;
+  min-width: 70px;
+}
+.ctrl-label-sym {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 16px;
+  letter-spacing: 0;
+  color: var(--text2);
+  min-width: 70px;
+  display: inline-block;
+}
+.ctrl-val {
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 36px;
+  text-align: right;
+  color: var(--text);
+}
+input[type=range] {
+  -webkit-appearance: none;
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--text);
+}
+input[type=range]::-moz-range-thumb {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--text);
+}
+
+.btn-row { display: flex; gap: 8px; }
+.action-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.action-btn:active { opacity: 0.6; }
+
+.eq-display {
+  font-size: 11px;
+  color: var(--text2);
+  letter-spacing: 0.02em;
+  padding: 6px 10px;
+  background: var(--bg);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.info-bar {
+  display: flex;
+  gap: 14px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--text2);
+  text-transform: uppercase;
+  flex-wrap: wrap;
+}
+.info-item { display: flex; align-items: center; gap: 5px; }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Osciladores <em>Dinámicos</em></h1>
+  <p>SISTEMAS DINÁMICOS 2D · ARRASTRA LA MASA · PLANO DE FASE</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('classic')">Resorte Clásico</button>
+  <button class="tab-btn" onclick="switchTab('vdp')">Van der Pol</button>
+</div>
+
+<!-- ===== CLÁSICO ===== -->
+<div class="tab-panel active" id="panel-classic">
+  <div class="spring-wrap" id="sw-classic">
+    <div class="drag-hint">arrastra la masa</div>
+    <canvas class="spring-canvas" id="sc-classic"></canvas>
+  </div>
+  <div class="phase-wrap">
+    <canvas class="phase-canvas" id="pc-classic"></canvas>
+  </div>
+  <div class="controls">
+    <div class="eq-display" id="eq-classic">ẍ + k·ẋ + ω₀²·x = 0</div>
+    <div class="ctrl-row">
+      <span class="ctrl-label-sym">ω₀</span>
+      <input type="range" id="w0-classic" min="0.2" max="4" step="0.1" value="1">
+      <span class="ctrl-val" id="w0v-classic">1.0</span>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">k (amort.)</span>
+      <input type="range" id="k-classic" min="0" max="3" step="0.05" value="0.3">
+      <span class="ctrl-val" id="kv-classic">0.30</span>
+    </div>
+    <div class="btn-row">
+      <button class="action-btn" id="btn-vf-classic" onclick="toggleVFSystem('classic')">Campo vectorial</button>
+      <button class="action-btn" onclick="clearTrajectory('classic')">Limpiar ↺</button>
+    </div>
+    <div class="info-bar">
+      <div class="info-item"><div class="leg-dot" style="background:#c0392b;"></div><span>trayectoria</span></div>
+      <div class="info-item"><div class="leg-dot" style="background:#2563a8;border:2px solid #2563a8;background:transparent;"></div><span>equilibrio</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== VAN DER POL ===== -->
+<div class="tab-panel" id="panel-vdp">
+  <div class="spring-wrap" id="sw-vdp">
+    <div class="drag-hint">arrastra la masa</div>
+    <canvas class="spring-canvas" id="sc-vdp"></canvas>
+  </div>
+  <div class="phase-wrap">
+    <canvas class="phase-canvas" id="pc-vdp"></canvas>
+  </div>
+  <div class="controls">
+    <div class="eq-display" id="eq-vdp">ẍ − μ(1−x²)ẋ + ω₀²·x = 0</div>
+    <div class="ctrl-row">
+      <span class="ctrl-label-sym">ω₀</span>
+      <input type="range" id="w0-vdp" min="0.2" max="4" step="0.1" value="1">
+      <span class="ctrl-val" id="w0v-vdp">1.0</span>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label-sym">μ</span>
+      <input type="range" id="mu-vdp" min="0" max="3" step="0.1" value="1">
+      <span class="ctrl-val" id="muv-vdp" style="color:#c0392b;">1.0</span>
+    </div>
+    <div class="btn-row">
+      <button class="action-btn" id="btn-vf-vdp" onclick="toggleVFSystem('vdp')">Campo vectorial</button>
+      <button class="action-btn" onclick="clearTrajectory('vdp')">Limpiar ↺</button>
+    </div>
+    <div class="info-bar">
+      <div class="info-item"><div class="leg-dot" style="background:#c0392b;"></div><span>trayectoria</span></div>
+      <div class="info-item"><div class="leg-dot" style="background:#1a7a4a;"></div><span>ciclo límite</span></div>
+      <div class="info-item"><div class="leg-dot" style="background:#2563a8;border:2px solid #2563a8;background:transparent;"></div><span>equilibrio</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Tab switching ───────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn')[name === 'classic' ? 0 : 1].classList.add('active');
+  setTimeout(() => { systems[name].resizeAll(); }, 50);
+}
+
+// ─── RK4 ────────────────────────────────────────────────────────
+function rk4Step(x, v, dt, f) {
+  const k1v = f(x, v),          k1x = v;
+  const k2v = f(x+dt/2*k1x, v+dt/2*k1v), k2x = v+dt/2*k1v;
+  const k3v = f(x+dt/2*k2x, v+dt/2*k2v), k3x = v+dt/2*k2v;
+  const k4v = f(x+dt*k3x, v+dt*k3v),     k4x = v+dt*k3v;
+  return [
+    x + dt/6*(k1x+2*k2x+2*k3x+k4x),
+    v + dt/6*(k1v+2*k2v+2*k3v+k4v)
+  ];
+}
+
+function integrateVDP(x0, v0, mu, w0, steps, dt, skip) {
+  let x = x0, v = v0, pts = [];
+  const f = (x,v) => mu*(1-x*x)*v - w0*w0*x;
+  for (let i = 0; i < steps + skip; i++) {
+    if (i >= skip) pts.push([x, v]);
+    [x, v] = rk4Step(x, v, dt, f);
+    if (Math.sqrt(x*x+v*v) > 20) break;
+  }
+  return pts;
+}
+
+// ─── Spring drawing ──────────────────────────────────────────────
+function drawSpring(ctx, W, H, xPx, color) {
+  const anchorX = 30, anchorY = H / 2;
+  const massX = W / 2 + xPx;
+  const massY = H / 2;
+  const massR = 18;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  // wall
+  ctx.fillStyle = '#e0ddd6';
+  ctx.fillRect(0, 0, anchorX, H);
+  ctx.strokeStyle = '#c8c4bc';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(anchorX, 0); ctx.lineTo(anchorX, H); ctx.stroke();
+
+  // equilibrium line
+  ctx.strokeStyle = '#e0ddd6';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(W/2, 20); ctx.lineTo(W/2, H-20); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // spring coils
+  const coils = 12;
+  const springLen = massX - anchorX - massR;
+  const pts = coils * 16;
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(anchorX, anchorY);
+  for (let i = 0; i <= pts; i++) {
+    const t = i / pts;
+    const sx = anchorX + t * springLen;
+    const sy = anchorY + 12 * Math.sin(t * coils * 2 * Math.PI);
+    ctx.lineTo(sx, sy);
+  }
+  ctx.stroke();
+
+  // mass
+  ctx.beginPath();
+  ctx.arc(massX, massY, massR, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // x label
+  ctx.fillStyle = '#a09c96';
+  ctx.font = '9px JetBrains Mono, monospace';
+  ctx.fillText('x=0', W/2 - 12, H - 6);
+
+  // displacement indicator
+  if (Math.abs(xPx) > 3) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(W/2, massY + massR + 6);
+    ctx.lineTo(massX, massY + massR + 6);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = color;
+    ctx.font = '9px JetBrains Mono, monospace';
+    const xVal = (xPx / 60).toFixed(2);
+    ctx.fillText('x=' + xVal, massX + 4, massY + massR + 10);
+  }
+}
+
+// ─── Phase plane drawing ─────────────────────────────────────────
+function drawVectorField(ctx, W, H, isVDP, param, w0) {
+  const XMIN=-3.5, XMAX=3.5, VMIN=-4, VMAX=4;
+  const tx = x => (x-XMIN)/(XMAX-XMIN)*W;
+  const tv = v => (1-(v-VMIN)/(VMAX-VMIN))*H;
+  const nx = 15, ny = 13;
+  const dx = (XMAX-XMIN)/nx, dy = (VMAX-VMIN)/ny;
+  const scale = Math.min(W,H)*0.03;
+  const al = 5;
+
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(180,83,9,0.45)';
+  ctx.fillStyle   = 'rgba(180,83,9,0.45)';
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i <= nx; i++) {
+    for (let j = 0; j <= ny; j++) {
+      const x = XMIN + i*dx, v = VMIN + j*dy;
+      // ẋ = v,  v̇ = f(x,v)
+      const fx = v;
+      const fv = isVDP ? param*(1-x*x)*v - w0*w0*x
+                       : -param*v - w0*w0*x;
+      const mag = Math.sqrt(fx*fx + fv*fv);
+      if (mag < 1e-6) continue;
+      // unit vector, then scale logarithmically so large vectors don't dominate
+      const logScale = scale * (1 + Math.log(1 + mag)) / (1 + mag);
+      const ex = fx * logScale, ey = fv * logScale;
+      const px = tx(x), py = tv(v);
+      const qx = px + ex, qy = py - ey;  // note: tv flips y
+      // stem
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(qx, qy); ctx.stroke();
+      // arrowhead
+      const angle = Math.atan2(qy - py, qx - px);
+      ctx.beginPath();
+      ctx.moveTo(qx, qy);
+      ctx.lineTo(qx - al*Math.cos(angle-0.4), qy - al*Math.sin(angle-0.4));
+      ctx.lineTo(qx - al*Math.cos(angle+0.4), qy - al*Math.sin(angle+0.4));
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawPhase(ctx, W, H, trajectory, xPos, xVel, limitCycle, isVDP, mu, showVF, w0) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  const XMIN=-3.5, XMAX=3.5, VMIN=-4, VMAX=4;
+  const tx = x => (x-XMIN)/(XMAX-XMIN)*W;
+  const tv = v => (1-(v-VMIN)/(VMAX-VMIN))*H;
+
+  // grid
+  ctx.strokeStyle = '#f0ede8';
+  ctx.lineWidth = 0.5;
+  for (let xg=-3; xg<=3; xg++) { ctx.beginPath(); ctx.moveTo(tx(xg),0); ctx.lineTo(tx(xg),H); ctx.stroke(); }
+  for (let vg=-4; vg<=4; vg++) { ctx.beginPath(); ctx.moveTo(0,tv(vg)); ctx.lineTo(W,tv(vg)); ctx.stroke(); }
+
+  // axes
+  ctx.strokeStyle = '#c8c4bc';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(tx(0),0); ctx.lineTo(tx(0),H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,tv(0)); ctx.lineTo(W,tv(0)); ctx.stroke();
+
+  // axis labels
+  ctx.fillStyle = '#b0aca6';
+  ctx.font = '9px JetBrains Mono, monospace';
+  ctx.fillText('x', tx(XMAX)-14, tv(0)-5);
+  ctx.fillText('ẋ', tx(0)+4, tv(VMAX)+12);
+  for (let v=-3; v<=3; v++) {
+    if (v!==0) ctx.fillText(v, tx(v)-4, tv(0)+10);
+  }
+
+  // vector field
+  if (showVF) drawVectorField(ctx, W, H, isVDP, mu, w0);
+
+  // limit cycle (VDP)
+  if (isVDP && limitCycle && limitCycle.length > 1) {
+    ctx.strokeStyle = '#1a7a4a';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    limitCycle.forEach(([x,v], i) => {
+      const px = tx(x), py = tv(v);
+      if (px < -10 || px > W+10 || py < -10 || py > H+10) return;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // trajectory
+  if (trajectory.length > 1) {
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 1.8;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    let started = false;
+    trajectory.forEach(([x, v]) => {
+      const px = tx(x), py = tv(v);
+      if (px < -5 || px > W+5 || py < -5 || py > H+5) { started = false; return; }
+      if (!started) { ctx.moveTo(px, py); started = true; }
+      else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // arrows along trajectory
+    drawArrows(ctx, trajectory, '#c0392b', tx, tv, W, H, 3);
+  }
+
+  // equilibrium
+  ctx.beginPath();
+  ctx.arc(tx(0), tv(0), 5, 0, Math.PI*2);
+  if (isVDP && mu > 0.05) {
+    ctx.fillStyle = 'white';
+    ctx.fill();
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#2563a8';
+    ctx.fill();
+  }
+
+  // current state dot
+  const cpx = tx(xPos), cpy = tv(xVel);
+  if (cpx >= 0 && cpx <= W && cpy >= 0 && cpy <= H) {
+    ctx.beginPath();
+    ctx.arc(cpx, cpy, 5, 0, Math.PI*2);
+    ctx.fillStyle = '#c0392b';
+    ctx.fill();
+  }
+}
+
+function drawArrows(ctx, pts, color, tx, tv, W, H, n) {
+  if (pts.length < 10) return;
+  const cumLen = [0];
+  for (let i = 1; i < pts.length; i++) {
+    const dx = tx(pts[i][0]) - tx(pts[i-1][0]);
+    const dy = tv(pts[i][1]) - tv(pts[i-1][1]);
+    cumLen.push(cumLen[i-1] + Math.sqrt(dx*dx+dy*dy));
+  }
+  const total = cumLen[cumLen.length-1];
+  if (total < 30) return;
+  ctx.fillStyle = color;
+  for (let k = 1; k <= n; k++) {
+    const target = total * k / (n+1);
+    let idx = 1;
+    while (idx < cumLen.length-1 && cumLen[idx] < target) idx++;
+    const [x2,v2] = pts[idx], [x1,v1] = pts[idx-1];
+    const angle = Math.atan2(tv(v2)-tv(v1), tx(x2)-tx(x1));
+    const px = tx(x2), py = tv(v2);
+    if (px < 0 || px > W || py < 0 || py > H) continue;
+    const al = 7;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px - al*Math.cos(angle-0.42), py - al*Math.sin(angle-0.42));
+    ctx.lineTo(px - al*0.5*Math.cos(angle), py - al*0.5*Math.sin(angle));
+    ctx.lineTo(px - al*Math.cos(angle+0.42), py - al*Math.sin(angle+0.42));
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// ─── System factory ──────────────────────────────────────────────
+function createSystem(name, isVDP) {
+  const springWrap  = document.getElementById('sw-' + name);
+  const springCanvas= document.getElementById('sc-' + name);
+  const phaseWrap   = document.getElementById('pc-' + name).parentElement;
+  const phaseCanvas = document.getElementById('pc-' + name);
+  const sc = springCanvas.getContext('2d');
+  const pc = phaseCanvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  let SW, SH, PW, PH;
+
+  let x = 0, vel = 0;
+  let w0 = 1, param = isVDP ? 1 : 0.3; // mu or k
+  let simulating = false, dragging = false;
+  let trajectory = [];
+  let limitCycle = null;
+  let showVF = false;
+  let rafId = null;
+  const DT = 0.016;
+  const PX_PER_UNIT = 60;
+  const MASS_COLOR = isVDP ? '#1a7a4a' : '#2563a8';
+
+  function getAccel(x, v) {
+    if (isVDP) return param*(1-x*x)*v - w0*w0*x;
+    else return -param*v - w0*w0*x;
+  }
+
+  function resizeCanvas(canvas, wrap) {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    const ctx2 = canvas.getContext('2d');
+    ctx2.scale(dpr, dpr);
+    return [w, h];
+  }
+
+  function resizeAll() {
+    [SW, SH] = resizeCanvas(springCanvas, springWrap);
+    [PW, PH] = resizeCanvas(phaseCanvas, phaseCanvas.parentElement);
+    render();
+  }
+
+  function computeLimitCycle() {
+    if (!isVDP) { limitCycle = null; return; }
+    const absMu = Math.abs(param);
+    if (absMu < 0.05) { limitCycle = null; return; }
+    if (param > 0) {
+      limitCycle = integrateVDP(2, 0, param, w0, 5000, 0.01, 1500);
+    } else {
+      limitCycle = integrateVDP(0.5, 0, param, w0, 5000, -0.01, 1500);
+    }
+  }
+
+  function render() {
+    drawSpring(sc, SW, SH, x * PX_PER_UNIT, MASS_COLOR);
+    drawPhase(pc, PW, PH, trajectory, x, vel, limitCycle, isVDP, param, showVF, w0);
+  }
+
+  function step() {
+    if (!simulating || dragging) return;
+    [x, vel] = rk4Step(x, vel, DT, getAccel);
+    trajectory.push([x, vel]);
+    if (trajectory.length > 4000) trajectory.shift();
+    render();
+  }
+
+  function loop() {
+    step();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  // Sliders
+  const w0Slider = document.getElementById('w0-' + name);
+  const w0Val    = document.getElementById('w0v-' + name);
+  const pSlider  = document.getElementById((isVDP ? 'mu' : 'k') + '-' + name);
+  const pVal     = document.getElementById((isVDP ? 'muv' : 'kv') + '-' + name);
+
+  w0Slider.addEventListener('input', () => {
+    w0 = parseFloat(w0Slider.value);
+    w0Val.textContent = w0.toFixed(1);
+    computeLimitCycle();
+    render();
+  });
+
+  pSlider.addEventListener('input', () => {
+    param = parseFloat(pSlider.value);
+    if (isVDP) {
+      pVal.textContent = param.toFixed(1);
+      pVal.style.color = '#c0392b';
+      computeLimitCycle();
+    } else {
+      pVal.textContent = param.toFixed(2);
+    }
+    render();
+  });
+
+  // Drag on spring canvas
+  function getMassX() { return SW/2 + x * PX_PER_UNIT; }
+  function getMassY() { return SH/2; }
+  const MASS_R = 18;
+
+  function startDrag(cx, cy) {
+    const mx = getMassX(), my = getMassY();
+    if (Math.sqrt((cx-mx)**2+(cy-my)**2) <= MASS_R + 10) {
+      dragging = true;
+      simulating = false;
+      vel = 0;
+      trajectory = [];
+    }
+  }
+  function moveDrag(cx) {
+    if (!dragging) return;
+    x = Math.max(-3, Math.min(3, (cx - SW/2) / PX_PER_UNIT));
+    vel = 0;
+    render();
+  }
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    simulating = true;
+  }
+
+  springCanvas.addEventListener('mousedown', e => {
+    const r = springCanvas.getBoundingClientRect();
+    startDrag(e.clientX-r.left, e.clientY-r.top);
+  });
+  springCanvas.addEventListener('mousemove', e => {
+    const r = springCanvas.getBoundingClientRect();
+    moveDrag(e.clientX-r.left);
+  });
+  springCanvas.addEventListener('mouseup', endDrag);
+  springCanvas.addEventListener('mouseleave', endDrag);
+
+  springCanvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const r = springCanvas.getBoundingClientRect();
+    const t = e.touches[0];
+    startDrag(t.clientX-r.left, t.clientY-r.top);
+  }, {passive:false});
+  springCanvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const r = springCanvas.getBoundingClientRect();
+    moveDrag(e.touches[0].clientX-r.left);
+  }, {passive:false});
+  springCanvas.addEventListener('touchend', e => { e.preventDefault(); endDrag(); }, {passive:false});
+
+  function clearTraj() {
+    trajectory = [];
+    x = 0; vel = 0;
+    simulating = false;
+    render();
+  }
+
+  function toggleVF() { showVF = !showVF; render(); return showVF; }
+
+  // Init
+  computeLimitCycle();
+  resizeAll();
+  loop();
+
+  return { resizeAll, clearTraj, toggleVF };
+}
+
+// ─── Boot ────────────────────────────────────────────────────────
+const systems = {
+  classic: createSystem('classic', false),
+  vdp:     createSystem('vdp', true)
+};
+
+function clearTrajectory(name) { systems[name].clearTraj(); }
+
+function toggleVFSystem(name) {
+  const sys = systems[name];
+  const newState = sys.toggleVF();
+  const btn = document.getElementById('btn-vf-' + name);
+  btn.style.background = newState ? 'var(--text)' : 'transparent';
+  btn.style.color = newState ? 'var(--bg)' : 'var(--text2)';
+  btn.style.borderColor = newState ? 'var(--text)' : 'var(--border)';
+}
+
+// ResizeObserver
+let rafPending = false;
+const ro = new ResizeObserver(() => {
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => {
+    rafPending = false;
+    const active = document.querySelector('.tab-panel.active');
+    if (active.id === 'panel-classic') systems.classic.resizeAll();
+    else systems.vdp.resizeAll();
+  });
+});
+document.querySelectorAll('.tab-panel').forEach(p => ro.observe(p));
+</script>
+</body>
+</html>
