@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sistemas Dinámicos — DIB 901</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --slate:     #33527a;
+    --slate-mid: #5878a0;
+    --slate-pale:#dde5f0;
+    --teal:      #1d6b5c;
+    --teal-pale: #d4ede8;
+    --ink:       #1a1a2e;
+    --ink-light: #4a4a6a;
+    --paper:     #fafaf7;
+    --cream:     #f2f0ea;
+    --rule:      #d8d4cc;
+    --accent:    #c0392b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Lora', Georgia, serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100dvh;
+    overscroll-behavior: none;
+  }
+
+  /* ── Header ─────────────────────────────── */
+  header {
+    background: var(--ink);
+    padding: 14px 20px 12px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  header .course {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--slate-pale);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.01em;
+  }
+
+  /* ── Tabs ────────────────────────────────── */
+  .tabs {
+    display: flex;
+    background: var(--cream);
+    border-bottom: 1.5px solid var(--rule);
+  }
+  .tab {
+    flex: 1;
+    padding: 11px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-align: center;
+    cursor: pointer;
+    color: var(--ink-light);
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    user-select: none;
+  }
+  .tab.active {
+    color: var(--slate);
+    border-bottom-color: var(--slate);
+    background: var(--paper);
+  }
+
+  /* ── Panel ───────────────────────────────── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Info card ───────────────────────────── */
+  .info-card {
+    margin: 14px 16px 0;
+    background: var(--cream);
+    border-left: 3px solid var(--slate);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+  }
+  .info-card .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--slate-mid);
+    margin-bottom: 4px;
+  }
+  .info-card p {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .info-card .eq {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--slate);
+    margin-top: 6px;
+    line-height: 1.7;
+  }
+
+  /* ── Canvas container ────────────────────── */
+  .canvas-wrap {
+    margin: 14px 16px 0;
+    position: relative;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    touch-action: none;
+  }
+  .canvas-hint {
+    position: absolute;
+    bottom: 10px;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-light);
+    pointer-events: none;
+    opacity: 0.7;
+  }
+
+  /* ── Controls ────────────────────────────── */
+  .controls {
+    margin: 12px 16px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 5px;
+    border: 1.5px solid var(--slate);
+    background: transparent;
+    color: var(--slate);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn:active { background: var(--slate); color: #fff; }
+  .btn.danger { border-color: var(--accent); color: var(--accent); }
+  .btn.danger:active { background: var(--accent); color: #fff; }
+
+  .speed-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-light);
+  }
+  .speed-ctrl input[type=range] {
+    width: 80px;
+    accent-color: var(--slate);
+  }
+
+  /* ── Status badge ────────────────────────── */
+  .status {
+    margin: 10px 16px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 5px;
+    display: inline-block;
+  }
+  .status.converge {
+    background: var(--teal-pale);
+    color: var(--teal);
+  }
+  .status.escape {
+    background: #fde8e8;
+    color: var(--accent);
+  }
+  .status.neutral {
+    background: var(--slate-pale);
+    color: var(--slate);
+  }
+
+  /* ── Legend ──────────────────────────────── */
+  .legend {
+    margin: 10px 16px 16px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .leg {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--ink-light);
+  }
+  .leg-line {
+    width: 20px; height: 2.5px;
+    border-radius: 2px;
+  }
+  .leg-dash {
+    width: 20px; height: 0;
+    border-top: 2px dashed;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="course">DIB 901</span>
+  <h1>Sistemas Dinámicos</h1>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">Vinograd</div>
+  <div class="tab" onclick="switchTab(1)">Homoclínica</div>
+</div>
+
+<!-- ══════════════════ PANEL 1: VINOGRAD ══════════════════ -->
+<div class="panel active" id="panel-0">
+  <div class="info-card">
+    <div class="label">Ejemplo de Vinograd (1957)</div>
+    <p>El origen es <strong>atractivo</strong> (toda trayectoria converge) pero <strong>inestable</strong>: las trayectorias escapan del tubo ε antes de volver.</p>
+    <div class="eq">
+      ẋ₁ = [x₁²(x₂−x₁) + x₂⁵] / [r²(1+r⁴)]<br>
+      ẋ₂ = x₂²(x₂−2x₁) / [r²(1+r⁴)]
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="cv0" height="340"></canvas>
+    <div class="canvas-hint">Toca para lanzar una trayectoria</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn danger" onclick="clearTrajs(0)">Limpiar</button>
+    <button class="btn" onclick="addDemo(0)">Demo</button>
+    <div class="speed-ctrl">
+      <span>vel</span>
+      <input type="range" id="sp0" min="1" max="8" value="3">
+    </div>
+  </div>
+
+  <div id="st0" class="status neutral">Toca el plano para comenzar</div>
+
+  <div class="legend">
+    <div class="leg">
+      <div class="leg-line" style="background:var(--slate)"></div>
+      trayectoria
+    </div>
+    <div class="leg">
+      <div class="leg-dash" style="border-color:var(--slate-mid)"></div>
+      vecindad δ
+    </div>
+    <div class="leg">
+      <div class="leg-dash" style="border-color:#aaa"></div>
+      tubo ε
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ PANEL 2: HOMOCLÍNICA ══════════════════ -->
+<div class="panel" id="panel-1">
+  <div class="info-card" style="border-color:var(--teal)">
+    <div class="label" style="color:var(--teal)">Órbita Homoclínica</div>
+    <p>El sistema hamiltoniano clásico. La órbita homoclínica (en rojo) conecta el punto silla consigo mismo y separa órbitas cerradas de trayectorias que escapan.</p>
+    <div class="eq" style="color:var(--teal)">
+      ẋ₁ = x₂<br>
+      ẋ₂ = x₁ − x₁²
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="cv1" height="340"></canvas>
+    <div class="canvas-hint">Toca para lanzar una trayectoria</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn danger" onclick="clearTrajs(1)">Limpiar</button>
+    <button class="btn" onclick="addDemo(1)">Demo</button>
+    <div class="speed-ctrl">
+      <span>vel</span>
+      <input type="range" id="sp1" min="1" max="8" value="4">
+    </div>
+  </div>
+
+  <div id="st1" class="status neutral">Toca el plano para comenzar</div>
+
+  <div class="legend">
+    <div class="leg">
+      <div class="leg-line" style="background:var(--teal)"></div>
+      trayectoria
+    </div>
+    <div class="leg">
+      <div class="leg-line" style="background:var(--accent)"></div>
+      órbita homoclínica
+    </div>
+    <div class="leg">
+      <div class="leg-dash" style="border-color:var(--teal)"></div>
+      separatriz
+    </div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────────
+// Utilidades
+// ──────────────────────────────────────────────────────────────
+function rk4(f, x, y, dt) {
+  const [k1x,k1y] = f(x,y);
+  const [k2x,k2y] = f(x+dt*k1x/2, y+dt*k1y/2);
+  const [k3x,k3y] = f(x+dt*k2x/2, y+dt*k2y/2);
+  const [k4x,k4y] = f(x+dt*k3x,   y+dt*k3y);
+  return [
+    x + dt*(k1x+2*k2x+2*k3x+k4x)/6,
+    y + dt*(k1y+2*k2y+2*k3y+k4y)/6
+  ];
+}
+
+// ──────────────────────────────────────────────────────────────
+// Sistema de Vinograd
+// ──────────────────────────────────────────────────────────────
+function vinograd(x, y) {
+  const r2 = x*x + y*y;
+  if (r2 < 1e-12) return [0,0];
+  const d = r2 * (1 + r2*r2);
+  return [
+    (x*x*(y-x) + y*y*y*y*y) / d,
+    (y*y*(y-2*x)) / d
+  ];
+}
+
+// ──────────────────────────────────────────────────────────────
+// Sistema Hamiltoniano (homoclínica)
+// ──────────────────────────────────────────────────────────────
+function hamiltonian(x, y) {
+  return [y, x - x*x];
+}
+
+// Hamiltoniano H = y²/2 − x²/2 + x³/3
+function H(x, y) { return y*y/2 - x*x/2 + x*x*x/3; }
+
+// ──────────────────────────────────────────────────────────────
+// Estado por panel
+// ──────────────────────────────────────────────────────────────
+const PANELS = [
+  {
+    cvId: 'cv0', statusId: 'st0', speedId: 'sp0',
+    f: vinograd,
+    xmin:-1.6, xmax:1.6, ymin:-1.6, ymax:1.6,
+    dt: 0.04,
+    maxSteps: 15000,
+    stopR: 3.5,
+    stopNear: 0.008,
+    color: '#33527a',
+    trajs: [],
+    animId: null,
+  },
+  {
+    cvId: 'cv1', statusId: 'st1', speedId: 'sp1',
+    f: hamiltonian,
+    xmin:-1.4, xmax:2.2, ymin:-1.5, ymax:1.5,
+    dt: 0.025,
+    maxSteps: 8000,
+    stopR: 4,
+    stopNear: null,
+    color: '#1d6b5c',
+    trajs: [],
+    animId: null,
+  }
+];
+
+// ──────────────────────────────────────────────────────────────
+// Coordinate transforms
+// ──────────────────────────────────────────────────────────────
+function toScreen(p, x, y) {
+  const W = p.W, H = p.H;
+  const sx = (x - p.xmin)/(p.xmax - p.xmin)*W;
+  const sy = H - (y - p.ymin)/(p.ymax - p.ymin)*H;
+  return {x:sx, y:sy};
+}
+function toWorld(p, sx, sy) {
+  return {
+    x: sx/p.W*(p.xmax-p.xmin)+p.xmin,
+    y: (1-sy/p.H)*(p.ymax-p.ymin)+p.ymin
+  };
+}
+
+// ──────────────────────────────────────────────────────────────
+// Setup canvases
+// ──────────────────────────────────────────────────────────────
+function setupCanvas(p) {
+  const cv = document.getElementById(p.cvId);
+  const dpr = window.devicePixelRatio || 1;
+  const rect = cv.getBoundingClientRect();
+  const w = rect.width || cv.parentElement.clientWidth;
+  const h = parseInt(cv.getAttribute('height')) || 340;
+  cv.width  = w * dpr;
+  cv.height = h * dpr;
+  cv.style.width  = w + 'px';
+  cv.style.height = h + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  p.W = w; p.H = h; p.ctx = ctx;
+  p.dpr = dpr;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Drawing
+// ──────────────────────────────────────────────────────────────
+function drawGrid(p) {
+  const ctx = p.ctx;
+  ctx.save();
+  ctx.strokeStyle = '#e8e4dc';
+  ctx.lineWidth = 0.5;
+  // verticals
+  for (let xw = Math.ceil(p.xmin); xw <= p.xmax; xw += 0.5) {
+    const s = toScreen(p, xw, 0);
+    ctx.beginPath(); ctx.moveTo(s.x, 0); ctx.lineTo(s.x, p.H); ctx.stroke();
+  }
+  // horizontals
+  for (let yw = Math.ceil(p.ymin*2)/2; yw <= p.ymax; yw += 0.5) {
+    const s = toScreen(p, 0, yw);
+    ctx.beginPath(); ctx.moveTo(0, s.y); ctx.lineTo(p.W, s.y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawAxes(p) {
+  const ctx = p.ctx;
+  const ox = toScreen(p, 0, 0);
+  ctx.save();
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(0, ox.y); ctx.lineTo(p.W, ox.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox.x, 0); ctx.lineTo(ox.x, p.H); ctx.stroke();
+  // ticks + labels
+  ctx.fillStyle = '#888';
+  ctx.font = '10px JetBrains Mono, monospace';
+  ctx.textAlign = 'center';
+  for (let v of [-1, 1]) {
+    const s = toScreen(p, v, 0);
+    if (s.x > 8 && s.x < p.W-8) {
+      ctx.beginPath(); ctx.moveTo(s.x,ox.y-3); ctx.lineTo(s.x,ox.y+3); ctx.stroke();
+      ctx.fillText(v, s.x, ox.y+13);
+    }
+    const t = toScreen(p, 0, v);
+    if (t.y > 8 && t.y < p.H-8) {
+      ctx.beginPath(); ctx.moveTo(ox.x-3,t.y); ctx.lineTo(ox.x+3,t.y); ctx.stroke();
+      ctx.textAlign = 'right';
+      ctx.fillText(v, ox.x-5, t.y+4);
+      ctx.textAlign = 'center';
+    }
+  }
+  ctx.fillStyle = '#666';
+  ctx.font = '11px Lora, serif';
+  ctx.fillText('x₁', p.W-10, ox.y-8);
+  ctx.fillText('x₂', ox.x+8, 14);
+  ctx.restore();
+}
+
+function drawCircleDash(p, r, color, label) {
+  const ctx = p.ctx;
+  const ox = toScreen(p, 0, 0);
+  const rx = r / (p.xmax-p.xmin) * p.W;
+  ctx.save();
+  ctx.setLineDash([5,4]);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(ox.x, ox.y, rx, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (label) {
+    ctx.fillStyle = color;
+    ctx.font = '10px JetBrains Mono, monospace';
+    ctx.fillText(label, ox.x + rx*0.72 + 4, ox.y - rx*0.72);
+  }
+  ctx.restore();
+}
+
+function drawHomoclinic(p) {
+  // Curva exacta: y² = x²(1 − 2x/3), x ∈ [0, 3/2]
+  const ctx = p.ctx;
+  ctx.save();
+  ctx.strokeStyle = '#c0392b';
+  ctx.lineWidth = 2;
+
+  // Rama superior
+  ctx.beginPath();
+  let first = true;
+  for (let xi = 0; xi <= 1.5; xi += 0.01) {
+    const y2 = xi*xi*(1 - 2*xi/3);
+    if (y2 < 0) continue;
+    const yi = Math.sqrt(y2);
+    const s = toScreen(p, xi, yi);
+    first ? ctx.moveTo(s.x, s.y) : ctx.lineTo(s.x, s.y);
+    first = false;
+  }
+  ctx.stroke();
+
+  // Rama inferior
+  ctx.beginPath();
+  first = true;
+  for (let xi = 0; xi <= 1.5; xi += 0.01) {
+    const y2 = xi*xi*(1 - 2*xi/3);
+    if (y2 < 0) continue;
+    const yi = -Math.sqrt(y2);
+    const s = toScreen(p, xi, yi);
+    first ? ctx.moveTo(s.x, s.y) : ctx.lineTo(s.x, s.y);
+    first = false;
+  }
+  ctx.stroke();
+
+  // Label
+  const sl = toScreen(p, 0.9, 0.52);
+  ctx.fillStyle = '#c0392b';
+  ctx.font = '11px Lora, serif';
+  ctx.fillText('homoclínica', sl.x+4, sl.y-4);
+  ctx.restore();
+}
+
+function drawEquilibria(p) {
+  const ctx = p.ctx;
+  if (p.cvId === 'cv0') {
+    // Solo origen
+    const o = toScreen(p, 0, 0);
+    ctx.save();
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath(); ctx.arc(o.x, o.y, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#1a1a2e';
+    ctx.font = '12px Lora, serif';
+    ctx.fillText('x*', o.x+7, o.y-5);
+    ctx.restore();
+  } else {
+    // Silla en (0,0) y centro en (1,0)
+    const eq = [{x:0,y:0,type:'saddle'},{x:1,y:0,type:'center'}];
+    for (const e of eq) {
+      const s = toScreen(p, e.x, e.y);
+      ctx.save();
+      if (e.type === 'saddle') {
+        ctx.fillStyle = '#c0392b';
+        ctx.beginPath(); ctx.arc(s.x,s.y,4,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#c0392b';
+        ctx.font = '11px JetBrains Mono, monospace';
+        ctx.fillText('silla', s.x-4, s.y+14);
+      } else {
+        ctx.fillStyle = '#1d6b5c';
+        ctx.beginPath(); ctx.arc(s.x,s.y,4,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#1d6b5c';
+        ctx.font = '11px JetBrains Mono, monospace';
+        ctx.fillText('centro', s.x-8, s.y+14);
+      }
+      ctx.restore();
+    }
+  }
+}
+
+function drawTraj(p, traj) {
+  if (traj.pts.length < 2) return;
+  const ctx = p.ctx;
+  ctx.save();
+  ctx.strokeStyle = traj.color || p.color;
+  ctx.lineWidth = 1.8;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  const p0 = toScreen(p, traj.pts[0].x, traj.pts[0].y);
+  ctx.moveTo(p0.x, p0.y);
+  for (let i = 1; i < traj.pts.length; i++) {
+    const pt = toScreen(p, traj.pts[i].x, traj.pts[i].y);
+    ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke();
+
+  // Flecha de dirección
+  const n = traj.pts.length;
+  const ai = Math.min(Math.floor(n*0.35), n-2);
+  const a = toScreen(p, traj.pts[ai].x, traj.pts[ai].y);
+  const b = toScreen(p, traj.pts[ai+1].x, traj.pts[ai+1].y);
+  const ang = Math.atan2(b.y-a.y, b.x-a.x);
+  ctx.fillStyle = traj.color || p.color;
+  ctx.beginPath();
+  ctx.moveTo(b.x, b.y);
+  ctx.lineTo(b.x-9*Math.cos(ang-0.38), b.y-9*Math.sin(ang-0.38));
+  ctx.lineTo(b.x-9*Math.cos(ang+0.38), b.y-9*Math.sin(ang+0.38));
+  ctx.closePath(); ctx.fill();
+
+  // Punto inicial
+  const s0 = toScreen(p, traj.pts[0].x, traj.pts[0].y);
+  ctx.beginPath();
+  ctx.arc(s0.x, s0.y, 4, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function redraw(p) {
+  const ctx = p.ctx;
+  ctx.clearRect(0, 0, p.W, p.H);
+  drawGrid(p);
+  drawAxes(p);
+
+  if (p.cvId === 'cv0') {
+    drawCircleDash(p, 0.094, '#5878a0', 'δ');
+    drawCircleDash(p, 0.5,   '#aaa',    'ε');
+  } else {
+    drawHomoclinic(p);
+  }
+
+  for (const t of p.trajs) drawTraj(p, t);
+  drawEquilibria(p);
+}
+
+// ──────────────────────────────────────────────────────────────
+// Animation loop
+// ──────────────────────────────────────────────────────────────
+function stepPanel(p) {
+  const speed = +document.getElementById(p.speedId).value;
+  const dt = p.dt;
+  let allDone = true;
+
+  for (const t of p.trajs) {
+    if (t.done) continue;
+    allDone = false;
+    for (let s = 0; s < speed; s++) {
+      const [nx, ny] = rk4(p.f, t.x, t.y, dt);
+      t.x = nx; t.y = ny;
+      t.pts.push({x:nx, y:ny});
+      const r = Math.sqrt(nx*nx+ny*ny);
+      if (r > t.maxR) t.maxR = r;
+
+      if (r > p.stopR) { t.done = true; break; }
+      if (p.stopNear && r < p.stopNear) { t.done = true; break; }
+      if (t.pts.length > p.maxSteps) { t.done = true; break; }
+    }
+  }
+
+  redraw(p);
+  updateStatus(p);
+
+  if (!allDone) p.animId = requestAnimationFrame(() => stepPanel(p));
+  else p.animId = null;
+}
+
+function startAnim(p) {
+  if (p.animId) cancelAnimationFrame(p.animId);
+  p.animId = requestAnimationFrame(() => stepPanel(p));
+}
+
+// ──────────────────────────────────────────────────────────────
+// Status
+// ──────────────────────────────────────────────────────────────
+function updateStatus(p) {
+  const el = document.getElementById(p.statusId);
+  if (p.trajs.length === 0) {
+    el.className = 'status neutral';
+    el.textContent = 'Toca el plano para comenzar';
+    return;
+  }
+  if (p.cvId === 'cv0') {
+    const t = p.trajs[p.trajs.length-1];
+    const r0 = Math.sqrt(t.pts[0].x**2+t.pts[0].y**2);
+    if (t.maxR > 0.5 && r0 < 0.2) {
+      el.className = 'status escape';
+      el.textContent = `r₀≈${r0.toFixed(3)}  →  r_max≈${t.maxR.toFixed(3)}  →  converge al origen`;
+    } else if (t.done) {
+      el.className = 'status converge';
+      el.textContent = `Converge al origen (r_max≈${t.maxR.toFixed(3)})`;
+    } else {
+      el.className = 'status neutral';
+      el.textContent = `Integrando… r=${Math.sqrt(t.x**2+t.y**2).toFixed(3)}`;
+    }
+  } else {
+    const t = p.trajs[p.trajs.length-1];
+    const h = H(t.pts[0].x, t.pts[0].y);
+    if (Math.abs(h) < 0.015) {
+      el.className = 'status escape';
+      el.textContent = `H≈${h.toFixed(4)} — cerca de la homoclínica`;
+    } else if (h < 0) {
+      el.className = 'status converge';
+      el.textContent = `H=${h.toFixed(3)} — órbita cerrada (interior)`;
+    } else {
+      el.className = 'status neutral';
+      el.textContent = `H=${h.toFixed(3)} — trayectoria exterior`;
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Add trajectory from click/touch
+// ──────────────────────────────────────────────────────────────
+function addTraj(pidx, wx, wy) {
+  const p = PANELS[pidx];
+  if (p.trajs.length >= 6) p.trajs.shift();
+  const colors0 = ['#33527a','#5878a0','#8aa4c8','#1d6b5c','#2980b9','#16a085'];
+  const colors1 = ['#1d6b5c','#2e8b6e','#3aaa89','#c0392b','#e74c3c','#e67e22'];
+  const colors = pidx===0 ? colors0 : colors1;
+  p.trajs.push({
+    x: wx, y: wy,
+    pts: [{x:wx,y:wy}],
+    done: false,
+    maxR: Math.sqrt(wx*wx+wy*wy),
+    color: colors[p.trajs.length % colors.length]
+  });
+  startAnim(p);
+}
+
+function clearTrajs(pidx) {
+  const p = PANELS[pidx];
+  if (p.animId) cancelAnimationFrame(p.animId);
+  p.animId = null;
+  p.trajs = [];
+  redraw(p);
+  document.getElementById(p.statusId).className='status neutral';
+  document.getElementById(p.statusId).textContent='Toca el plano para comenzar';
+}
+
+function addDemo(pidx) {
+  clearTrajs(pidx);
+  if (pidx === 0) {
+    // Vinograd: condiciones que muestran la vuelta larga
+    const demos = [[-0.08,0.05],[-0.05,0.08],[0.0,0.09],[-0.09,0.02]];
+    for (const [x,y] of demos) addTraj(0, x, y);
+  } else {
+    // Homoclínica: interior, cerca de la curva, exterior
+    const demos = [[0.5,0],[0.2,0.3],[1.0,0.0],[1.48,0.01],[-0.3,0.4]];
+    for (const [x,y] of demos) addTraj(1, x, y);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Event listeners para canvas
+// ──────────────────────────────────────────────────────────────
+function attachCanvas(pidx) {
+  const p = PANELS[pidx];
+  const cv = document.getElementById(p.cvId);
+
+  function getPos(e) {
+    const r = cv.getBoundingClientRect();
+    const scaleX = p.W / r.width;
+    const scaleY = p.H / r.height;
+    let cx, cy;
+    if (e.touches) {
+      cx = (e.touches[0].clientX - r.left) * scaleX;
+      cy = (e.touches[0].clientY - r.top)  * scaleY;
+    } else {
+      cx = (e.clientX - r.left) * scaleX;
+      cy = (e.clientY - r.top)  * scaleY;
+    }
+    return toWorld(p, cx, cy);
+  }
+
+  cv.addEventListener('click', e => {
+    const w = getPos(e);
+    addTraj(pidx, w.x, w.y);
+  });
+  cv.addEventListener('touchend', e => {
+    e.preventDefault();
+    const w = getPos(e.changedTouches ? {touches:[e.changedTouches[0]]} : e);
+    addTraj(pidx, w.x, w.y);
+  }, {passive:false});
+}
+
+// ──────────────────────────────────────────────────────────────
+// Tab switching
+// ──────────────────────────────────────────────────────────────
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t,i)=>
+    t.classList.toggle('active', i===idx));
+  document.querySelectorAll('.panel').forEach((p,i)=>
+    p.classList.toggle('active', i===idx));
+  // Re-setup canvas in case size changed
+  setTimeout(()=>{
+    setupCanvas(PANELS[idx]);
+    redraw(PANELS[idx]);
+  }, 50);
+}
+
+// ──────────────────────────────────────────────────────────────
+// Init
+// ──────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  for (let i = 0; i < PANELS.length; i++) {
+    setupCanvas(PANELS[i]);
+    attachCanvas(i);
+    redraw(PANELS[i]);
+  }
+});
+
+window.addEventListener('resize', () => {
+  for (const p of PANELS) {
+    setupCanvas(p);
+    redraw(p);
+  }
+});
+</script>
+</body>
+</html>
