@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Quimiostato — DIB 901</title>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:     #f7f5f0;
+  --surf:   #ffffff;
+  --brd:    #e2ddd6;
+  --brd2:   #ccc8c0;
+  --ink:    #1c1917;
+  --ink2:   #6b6560;
+  --ink3:   #aaa5a0;
+  --grn:    #1d6b5c;
+  --grnL:   #d4ede8;
+  --blu:    #2c5f8a;
+  --bluL:   #dce8f4;
+  --red:    #b83232;
+  --redL:   #f4dede;
+  --amb:    #92600a;
+  --ambL:   #fdf0d8;
+  --serif:  'Crimson Pro', Georgia, serif;
+  --mono:   'Space Mono', monospace;
+}
+body { background:var(--bg); color:var(--ink); font-family:var(--serif);
+       font-size:16px; line-height:1.5; min-height:100dvh; padding-bottom:2.5rem; }
+
+/* header */
+header { padding:18px 18px 13px; border-bottom:1px solid var(--brd); background:var(--surf); }
+.hdr-tag { font-family:var(--mono); font-size:9px; letter-spacing:0.14em;
+           text-transform:uppercase; color:var(--ink3); margin-bottom:4px; }
+header h1 { font-size:22px; font-weight:600; letter-spacing:-0.01em; }
+header h1 em { font-style:italic; color:var(--grn); }
+.eq-line { margin-top:4px; font-size:12px; color:var(--ink2); font-family:var(--mono); }
+
+/* wrap */
+.wrap { padding:14px 14px 0; }
+.sec-lbl { font-family:var(--mono); font-size:9px; text-transform:uppercase;
+           letter-spacing:0.12em; color:var(--ink3); margin-bottom:7px; }
+
+/* canvas card */
+.cv-card { background:var(--surf); border:1px solid var(--brd); border-radius:12px; overflow:hidden; }
+canvas { display:block; width:100%; }
+.cv-foot { padding:6px 12px 8px; background:var(--bg); border-top:1px solid var(--brd);
+           display:flex; gap:12px; flex-wrap:wrap; }
+.leg { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--ink2); font-family:var(--mono); }
+.leg-l { width:18px; height:2px; border-radius:1px; }
+.leg-d { width:18px; height:0; border-top:2px dashed; }
+
+/* stats */
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:10px; }
+.stat { background:var(--surf); border:1px solid var(--brd); border-radius:9px; padding:8px 10px; }
+.stat .lbl { font-family:var(--mono); font-size:8px; text-transform:uppercase;
+             letter-spacing:0.08em; color:var(--ink3); margin-bottom:3px; }
+.stat .num { font-family:var(--mono); font-size:13px; font-weight:700; }
+
+/* alert */
+.alert { margin-top:8px; padding:8px 12px; border-radius:8px; font-size:12px;
+         font-family:var(--mono); display:none; }
+.alert.show { display:block; }
+.alert.washout { background:var(--redL); color:var(--red); border:1px solid #e0b0b0; }
+.alert.stable  { background:var(--grnL); color:var(--grn); border:1px solid #a8d4cc; }
+
+/* ctrl card */
+.ctrl-card { background:var(--surf); border:1px solid var(--brd); border-radius:12px;
+             padding:14px; margin-top:10px; }
+.main-sl { margin-bottom:14px; }
+.main-sl:last-of-type { margin-bottom:0; }
+.sl-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.sl-name { font-family:var(--mono); font-size:11px; color:var(--ink2); letter-spacing:0.04em; }
+.sl-num { font-family:var(--mono); font-size:20px; font-weight:700; line-height:1; }
+.sl-num.grn { color:var(--grn); }
+.sl-num.blu { color:var(--blu); }
+
+input[type=range] { -webkit-appearance:none; width:100%; height:5px; border-radius:3px;
+                    background:var(--brd); outline:none; cursor:pointer; }
+input[type=range].grn-tr { background:linear-gradient(to right,var(--grnL),var(--brd)); }
+input[type=range].blu-tr { background:var(--bluL); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:24px; height:24px;
+  border-radius:50%; background:var(--ink); border:4px solid var(--bg); box-shadow:0 0 0 1.5px var(--ink); }
+input[type=range]::-moz-range-thumb { width:24px; height:24px; border-radius:50%;
+  background:var(--ink); border:4px solid var(--bg); box-shadow:0 0 0 1.5px var(--ink); }
+
+.divider { border:none; border-top:1px solid var(--brd); margin:14px 0; }
+
+.btn-row { display:flex; gap:8px; margin-top:14px; }
+.btn { flex:1; padding:10px; font-family:var(--mono); font-size:11px; font-weight:700;
+       letter-spacing:0.06em; border-radius:8px; border:1.5px solid var(--brd);
+       background:var(--bg); color:var(--ink2); cursor:pointer; transition:opacity .15s; }
+.btn:active { opacity:.6; }
+.btn.go   { background:var(--grnL); border-color:var(--grn); color:var(--grn); }
+.btn.stop { background:var(--ambL); border-color:var(--amb); color:var(--amb); }
+
+/* accordion */
+.acc { margin-top:10px; background:var(--surf); border:1px solid var(--brd); border-radius:12px; overflow:hidden; }
+.acc-btn { width:100%; display:flex; justify-content:space-between; align-items:center;
+           padding:11px 14px; background:none; border:none; cursor:pointer;
+           font-family:var(--mono); font-size:10px; color:var(--ink2);
+           letter-spacing:0.06em; text-transform:uppercase; }
+.acc-arr { transition:transform .2s; color:var(--ink3); }
+.acc-btn.open .acc-arr { transform:rotate(180deg); }
+.acc-body { display:none; padding:4px 14px 14px; border-top:1px solid var(--brd); }
+.acc-body.open { display:block; }
+.pf { margin-bottom:10px; }
+.pf:last-child { margin-bottom:0; }
+.pf label { display:flex; justify-content:space-between; font-family:var(--mono);
+            font-size:10px; color:var(--ink2); margin-bottom:3px; }
+.pf label span { color:var(--ink); font-weight:700; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-tag">DIB 901 · Sistemas dinámicos</div>
+  <h1>Quimiostato <em>x–S</em></h1>
+  <div class="eq-line">ẋ=(μ(S)−D)x &nbsp;·&nbsp; Ṡ=D(S_in−S)−μ(S)x/Y</div>
+</header>
+
+<!-- Reactor -->
+<div class="wrap">
+  <div class="sec-lbl">Reactor continuo</div>
+  <div class="cv-card">
+    <canvas id="bio-cv" style="height:230px"></canvas>
+    <div class="cv-foot">
+      <div class="leg"><div class="leg-l" style="background:#1d6b5c"></div>biomasa x</div>
+      <div class="leg"><div class="leg-l" style="background:#2c5f8a"></div>sustrato S</div>
+    </div>
+  </div>
+</div>
+
+<!-- Trajectory -->
+<div class="wrap" style="margin-top:12px">
+  <div class="sec-lbl">Dinámica temporal x(t), S(t)</div>
+  <div class="cv-card">
+    <canvas id="traj-cv" style="height:210px"></canvas>
+    <div class="cv-foot">
+      <div class="leg"><div class="leg-l" style="background:#1d6b5c"></div>x(t)</div>
+      <div class="leg"><div class="leg-l" style="background:#2c5f8a"></div>S(t)</div>
+      <div class="leg"><div class="leg-d" style="border-color:#b83232"></div>x*</div>
+      <div class="leg"><div class="leg-d" style="border-color:#2c5f8a;opacity:.5"></div>S*</div>
+    </div>
+  </div>
+</div>
+
+<!-- Main controls — immediately below trajectory -->
+<div class="wrap">
+  <div class="ctrl-card">
+    <div class="main-sl">
+      <div class="sl-row">
+        <span class="sl-name">Tasa de dilución D (h⁻¹)</span>
+        <span class="sl-num grn" id="D-num">0.030</span>
+      </div>
+      <input type="range" class="grn-tr" id="D-sl"
+             min="0" max="0.090" step="0.001" value="0.030" oninput="onD()">
+    </div>
+    <hr class="divider">
+    <div class="main-sl">
+      <div class="sl-row">
+        <span class="sl-name">Sustrato entrada S_in (g/L)</span>
+        <span class="sl-num blu" id="Sin-num">10.0</span>
+      </div>
+      <input type="range" class="blu-tr" id="Sin-sl"
+             min="1" max="25" step="0.5" value="10" oninput="onSin()">
+    </div>
+    <div class="btn-row">
+      <button class="btn go" id="btn-run" onclick="toggleRun()">▶ Simular</button>
+      <button class="btn" onclick="doReset()">↺ Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="wrap">
+  <div class="stats">
+    <div class="stat">
+      <div class="lbl">x* (g/L)</div>
+      <div class="num" id="st-x" style="color:#1d6b5c">—</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">S* (g/L)</div>
+      <div class="num" id="st-s" style="color:#2c5f8a">—</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">t (h)</div>
+      <div class="num" id="st-t" style="color:#6b6560">0</div>
+    </div>
+  </div>
+  <div class="alert" id="alert-box"></div>
+</div>
+
+<!-- Accordion -->
+<div class="wrap">
+  <div class="acc">
+    <button class="acc-btn" id="acc-btn" onclick="toggleAcc()">
+      <span>⚙ Parámetros del modelo (Monod)</span>
+      <span class="acc-arr">▼</span>
+    </button>
+    <div class="acc-body" id="acc-body">
+      <div class="pf">
+        <label>μ_max (h⁻¹) <span id="pv-mumax">0.0680</span></label>
+        <input type="range" id="p-mumax" min="0.02" max="0.20" step="0.001" value="0.068" oninput="syncP('mumax',4)">
+      </div>
+      <div class="pf">
+        <label>K_s (g/L) <span id="pv-Ks">0.500</span></label>
+        <input type="range" id="p-Ks" min="0.01" max="3" step="0.01" value="0.5" oninput="syncP('Ks',3)">
+      </div>
+      <div class="pf">
+        <label>Y (g_x/g_S) <span id="pv-Y">0.600</span></label>
+        <input type="range" id="p-Y" min="0.1" max="1" step="0.01" value="0.6" oninput="syncP('Y',3)">
+      </div>
+      <div class="pf">
+        <label>x₀ condición inicial (g/L) <span id="pv-x0">2.00</span></label>
+        <input type="range" id="p-x0" min="0.01" max="10" step="0.05" value="2" oninput="syncP('x0',2)">
+      </div>
+      <div class="pf">
+        <label>S₀ condición inicial (g/L) <span id="pv-S0">8.00</span></label>
+        <input type="range" id="p-S0" min="0.1" max="25" step="0.1" value="8" oninput="syncP('S0',2)">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Parameters ────────────────────────────────────────
+const P = { mumax:0.068, Ks:0.5, Y:0.6, D:0.030, Sin:10, x0:2, S0:8 };
+
+// ── Monod + ODE ───────────────────────────────────────
+const mu  = S => P.mumax * S / (P.Ks + S);
+const ode = (x,S) => [(mu(S)-P.D)*x, P.D*(P.Sin-S)-mu(S)*x/P.Y];
+
+function rk4(x,S,dt){
+  const [k1x,k1s]=ode(x,S);
+  const [k2x,k2s]=ode(x+dt/2*k1x,S+dt/2*k1s);
+  const [k3x,k3s]=ode(x+dt/2*k2x,S+dt/2*k2s);
+  const [k4x,k4s]=ode(x+dt*k3x,S+dt*k3s);
+  return [Math.max(0,x+dt*(k1x+2*k2x+2*k3x+k4x)/6),
+          Math.max(0,S+dt*(k1s+2*k2s+2*k3s+k4s)/6)];
+}
+
+// ── Equilibrium ───────────────────────────────────────
+function equilibrium(){
+  if(P.D===0) return {washout:false, xstar:P.Y*P.Sin, Sstar:0};
+  if(P.D>=P.mumax) return {washout:true,xstar:0,Sstar:P.Sin};
+  const Ss=P.D*P.Ks/(P.mumax-P.D);
+  if(Ss>=P.Sin) return {washout:true,xstar:0,Sstar:P.Sin};
+  return {washout:false,xstar:P.Y*(P.Sin-Ss),Sstar:Ss};
+}
+
+// ── Simulation ────────────────────────────────────────
+let sim=null,running=false,paused=false,rafSim=null;
+
+function doReset(){
+  running=false;paused=false;
+  if(rafSim)cancelAnimationFrame(rafSim);
+  sim=null;
+  setBtn('go','▶ Simular');
+  document.getElementById('st-t').textContent='0';
+  refreshStats();drawTraj();
+}
+
+function toggleRun(){
+  if(!sim){
+    sim={ts:[0],xs:[P.x0],Ss:[P.S0]};
+    running=true;paused=false;
+    setBtn('stop','⏸ Pausar');
+    stepLoop();
+  } else if(running){
+    running=false;paused=true;
+    if(rafSim)cancelAnimationFrame(rafSim);
+    setBtn('go','▶ Continuar');
+  } else {
+    running=true;paused=false;
+    setBtn('stop','⏸ Pausar');
+    stepLoop();
+  }
+}
+
+function setBtn(cls,txt){
+  const b=document.getElementById('btn-run');
+  b.className='btn '+cls; b.textContent=txt;
+}
+
+function stepLoop(){
+  if(!running||paused)return;
+  const dt=0.08,steps=2;
+  for(let k=0;k<steps;k++){
+    const n=sim.xs.length-1;
+    const[nx,nS]=rk4(sim.xs[n],sim.Ss[n],dt);
+    sim.ts.push(sim.ts[n]+dt);
+    sim.xs.push(nx); sim.Ss.push(nS);
+  }
+  document.getElementById('st-t').textContent=sim.ts[sim.ts.length-1].toFixed(0);
+  drawTraj(); refreshStats();
+  rafSim=requestAnimationFrame(stepLoop);
+}
+
+// ── Stats ─────────────────────────────────────────────
+function refreshStats(){
+  const eq=equilibrium();
+  const al=document.getElementById('alert-box');
+  if(eq.washout){
+    document.getElementById('st-x').textContent='0 (lavado)';
+    document.getElementById('st-s').textContent=P.Sin.toFixed(3);
+    al.className='alert washout show';
+    al.textContent='D ≥ μ_max: washout — la biomasa es arrastrada del reactor';
+  } else {
+    document.getElementById('st-x').textContent=eq.xstar.toFixed(3);
+    document.getElementById('st-s').textContent=eq.Sstar.toFixed(3);
+    al.className='alert stable show';
+    al.textContent='Equilibrio E* = ('+eq.xstar.toFixed(3)+', '+eq.Sstar.toFixed(3)+') — LAE';
+  }
+}
+
+// ── Canvas setup ──────────────────────────────────────
+function setupCv(id){
+  const cv=document.getElementById(id),dpr=window.devicePixelRatio||1;
+  const W=cv.offsetWidth,H=cv.offsetHeight;
+  cv.width=W*dpr;cv.height=H*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  return{ctx,W,H};
+}
+
+// ── Trajectory ────────────────────────────────────────
+function drawTraj(){
+  const{ctx,W,H}=setupCv('traj-cv');
+  const pad={l:40,r:12,t:12,b:24};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+
+  if(!sim||sim.xs.length<2){
+    ctx.fillStyle='#ccc';ctx.font='14px Crimson Pro,serif';
+    ctx.textAlign='center';
+    ctx.fillText('Presiona ▶ Simular para comenzar',W/2,H/2);
+    return;
+  }
+
+  const tmax=Math.max(sim.ts[sim.ts.length-1],60);
+  const allVals=[...sim.xs,...sim.Ss,P.Sin*1.05];
+  const ymax=Math.max(...allVals)*1.1;
+  const tx=t=>pad.l+pw*(t/tmax);
+  const ty=v=>pad.t+ph*(1-Math.min(v,ymax)/ymax);
+
+  // grid
+  ctx.strokeStyle='#f0ede8';ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+ph*i/4;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+pw,y);ctx.stroke();
+    ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='right';
+    ctx.fillText((ymax*(1-i/4)).toFixed(1),pad.l-3,y+3);
+  }
+  for(let i=0;i<=4;i++){
+    const x=pad.l+pw*i/4;
+    ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+ph);ctx.stroke();
+    ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+    ctx.fillText((tmax*i/4).toFixed(0),x,pad.t+ph+14);
+  }
+
+  // equilibrium dashes
+  const eq=equilibrium();
+  ctx.save();ctx.setLineDash([5,3]);
+  if(!eq.washout){
+    ctx.strokeStyle='#b83232';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,ty(eq.xstar));ctx.lineTo(pad.l+pw,ty(eq.xstar));ctx.stroke();
+    ctx.strokeStyle='rgba(44,95,138,0.5)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,ty(eq.Sstar));ctx.lineTo(pad.l+pw,ty(eq.Sstar));ctx.stroke();
+  }
+  ctx.restore();
+
+  // S(t)
+  ctx.beginPath();ctx.strokeStyle='#2c5f8a';ctx.lineWidth=2;
+  sim.Ss.forEach((S,i)=>{
+    const px=tx(sim.ts[i]),py=ty(S);
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  });
+  ctx.stroke();
+
+  // x(t)
+  ctx.beginPath();ctx.strokeStyle='#1d6b5c';ctx.lineWidth=2.2;
+  sim.xs.forEach((x,i)=>{
+    const px=tx(sim.ts[i]),py=ty(x);
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  });
+  ctx.stroke();
+
+  // current dot
+  const n=sim.xs.length-1;
+  ctx.beginPath();ctx.arc(tx(sim.ts[n]),ty(sim.xs[n]),5,0,Math.PI*2);
+  ctx.fillStyle='#1d6b5c';ctx.fill();
+
+  // axis labels
+  ctx.fillStyle='#aaa';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+  ctx.fillText('t (h)',pad.l+pw/2,H-2);
+  ctx.save();ctx.translate(9,pad.t+ph/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('g / L',0,0);ctx.restore();
+}
+
+// ── Reactor animation ─────────────────────────────────
+let bioT=0,cellPool=[];
+const MAXC=110;
+
+function seededRand(seed){
+  let s=seed%2147483647;if(s<=0)s+=2147483646;
+  return()=>{s=s*16807%2147483647;return(s-1)/2147483646;};
+}
+
+function buildCells(lx,ly,lw,lh){
+  const rng=seededRand(42);cellPool=[];
+  for(let i=0;i<MAXC;i++) cellPool.push({
+    px:lx+rng()*lw,py:ly+rng()*lh,
+    r:1.5+rng()*2.3,angle:rng()*Math.PI,div:rng()<0.1
+  });
+}
+
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+function drawReactor(){
+  const{ctx,W,H}=setupCv('bio-cv');
+  ctx.fillStyle='#f4fbf8';ctx.fillRect(0,0,W,H);
+
+  const cx=W/2,vw=W*0.50,vh=H*0.70;
+  const vx=cx-vw/2,vy=H*0.12,wall=4;
+  const lx=vx+wall+2,ly=vy+4,lw=vw-wall*2-4,lh=vh-8;
+
+  const xCurr=sim?sim.xs[sim.xs.length-1]:P.x0;
+  const sCurr=sim?sim.Ss[sim.Ss.length-1]:P.S0;
+  const xfrac=Math.min(1,Math.max(0,xCurr/(P.Y*P.Sin)));
+  const sfrac =Math.min(1,Math.max(0,sCurr/P.Sin));
+
+  if(!cellPool.length) buildCells(lx,ly,lw,lh);
+
+  // liquid clip
+  ctx.save();
+  rr(ctx,lx,ly,lw,lh,8);ctx.clip();
+  ctx.fillStyle=`rgba(44,95,138,${0.05+sfrac*0.15})`;ctx.fillRect(lx,ly,lw,lh);
+  // bubbles
+  const rngB=seededRand(7);
+  for(let i=0;i<16;i++){
+    const bx=lx+rngB()*lw,baseY=ly+lh*(0.4+rngB()*0.5);
+    const br=1.2+rngB()*2.8,sp=0.25+rngB()*0.55;
+    const travel=baseY-ly,dy=(bioT*sp*4.5+i*15)%travel;
+    ctx.beginPath();
+    ctx.arc(bx+Math.sin(bioT*0.55+i)*3,baseY-dy,br,0,Math.PI*2);
+    ctx.fillStyle=`rgba(44,95,138,${0.07+0.12*(dy/travel)})`;ctx.fill();
+  }
+  // cells
+  const nCells=Math.min(Math.round(xfrac*MAXC)+2,MAXC);
+  for(let i=0;i<nCells;i++){
+    const{px,py,r,angle,div}=cellPool[i];
+    ctx.beginPath();
+    div?ctx.ellipse(px,py,r*1.6,r*0.65,angle,0,Math.PI*2)
+       :ctx.ellipse(px,py,r,r*0.92,angle,0,Math.PI*2);
+    const a=0.4+xfrac*0.5;
+    ctx.fillStyle=`rgba(29,107,92,${a})`;ctx.fill();
+    ctx.strokeStyle=`rgba(15,60,50,${a*0.5})`;ctx.lineWidth=0.35;ctx.stroke();
+  }
+  ctx.restore();
+
+  // vessel walls
+  ctx.strokeStyle='#b0aba4';ctx.lineWidth=wall;rr(ctx,vx,vy,vw,vh,14);ctx.stroke();
+  ctx.strokeStyle='#e8e4dc';ctx.lineWidth=0.8;rr(ctx,vx,vy,vw,vh,14);ctx.stroke();
+
+  // shaft + motor
+  ctx.strokeStyle='#999';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,ly+lh*0.78);ctx.stroke();
+  ctx.fillStyle='#aaa';rr(ctx,cx-13,0,26,16,4);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 8px Space Mono';ctx.textAlign='center';
+  ctx.fillText('M',cx,11);
+
+  // impeller
+  const ang=bioT*0.03,proj=Math.cos(ang),len=lw*0.30,bH=6;
+  if(Math.abs(proj)>0.06){
+    const pL=len*Math.abs(proj),sign=proj>=0?1:-1;
+    ctx.fillStyle='#888';ctx.strokeStyle='#666';ctx.lineWidth=0.7;
+    for(const s of[sign,-sign]){
+      ctx.beginPath();
+      ctx.moveTo(cx,ly+lh*0.78-3);ctx.lineTo(cx+s*pL,ly+lh*0.78-2);
+      ctx.lineTo(cx+s*pL,ly+lh*0.78-2+bH);ctx.lineTo(cx,ly+lh*0.78-3+bH);
+      ctx.closePath();ctx.fill();ctx.stroke();
+    }
+  }
+  ctx.beginPath();ctx.arc(cx,ly+lh*0.78+bH/2-2,3.5,0,Math.PI*2);
+  ctx.fillStyle='#999';ctx.fill();
+
+  // inlet
+  const inY=vy+vh*0.16;
+  ctx.strokeStyle='rgba(44,95,138,0.5)';ctx.lineWidth=7;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(vx-38,inY);ctx.lineTo(vx,inY);ctx.stroke();
+  ctx.fillStyle='rgba(44,95,138,0.65)';
+  ctx.beginPath();ctx.moveTo(vx-8,inY-5);ctx.lineTo(vx+1,inY);ctx.lineTo(vx-8,inY+5);ctx.fill();
+  const fp=(bioT*0.022)%1;
+  ctx.beginPath();ctx.arc(vx-38+fp*36,inY,3,0,Math.PI*2);
+  ctx.fillStyle='rgba(44,95,138,0.5)';ctx.fill();
+  ctx.fillStyle='rgba(44,95,138,0.85)';ctx.font='bold 9px Space Mono';ctx.textAlign='center';
+  ctx.fillText('S_in='+P.Sin.toFixed(1),vx-22,inY-9);
+  ctx.fillText('D='+P.D.toFixed(3),vx-22,inY+20);
+
+  // outlet
+  const outY=vy+vh*0.70;
+  ctx.strokeStyle='rgba(29,107,92,0.45)';ctx.lineWidth=7;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(vx+vw,outY);ctx.lineTo(vx+vw+38,outY);ctx.stroke();
+  ctx.fillStyle='rgba(29,107,92,0.65)';
+  ctx.beginPath();ctx.moveTo(vx+vw+12,outY-5);ctx.lineTo(vx+vw+22,outY);ctx.lineTo(vx+vw+12,outY+5);ctx.fill();
+  const op=(bioT*0.022+0.5)%1;
+  ctx.beginPath();ctx.arc(vx+vw+op*36,outY,3,0,Math.PI*2);
+  ctx.fillStyle='rgba(29,107,92,0.5)';ctx.fill();
+  ctx.fillStyle='rgba(29,107,92,0.85)';ctx.font='bold 9px Space Mono';ctx.textAlign='center';
+  ctx.fillText('x, S',vx+vw+22,outY-9);
+  ctx.fillText('D='+P.D.toFixed(3),vx+vw+22,outY+20);
+
+  // readouts
+  ctx.fillStyle='#1d6b5c';ctx.font='bold 11px Space Mono';ctx.textAlign='center';
+  ctx.fillText('x = '+xCurr.toFixed(3)+' g/L',cx,ly+lh+20);
+  ctx.fillStyle='#2c5f8a';ctx.font='9px Space Mono';
+  ctx.fillText('S = '+sCurr.toFixed(3)+' g/L',cx,ly+lh+33);
+
+  bioT++;
+  requestAnimationFrame(drawReactor);
+}
+
+// ── Slider handlers ───────────────────────────────────
+function onD(){
+  P.D=parseFloat(document.getElementById('D-sl').value);
+  document.getElementById('D-num').textContent=P.D.toFixed(3);
+  refreshStats();drawTraj();
+}
+function onSin(){
+  P.Sin=parseFloat(document.getElementById('Sin-sl').value);
+  document.getElementById('Sin-num').textContent=P.Sin.toFixed(1);
+  refreshStats();drawTraj();
+}
+function syncP(key,dec){
+  const v=parseFloat(document.getElementById('p-'+key).value);
+  P[key]=v;
+  document.getElementById('pv-'+key).textContent=v.toFixed(dec);
+  if(['mumax','Ks','Y'].includes(key)){refreshStats();drawTraj();}
+}
+function toggleAcc(){
+  document.getElementById('acc-body').classList.toggle('open');
+  document.getElementById('acc-btn').classList.toggle('open');
+}
+
+// ── Init ──────────────────────────────────────────────
+window.addEventListener('resize',()=>{cellPool=[];drawTraj();});
+refreshStats(); drawTraj(); drawReactor();
+</script>
+</body>
+</html>
