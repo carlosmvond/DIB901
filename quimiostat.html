@@ -140,8 +140,8 @@ input[type=range]::-moz-range-thumb { width:24px; height:24px; border-radius:50%
     <div class="cv-foot">
       <div class="leg"><div class="leg-l" style="background:#1d6b5c"></div>x(t)</div>
       <div class="leg"><div class="leg-l" style="background:#2c5f8a"></div>S(t)</div>
-      <div class="leg"><div class="leg-d" style="border-color:#b83232"></div>x*</div>
-      <div class="leg"><div class="leg-d" style="border-color:#2c5f8a;opacity:.5"></div>S*</div>
+      <div class="leg"><div class="leg-d" style="border-color:rgba(29,107,92,0.6)"></div>x*</div>
+      <div class="leg"><div class="leg-d" style="border-color:rgba(44,95,138,0.5)"></div>S*</div>
     </div>
   </div>
 </div>
@@ -363,7 +363,7 @@ function drawTraj(){
   const eq=equilibrium();
   ctx.save();ctx.setLineDash([5,3]);
   if(!eq.washout){
-    ctx.strokeStyle='#b83232';ctx.lineWidth=1;
+    ctx.strokeStyle='rgba(29,107,92,0.6)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(pad.l,ty(eq.xstar));ctx.lineTo(pad.l+pw,ty(eq.xstar));ctx.stroke();
     ctx.strokeStyle='rgba(44,95,138,0.5)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(pad.l,ty(eq.Sstar));ctx.lineTo(pad.l+pw,ty(eq.Sstar));ctx.stroke();
