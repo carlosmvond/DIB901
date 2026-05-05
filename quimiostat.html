@@ -168,6 +168,7 @@ input[type=range]::-moz-range-thumb { width:24px; height:24px; border-radius:50%
     </div>
     <div class="btn-row">
       <button class="btn go" id="btn-run" onclick="toggleRun()">▶ Simular</button>
+      <button class="btn" onclick="perturbar()">⚡ Perturbar</button>
       <button class="btn" onclick="doReset()">↺ Reset</button>
     </div>
   </div>
@@ -528,7 +529,14 @@ function drawReactor(){
   requestAnimationFrame(drawReactor);
 }
 
-// ── Slider handlers ───────────────────────────────────
+function perturbar(){
+  if(!sim||sim.xs.length<2) return;
+  const n=sim.xs.length-1;
+  // Reduce biomasa entre 25-40% de manera brusca
+  const frac=0.25+Math.random()*0.15;
+  sim.xs[n]=Math.max(0.01, sim.xs[n]*(1-frac));
+  drawTraj();
+}
 function onD(){
   P.D=parseFloat(document.getElementById('D-sl').value);
   document.getElementById('D-num').textContent=P.D.toFixed(3);
