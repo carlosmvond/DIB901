@@ -132,16 +132,44 @@ input[type=range]::-moz-range-thumb { width:24px; height:24px; border-radius:50%
   </div>
 </div>
 
-<!-- Trajectory -->
+<!-- Tabbed graph panel -->
 <div class="wrap" style="margin-top:12px">
-  <div class="sec-lbl">Dinámica temporal x(t), S(t)</div>
   <div class="cv-card">
-    <canvas id="traj-cv" style="height:210px"></canvas>
-    <div class="cv-foot">
-      <div class="leg"><div class="leg-l" style="background:#1d6b5c"></div>x(t)</div>
-      <div class="leg"><div class="leg-l" style="background:#2c5f8a"></div>S(t)</div>
-      <div class="leg"><div class="leg-d" style="border-color:rgba(29,107,92,0.6)"></div>x*</div>
-      <div class="leg"><div class="leg-d" style="border-color:rgba(44,95,138,0.5)"></div>S*</div>
+    <!-- tab bar -->
+    <div style="display:flex;border-bottom:1px solid var(--brd);">
+      <button id="tab-t" onclick="switchGraph('t')"
+        style="flex:1;padding:9px 8px;font-family:var(--mono);font-size:10px;
+               letter-spacing:0.07em;text-transform:uppercase;border:none;
+               background:var(--bg);color:var(--grn);cursor:pointer;
+               border-bottom:2.5px solid var(--grn);">
+        x(t), S(t)
+      </button>
+      <button id="tab-p" onclick="switchGraph('p')"
+        style="flex:1;padding:9px 8px;font-family:var(--mono);font-size:10px;
+               letter-spacing:0.07em;text-transform:uppercase;border:none;
+               background:var(--bg);color:var(--ink3);cursor:pointer;
+               border-bottom:2.5px solid transparent;">
+        Plano de fase
+      </button>
+    </div>
+    <!-- time series -->
+    <div id="panel-t">
+      <canvas id="traj-cv" style="height:210px"></canvas>
+      <div class="cv-foot">
+        <div class="leg"><div class="leg-l" style="background:#1d6b5c"></div>x(t)</div>
+        <div class="leg"><div class="leg-l" style="background:#2c5f8a"></div>S(t)</div>
+        <div class="leg"><div class="leg-d" style="border-color:rgba(29,107,92,0.6)"></div>x*</div>
+        <div class="leg"><div class="leg-d" style="border-color:rgba(44,95,138,0.5)"></div>S*</div>
+      </div>
+    </div>
+    <!-- phase plane -->
+    <div id="panel-p" style="display:none">
+      <canvas id="phase-cv" style="height:210px"></canvas>
+      <div class="cv-foot">
+        <div class="leg"><div class="leg-l" style="background:#5878a0"></div>trayectoria (x,S)</div>
+        <div class="leg"><div class="leg-dot" style="background:#1d6b5c;width:8px;height:8px;border-radius:50%"></div>E* no trivial</div>
+        <div class="leg"><div class="leg-dot" style="background:transparent;border:2px solid #b83232;width:8px;height:8px;border-radius:50%"></div>E₀ lavado</div>
+      </div>
     </div>
   </div>
 </div>
@@ -260,7 +288,8 @@ function doReset(){
   sim=null;
   setBtn('go','▶ Simular');
   document.getElementById('st-t').textContent='0';
-  refreshStats();drawTraj();
+  refreshStats();
+  if(activeGraph==='t') drawTraj(); else drawPhase();
 }
 
 function toggleRun(){
@@ -295,7 +324,8 @@ function stepLoop(){
     sim.xs.push(nx); sim.Ss.push(nS);
   }
   document.getElementById('st-t').textContent=sim.ts[sim.ts.length-1].toFixed(0);
-  drawTraj(); refreshStats();
+  if(activeGraph==='t') drawTraj(); else drawPhase();
+  refreshStats();
   rafSim=requestAnimationFrame(stepLoop);
 }
 
@@ -532,20 +562,130 @@ function drawReactor(){
 function perturbar(){
   if(!sim||sim.xs.length<2) return;
   const n=sim.xs.length-1;
-  // Reduce biomasa entre 25-40% de manera brusca
   const frac=0.25+Math.random()*0.15;
   sim.xs[n]=Math.max(0.01, sim.xs[n]*(1-frac));
-  drawTraj();
+  if(activeGraph==='t') drawTraj(); else drawPhase();
 }
+// ── Tab switching ─────────────────────────────────────
+let activeGraph = 't';
+function switchGraph(tab) {
+  activeGraph = tab;
+  document.getElementById('panel-t').style.display = tab==='t' ? 'block' : 'none';
+  document.getElementById('panel-p').style.display = tab==='p' ? 'block' : 'none';
+  const bt = document.getElementById('tab-t');
+  const bp = document.getElementById('tab-p');
+  bt.style.color        = tab==='t' ? 'var(--grn)' : 'var(--ink3)';
+  bt.style.borderBottom = tab==='t' ? '2.5px solid var(--grn)' : '2.5px solid transparent';
+  bp.style.color        = tab==='p' ? 'var(--grn)' : 'var(--ink3)';
+  bp.style.borderBottom = tab==='p' ? '2.5px solid var(--grn)' : '2.5px solid transparent';
+  if (tab==='p') drawPhase(); else drawTraj();
+}
+
+// ── Phase plane ───────────────────────────────────────
+function drawPhase() {
+  const{ctx,W,H}=setupCv('phase-cv');
+  const pad={l:42,r:14,t:14,b:28};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const xmax = Math.max(P.Y*P.Sin*1.2, sim?Math.max(...sim.xs)*1.15:P.x0*1.5, 1);
+  const Smax = Math.max(P.Sin*1.15, sim?Math.max(...sim.Ss)*1.1:P.S0*1.5, 1);
+  const tx = x => pad.l + pw*(x/xmax);
+  const ty = S => pad.t + ph*(1 - S/Smax);
+
+  // grid
+  ctx.strokeStyle='#f0ede8'; ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+ph*i/4;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+pw,y);ctx.stroke();
+    ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='right';
+    ctx.fillText((Smax*(1-i/4)).toFixed(1),pad.l-3,y+3);
+  }
+  for(let i=0;i<=4;i++){
+    const x=pad.l+pw*i/4;
+    ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+ph);ctx.stroke();
+    ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+    ctx.fillText((xmax*i/4).toFixed(1),x,pad.t+ph+14);
+  }
+
+  // axis labels
+  ctx.fillStyle='#aaa';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+  ctx.fillText('x (g/L)',pad.l+pw/2,H-2);
+  ctx.save();ctx.translate(9,pad.t+ph/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('S (g/L)',0,0);ctx.restore();
+
+  // nullcline guides (faint)
+  const eq=equilibrium();
+  if(!eq.washout){
+    ctx.save();ctx.setLineDash([4,3]);
+    ctx.strokeStyle='rgba(29,107,92,0.15)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,ty(eq.Sstar));ctx.lineTo(pad.l+pw,ty(eq.Sstar));ctx.stroke();
+    ctx.beginPath();ctx.moveTo(tx(eq.xstar),pad.t);ctx.lineTo(tx(eq.xstar),pad.t+ph);ctx.stroke();
+    ctx.restore();
+  }
+
+  // trajectory
+  if(sim && sim.xs.length>1){
+    ctx.beginPath();ctx.strokeStyle='#5878a0';ctx.lineWidth=2;
+    sim.xs.forEach((x,i)=>{
+      const px=tx(x), py=ty(sim.Ss[i]);
+      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+    // direction arrow at 60%
+    const ai=Math.min(Math.floor(sim.xs.length*0.6),sim.xs.length-2);
+    if(ai>0){
+      const ax=tx(sim.xs[ai]),ay=ty(sim.Ss[ai]);
+      const bx=tx(sim.xs[ai+1]),by=ty(sim.Ss[ai+1]);
+      const ang=Math.atan2(by-ay,bx-ax);
+      ctx.fillStyle='#5878a0';
+      ctx.beginPath();
+      ctx.moveTo(bx,by);
+      ctx.lineTo(bx-9*Math.cos(ang-0.38),by-9*Math.sin(ang-0.38));
+      ctx.lineTo(bx-9*Math.cos(ang+0.38),by-9*Math.sin(ang+0.38));
+      ctx.closePath();ctx.fill();
+    }
+    // current dot
+    const n=sim.xs.length-1;
+    ctx.beginPath();ctx.arc(tx(sim.xs[n]),ty(sim.Ss[n]),5,0,Math.PI*2);
+    ctx.fillStyle='#5878a0';ctx.fill();
+    // x0 dot
+    ctx.beginPath();ctx.arc(tx(sim.xs[0]),ty(sim.Ss[0]),4,0,Math.PI*2);
+    ctx.fillStyle='#ba7517';ctx.fill();
+    ctx.fillStyle='#ba7517';ctx.font='9px Space Mono,monospace';ctx.textAlign='left';
+    ctx.fillText('x₀',tx(sim.xs[0])+7,ty(sim.Ss[0])-3);
+  }
+
+  // E0 — trivial equilibrium (0, Sin)
+  const e0x=tx(0), e0y=ty(P.Sin);
+  ctx.beginPath();ctx.arc(e0x,e0y,6,0,Math.PI*2);
+  ctx.fillStyle='#fff';ctx.fill();
+  ctx.strokeStyle='#b83232';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#b83232';ctx.font='bold 9px Space Mono,monospace';ctx.textAlign='left';
+  ctx.fillText('E₀',e0x+9,e0y+4);
+
+  // E* — non-trivial equilibrium
+  if(!eq.washout){
+    const esx=tx(eq.xstar), esy=ty(eq.Sstar);
+    ctx.beginPath();ctx.arc(esx,esy,7,0,Math.PI*2);
+    ctx.fillStyle='#1d6b5c';ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='#1d6b5c';ctx.font='bold 9px Space Mono,monospace';ctx.textAlign='left';
+    ctx.fillText('E*',esx+9,esy+4);
+  }
+}
+
 function onD(){
   P.D=parseFloat(document.getElementById('D-sl').value);
   document.getElementById('D-num').textContent=P.D.toFixed(3);
-  refreshStats();drawTraj();
+  refreshStats();
+  if(activeGraph==='t') drawTraj(); else drawPhase();
 }
 function onSin(){
   P.Sin=parseFloat(document.getElementById('Sin-sl').value);
   document.getElementById('Sin-num').textContent=P.Sin.toFixed(1);
-  refreshStats();drawTraj();
+  refreshStats();
+  if(activeGraph==='t') drawTraj(); else drawPhase();
 }
 function syncP(key,dec){
   const v=parseFloat(document.getElementById('p-'+key).value);
