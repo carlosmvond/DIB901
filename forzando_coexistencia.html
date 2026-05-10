@@ -117,6 +117,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
 .pf-section{font-family:var(--mono);font-size:9px;text-transform:uppercase;
             letter-spacing:.08em;color:var(--ink3);margin:10px 0 6px;
             padding-top:8px;border-top:1px solid var(--brd)}
+.pf-section em{font-style:italic;text-transform:none;font-family:var(--serif);font-size:11px}
 /* equilibrium cards */
 .eq-card{border:1px solid var(--brd);border-radius:8px;padding:9px 11px;margin-bottom:8px}
 .eq-card:last-child{margin-bottom:0}
@@ -141,7 +142,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
   <div class="eq-block">
     \[\dot x_1 = \bigl(\mu_1(S)-D\bigr)x_1, \qquad \dot x_2 = \bigl(\mu_2(S)-D\bigr)x_2\]
     \[\dot S = D(S_{in}-S) - \frac{\mu_1(S)\,x_1}{Y_1} - \frac{\mu_2(S)\,x_2}{Y_2}\]
-    \[D(x_1,x_2)=a_0+a_1 x_1+a_2 x_2, \qquad \mu_i(S)=\mu_{max,i}\frac{S}{K_{s,i}+S}\]
+    \[D(x_1,x_2)=\beta+a_1 x_1+a_2 x_2, \quad \mu_i(S)=\mu_{max,i}\frac{S}{K_{s,i}+S}\]
+    \[x_1=\textit{P. aeruginosa},\quad x_2=\textit{P. fluorescens},\quad S=\text{Benzeno}\]
   </div>
 </header>
 
@@ -151,8 +153,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
   <div class="cv-card">
     <canvas id="bio-cv" style="height:220px;background:#f4fbf8"></canvas>
     <div class="cv-foot">
-      <div class="leg"><div class="leg-dot" style="background:#1d6b5c"></div>x₁</div>
-      <div class="leg"><div class="leg-dot" style="background:#b83232"></div>x₂</div>
+      <div class="leg"><div class="leg-dot" style="background:#1d6b5c"></div><em>P. aeruginosa</em></div>
+      <div class="leg"><div class="leg-dot" style="background:#b83232"></div><em>P. fluorescens</em></div>
       <div class="leg"><div class="leg-dot" style="background:#2c5f8a"></div>S</div>
     </div>
   </div>
@@ -161,8 +163,21 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
 <!-- Graph -->
 <div class="wrap" style="margin-top:11px">
   <div class="cv-card">
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tab-t" onclick="switchTab('t')">x₁, x₂, S vs t</button>
+      <button class="tab-btn" id="tab-m" onclick="switchTab('m')">Cinéticas μ(S)</button>
+    </div>
     <div id="panel-t">
       <div id="plt-traj" style="height:240px;width:100%"></div>
+    </div>
+    <div id="panel-m" style="display:none">
+      <div id="plt-monod" style="height:240px;width:100%"></div>
+      <div class="cv-foot">
+        <div class="leg"><div class="leg-l" style="background:#1d6b5c"></div><em>P. aeruginosa</em></div>
+        <div class="leg"><div class="leg-l" style="background:#b83232"></div><em>P. fluorescens</em></div>
+        <div class="leg"><div class="leg-d" style="border-color:#2c5f8a"></div>S_in</div>
+        <div class="leg"><div class="leg-d" style="border-color:#6b3a8a"></div>intersección</div>
+      </div>
     </div>
   </div>
 </div>
@@ -172,33 +187,34 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
   <div class="ctrl-card">
     <div class="main-sl">
       <div class="sl-row">
-        <span class="sl-name">\(a_0\) — dilución base (h⁻¹)</span>
-        <span class="sl-num grn" id="a0-num">0.020</span>
+        <span class="sl-name">\(\beta\) — dilución base (h⁻¹)</span>
+        <span class="sl-num grn" id="a0-num">0.010</span>
       </div>
       <input type="range" class="grn-tr" id="a0-sl"
-             min="0" max="0.08" step="0.001" value="0.02" oninput="onMainSlider('a0')">
+             min="0" max="0.10" step="0.001" value="0.01" oninput="onMainSlider('a0')">
     </div>
     <hr class="divider">
     <div class="main-sl">
       <div class="sl-row">
-        <span class="sl-name">\(a_1\) — feedback sobre \(x_1\) (L/g·h)</span>
-        <span class="sl-num grn" id="a1-num">0.010</span>
+        <span class="sl-name">\(a_1\) — feedback sobre \(x_1\) (L/mg·h)</span>
+        <span class="sl-num grn" id="a1-num">0.020</span>
       </div>
       <input type="range" class="grn-tr" id="a1-sl"
-             min="0" max="0.05" step="0.001" value="0.01" oninput="onMainSlider('a1')">
+             min="0" max="0.10" step="0.001" value="0.02" oninput="onMainSlider('a1')">
     </div>
     <hr class="divider">
     <div class="main-sl">
       <div class="sl-row">
-        <span class="sl-name">\(a_2\) — feedback sobre \(x_2\) (L/g·h)</span>
+        <span class="sl-name">\(a_2\) — feedback sobre \(x_2\) (L/mg·h)</span>
         <span class="sl-num red" id="a2-num">0.000</span>
       </div>
       <input type="range" class="red-tr" id="a2-sl"
-             min="0" max="0.05" step="0.001" value="0" oninput="onMainSlider('a2')">
+             min="0" max="0.10" step="0.001" value="0" oninput="onMainSlider('a2')">
     </div>
     <div class="btn-row">
       <button class="btn go" id="btn-run" onclick="toggleRun()">▶ Simular</button>
       <button class="btn" onclick="perturbar()">⚡ Perturbar</button>
+      <button class="btn" id="btn-spd" onclick="cycleSpeed()">1× vel</button>
       <button class="btn" onclick="doReset()">↺ Reset</button>
     </div>
   </div>
@@ -208,15 +224,15 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
 <div class="wrap">
   <div class="stats">
     <div class="stat">
-      <div class="lbl">x₁ (g/L)</div>
+      <div class="lbl">P. aeruginosa (mg/L)</div>
       <div class="num" id="st-x1" style="color:#1d6b5c">—</div>
     </div>
     <div class="stat">
-      <div class="lbl">x₂ (g/L)</div>
+      <div class="lbl">P. fluorescens (mg/L)</div>
       <div class="num" id="st-x2" style="color:#b83232">—</div>
     </div>
     <div class="stat">
-      <div class="lbl">S (g/L)</div>
+      <div class="lbl">Benzeno (mg/L)</div>
       <div class="num" id="st-s" style="color:#2c5f8a">—</div>
     </div>
     <div class="stat">
@@ -235,49 +251,49 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
       <span class="acc-arr">▼</span>
     </button>
     <div class="acc-body" id="acc-body">
-      <div class="pf-section">Especie 1 — \(x_1\) (verde)</div>
+      <div class="pf-section">Especie 1 — \(x_1\) <em>P. aeruginosa</em></div>
       <div class="pf">
-        <label>\(\mu_{max,1}\) (h⁻¹) <span id="pv-mu1">0.080</span></label>
-        <input type="range" id="p-mu1" min="0.02" max="0.20" step="0.001" value="0.08" oninput="syncP('mu1',3)">
+        <label>\(\mu_{max,1}\) (h⁻¹) <span id="pv-mu1">0.140</span></label>
+        <input type="range" id="p-mu1" min="0.02" max="0.50" step="0.001" value="0.14" oninput="syncP('mu1',3)">
       </div>
       <div class="pf">
-        <label>\(K_{s,1}\) (g/L) <span id="pv-Ks1">0.300</span></label>
-        <input type="range" id="p-Ks1" min="0.01" max="3" step="0.01" value="0.3" oninput="syncP('Ks1',3)">
+        <label>\(K_{s,1}\) (mg/L) <span id="pv-Ks1">4.500</span></label>
+        <input type="range" id="p-Ks1" min="0.1" max="100" step="0.1" value="4.5" oninput="syncP('Ks1',3)">
       </div>
       <div class="pf">
-        <label>\(Y_1\) (g/g) <span id="pv-Y1">0.60</span></label>
-        <input type="range" id="p-Y1" min="0.1" max="1" step="0.01" value="0.6" oninput="syncP('Y1',2)">
+        <label>\(Y_1\) (g/g) <span id="pv-Y1">0.25</span></label>
+        <input type="range" id="p-Y1" min="0.05" max="1" step="0.01" value="0.25" oninput="syncP('Y1',2)">
       </div>
-      <div class="pf-section">Especie 2 — \(x_2\) (roja)</div>
+      <div class="pf-section">Especie 2 — \(x_2\) <em>P. fluorescens</em></div>
       <div class="pf">
-        <label>\(\mu_{max,2}\) (h⁻¹) <span id="pv-mu2">0.060</span></label>
-        <input type="range" id="p-mu2" min="0.02" max="0.20" step="0.001" value="0.06" oninput="syncP('mu2',3)">
-      </div>
-      <div class="pf">
-        <label>\(K_{s,2}\) (g/L) <span id="pv-Ks2">0.100</span></label>
-        <input type="range" id="p-Ks2" min="0.01" max="3" step="0.01" value="0.1" oninput="syncP('Ks2',3)">
+        <label>\(\mu_{max,2}\) (h⁻¹) <span id="pv-mu2">0.190</span></label>
+        <input type="range" id="p-mu2" min="0.02" max="0.50" step="0.001" value="0.19" oninput="syncP('mu2',3)">
       </div>
       <div class="pf">
-        <label>\(Y_2\) (g/g) <span id="pv-Y2">0.50</span></label>
-        <input type="range" id="p-Y2" min="0.1" max="1" step="0.01" value="0.5" oninput="syncP('Y2',2)">
+        <label>\(K_{s,2}\) (mg/L) <span id="pv-Ks2">47.10</span></label>
+        <input type="range" id="p-Ks2" min="0.1" max="200" step="0.1" value="47.1" oninput="syncP('Ks2',3)">
+      </div>
+      <div class="pf">
+        <label>\(Y_2\) (g/g) <span id="pv-Y2">0.25</span></label>
+        <input type="range" id="p-Y2" min="0.05" max="1" step="0.01" value="0.25" oninput="syncP('Y2',2)">
       </div>
       <div class="pf-section">Reactor</div>
       <div class="pf">
-        <label>\(S_{in}\) (g/L) <span id="pv-Sin">10.0</span></label>
-        <input type="range" id="p-Sin" min="1" max="25" step="0.5" value="10" oninput="syncP('Sin',1)">
+        <label>\(S_{in}\) — Benzeno (mg/L) <span id="pv-Sin">200.0</span></label>
+        <input type="range" id="p-Sin" min="10" max="500" step="5" value="200" oninput="syncP('Sin',1)">
       </div>
       <div class="pf-section">Condiciones iniciales</div>
       <div class="pf">
-        <label>\(x_{1,0}\) (g/L) <span id="pv-x10">1.00</span></label>
-        <input type="range" id="p-x10" min="0.01" max="8" step="0.05" value="1" oninput="syncP('x10',2)">
+        <label>\(x_{1,0}\) (mg/L) <span id="pv-x10">1.00</span></label>
+        <input type="range" id="p-x10" min="0.01" max="50" step="0.1" value="1" oninput="syncP('x10',2)">
       </div>
       <div class="pf">
-        <label>\(x_{2,0}\) (g/L) <span id="pv-x20">1.00</span></label>
-        <input type="range" id="p-x20" min="0.01" max="8" step="0.05" value="1" oninput="syncP('x20',2)">
+        <label>\(x_{2,0}\) (mg/L) <span id="pv-x20">1.00</span></label>
+        <input type="range" id="p-x20" min="0.01" max="50" step="0.1" value="1" oninput="syncP('x20',2)">
       </div>
       <div class="pf">
-        <label>\(S_0\) (g/L) <span id="pv-S0">8.00</span></label>
-        <input type="range" id="p-S0" min="0.1" max="25" step="0.1" value="8" oninput="syncP('S0',2)">
+        <label>\(S_0\) — Benzeno inicial (mg/L) <span id="pv-S0">1.00</span></label>
+        <input type="range" id="p-S0" min="0.1" max="200" step="0.5" value="1" oninput="syncP('S0',2)">
       </div>
     </div>
   </div>
@@ -286,10 +302,10 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
 <script>
 // ── Parameters ────────────────────────────────────────
 const P={
-  mu1:0.08, Ks1:0.3, Y1:0.6,
-  mu2:0.06, Ks2:0.1, Y2:0.5,
-  Sin:10, x10:1, x20:1, S0:8,
-  a0:0.02, a1:0.01, a2:0.0
+  mu1:0.14, Ks1:4.5,  Y1:0.25,
+  mu2:0.19, Ks2:47.1, Y2:0.25,
+  Sin:200, x10:1, x20:1, S0:1,
+  a0:0.01, a1:0.02, a2:0.0
 };
 
 // ── Kinetics ──────────────────────────────────────────
@@ -322,12 +338,17 @@ function rk4(x1,x2,S,dt){
 
 // ── Simulation state ──────────────────────────────────
 let sim=null,running=false,paused=false,rafId=null;
+let speedLevel=0; // 0=1x, 1=5x, 2=20x
+const SPEEDS=[{steps:2,label:'1× vel'},{steps:10,label:'5× vel'},{steps:40,label:'20× vel'}];
 
 function doReset(){
   running=false;paused=false;
   if(rafId)cancelAnimationFrame(rafId);
   sim=null;
   setBtn('go','▶ Simular');
+  speedLevel=0;
+  const sb=document.getElementById('btn-spd');
+  if(sb){sb.textContent='1× vel';sb.style.background='';sb.style.borderColor='';sb.style.color='';}  
   document.getElementById('st-t').textContent='0';
   refreshStats();redrawActive();
 }
@@ -356,7 +377,7 @@ function setBtn(cls,txt){
 
 function loop(){
   if(!running||paused)return;
-  const dt=0.08,steps=2;
+  const dt=0.08, steps=SPEEDS[speedLevel].steps;
   for(let k=0;k<steps;k++){
     const n=sim.x1s.length-1;
     const[nx1,nx2,nS]=rk4(sim.x1s[n],sim.x2s[n],sim.Ss[n],dt);
@@ -399,13 +420,13 @@ function refreshStats(){
     al.textContent='Washout: ambas especies arrastradas';
   } else if(x1>thr&&x2<thr){
     al.className='alert stable show';
-    al.textContent='x₁ domina — x₂ excluida (exclusión competitiva)';
+    al.textContent='P. aeruginosa domina — P. fluorescens excluida';
   } else if(x2>thr&&x1<thr){
     al.className='alert stable show';
-    al.textContent='x₂ domina — x₁ excluida (exclusión competitiva)';
+    al.textContent='P. fluorescens domina — P. aeruginosa excluida';
   } else if(x1>thr&&x2>thr){
     al.className='alert coex show';
-    al.textContent='Coexistencia: x₁='+x1.toFixed(2)+', x₂='+x2.toFixed(2);
+    al.textContent='Coexistencia: P.a.='+x1.toFixed(1)+', P.f.='+x2.toFixed(1)+' mg/L';
   } else {
     al.className='alert show stable';
     al.textContent='Simulando…';
@@ -557,7 +578,121 @@ function proj3(x1,x2,S,x1max,x2max,Smax,W,H){
   return{px:W/2+rx*scale, py:H/2-ry2*scale};
 }
 
-function redrawActive(){ drawTraj(); }
+function redrawActive(){
+  if(activeTab==='t') drawTraj();
+  else drawMonod();
+}
+
+// ── Monod kinetics plot ───────────────────────────────
+function drawMonod(){
+  const r=mkCv('plt-monod',240); if(!r) return;
+  const{ctx,W,H}=r;
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const pad={l:44,r:14,t:14,b:28};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+
+  // x axis: S from 0 to 1.3*Sin
+  const Smax=P.Sin*1.3;
+  // y axis: mu from 0 to 1.1*max(mumax)
+  const muMax=Math.max(P.mu1,P.mu2)*1.15;
+  const tx=S=>pad.l+pw*(S/Smax);
+  const ty=v=>pad.t+ph*(1-v/muMax);
+
+  drawGrid(ctx,pad,W,H,0,Smax,0,muMax,4,4,
+    v=>v.toFixed(0), v=>v.toFixed(3));
+
+  // axis labels
+  ctx.fillStyle='#aaa';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+  ctx.fillText('S — Benzeno (mg/L)',pad.l+pw/2,H-2);
+  ctx.save();ctx.translate(10,pad.t+ph/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('μ (h⁻¹)',0,0);ctx.restore();
+
+  // Sample curves
+  const N=300;
+  const Ss=Array.from({length:N},(_,i)=>Smax*i/(N-1));
+
+  // μ1 curve
+  ctx.beginPath();ctx.strokeStyle='#1d6b5c';ctx.lineWidth=2.5;
+  Ss.forEach((S,i)=>{
+    const v=P.mu1*S/(P.Ks1+S);
+    i===0?ctx.moveTo(tx(S),ty(v)):ctx.lineTo(tx(S),ty(v));
+  });
+  ctx.stroke();
+
+  // μ2 curve
+  ctx.beginPath();ctx.strokeStyle='#b83232';ctx.lineWidth=2.5;
+  Ss.forEach((S,i)=>{
+    const v=P.mu2*S/(P.Ks2+S);
+    i===0?ctx.moveTo(tx(S),ty(v)):ctx.lineTo(tx(S),ty(v));
+  });
+  ctx.stroke();
+
+  // μ1_max asymptote
+  ctx.save();ctx.setLineDash([3,4]);
+  ctx.strokeStyle='rgba(29,107,92,0.3)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.l,ty(P.mu1));ctx.lineTo(pad.l+pw,ty(P.mu1));ctx.stroke();
+  ctx.strokeStyle='rgba(184,50,50,0.3)';
+  ctx.beginPath();ctx.moveTo(pad.l,ty(P.mu2));ctx.lineTo(pad.l+pw,ty(P.mu2));ctx.stroke();
+  ctx.restore();
+
+  // S_in vertical line
+  ctx.save();ctx.setLineDash([6,4]);
+  ctx.strokeStyle='#2c5f8a';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(tx(P.Sin),pad.t);ctx.lineTo(tx(P.Sin),pad.t+ph);ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='#2c5f8a';ctx.font='bold 9px Space Mono,monospace';ctx.textAlign='center';
+  ctx.fillText('S_in='+P.Sin,tx(P.Sin),pad.t+9);
+
+  // Find intersection of μ1 and μ2: mu1*S/(Ks1+S) = mu2*S/(Ks2+S)
+  // mu1*(Ks2+S) = mu2*(Ks1+S)  =>  S*(mu1-mu2) = mu2*Ks1 - mu1*Ks2
+  // S* = (mu2*Ks1 - mu1*Ks2) / (mu1 - mu2)  if mu1 != mu2
+  let Sc=null;
+  if(Math.abs(P.mu1-P.mu2)>1e-9){
+    Sc=(P.mu2*P.Ks1-P.mu1*P.Ks2)/(P.mu1-P.mu2);
+  }
+  if(Sc!==null && Sc>0 && Sc<Smax){
+    const muc=P.mu1*Sc/(P.Ks1+Sc);
+    // vertical dashed line at Sc
+    ctx.save();ctx.setLineDash([4,3]);
+    ctx.strokeStyle='rgba(107,58,138,0.6)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(tx(Sc),pad.t);ctx.lineTo(tx(Sc),pad.t+ph);ctx.stroke();
+    // horizontal dashed line at muc
+    ctx.beginPath();ctx.moveTo(pad.l,ty(muc));ctx.lineTo(tx(Sc),ty(muc));ctx.stroke();
+    ctx.restore();
+    // intersection dot
+    ctx.beginPath();ctx.arc(tx(Sc),ty(muc),5,0,Math.PI*2);
+    ctx.fillStyle='#6b3a8a';ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    // label
+    ctx.fillStyle='#6b3a8a';ctx.font='bold 9px Space Mono,monospace';ctx.textAlign='left';
+    const lx=tx(Sc)+8, ly2=ty(muc)-6;
+    ctx.fillText('Sᶜ='+Sc.toFixed(1),lx,ly2);
+    ctx.fillText('μᶜ='+muc.toFixed(4),lx,ly2+12);
+  } else {
+    ctx.fillStyle='rgba(107,58,138,0.5)';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+    ctx.fillText('sin intersección en S>0',pad.l+pw/2,pad.t+20);
+  }
+
+  // μ_max labels
+  ctx.fillStyle='rgba(29,107,92,0.7)';ctx.font='8px Space Mono,monospace';ctx.textAlign='right';
+  ctx.fillText('μ_max,1='+P.mu1,pad.l+pw-4,ty(P.mu1)-4);
+  ctx.fillStyle='rgba(184,50,50,0.7)';
+  ctx.fillText('μ_max,2='+P.mu2,pad.l+pw-4,ty(P.mu2)-4);
+}
+
+// ── Tab switching ─────────────────────────────────────
+let activeTab='t';
+function switchTab(tab){
+  activeTab=tab;
+  document.getElementById('panel-t').style.display=tab==='t'?'block':'none';
+  document.getElementById('panel-m').style.display=tab==='m'?'block':'none';
+  document.getElementById('tab-t').classList.toggle('active',tab==='t');
+  document.getElementById('tab-m').classList.toggle('active',tab==='m');
+  redrawActive();
+}
+
+
 
 
 
@@ -729,6 +864,14 @@ function syncP(key,dec){
   P[key]=v;
   document.getElementById('pv-'+key).textContent=v.toFixed(dec);
   redrawActive();
+}
+function cycleSpeed(){
+  speedLevel=(speedLevel+1)%3;
+  const btn=document.getElementById('btn-spd');
+  btn.textContent=SPEEDS[speedLevel].label;
+  btn.style.background=speedLevel===0?'var(--bg)':speedLevel===1?'var(--ambL)':'var(--redL)';
+  btn.style.borderColor=speedLevel===0?'var(--brd)':speedLevel===1?'var(--amb)':'var(--red)';
+  btn.style.color=speedLevel===0?'var(--ink2)':speedLevel===1?'var(--amb)':'var(--red)';
 }
 function toggleAcc(){
   document.getElementById('acc-body').classList.toggle('open');
