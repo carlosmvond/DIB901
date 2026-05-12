@@ -128,11 +128,11 @@
     <div class="method-toggle">
       <button class="method-btn active-trap" id="btnTrap" onclick="setMethod('trap')">
         <span class="mname">Trapecio</span>
-        <span class="msub">h/2 · [f₀ + 2Σ + fₙ]</span>
+        <span class="msub">h/2 · [f(x0) + 2S + f(xn)]</span>
       </button>
       <button class="method-btn" id="btnSimp" onclick="setMethod('simp')">
         <span class="mname">Simpson</span>
-        <span class="msub">h/3 · [f₀ + 4Σₒdd + 2Σₑᵥₑₙ + fₙ]</span>
+        <span class="msub">h/3 · [f(x0) + 4S_odd + 2S_even + f(xn)]</span>
       </button>
     </div>
 
@@ -303,11 +303,11 @@ function updateMethodUI() {
   const bf = document.getElementById('bigFormula');
   if (isTrap) {
     bf.className = 'big-formula trap-bg';
-    bf.innerHTML = `<span class="hl2">I</span> ≈ <span class="hl">(h/2)</span> × [<span class="hl3">f(x₀)</span> + 2·<span class="hl2">Σ f(xᵢ)</span> + <span class="hl3">f(xₙ)</span>]<br>
+    bf.innerHTML = `<span class="hl2">I</span> ≈ <span class="hl">(h/2)</span> × [<span class="hl3">f(x0)</span> + 2·<span class="hl2">Σ f(xi)</span> + <span class="hl3">f(xn)</span>]<br>
       <span style="font-size:.72rem;color:#aaa">h = (b−a)/n &nbsp;|&nbsp; i = 1, 2, ..., n−1</span>`;
   } else {
     bf.className = 'big-formula simp-bg';
-    bf.innerHTML = `<span class="hl4">I</span> ≈ <span class="hl">(h/3)</span> × [<span class="hl3">f(x₀)</span> + 4·<span class="hl4">Σ f(xₒdd)</span> + 2·<span class="hl2">Σ f(xₑᵥₑₙ)</span> + <span class="hl3">f(xₙ)</span>]<br>
+    bf.innerHTML = `<span class="hl4">I</span> ≈ <span class="hl">(h/3)</span> × [<span class="hl3">f(x0)</span> + 4·<span class="hl4">Σ f(xi odd)</span> + 2·<span class="hl2">Σ f(xi even)</span> + <span class="hl3">f(xn)</span>]<br>
       <span style="font-size:.72rem;color:#aaa">h = (b−a)/n &nbsp;|&nbsp; n par &nbsp;|&nbsp; odd: i=1,3,5… &nbsp;even: i=2,4,6…</span>`;
   }
 }
@@ -450,7 +450,7 @@ function updateFormula() {
 
   if (isTrap) {
     let total = f.fn(pts[0]);
-    html += `&nbsp;&nbsp;&nbsp;f(x₀) = ${f.fn(pts[0]).toFixed(4)}<br>`;
+    html += `&nbsp;&nbsp;&nbsp;f(x0) = ${f.fn(pts[0]).toFixed(4)}<br>`;
     for (let i=1; i<n; i++) {
       const vi = f.fn(pts[i]);
       total += 2*vi;
@@ -463,7 +463,7 @@ function updateFormula() {
     html += `<div class="fline" style="margin-top:6px"><strong>I ≈</strong> (${h.toFixed(4)} / 2) × ${total.toFixed(4)} = <span class="fval">${approx.toFixed(6)}</span></div>`;
   } else {
     let total = f.fn(pts[0]);
-    html += `&nbsp;&nbsp;&nbsp;f(x₀) = ${f.fn(pts[0]).toFixed(4)}<br>`;
+    html += `&nbsp;&nbsp;&nbsp;f(x0) = ${f.fn(pts[0]).toFixed(4)}<br>`;
     for (let i=1; i<n; i++) {
       const vi = f.fn(pts[i]);
       const coef = i%2===1 ? 4 : 2;
