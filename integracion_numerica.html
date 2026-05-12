@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Integración Numérica</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Code+Pro:wght@400;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf8f4; --card: #ffffff; --ink: #1a1a2e; --ink2: #444466;
+    --accent: #e63946; --accent2: #457b9d; --green: #2a9d8f; --purple: #7c4dbe;
+    --trap-fill: rgba(69,123,157,0.22); --trap-stroke: #457b9d;
+    --simp-fill: rgba(124,77,190,0.18); --simp-stroke: #7c4dbe;
+    --curve-stroke: #e63946; --exact-fill: rgba(42,157,143,0.13);
+    --border: #e0dbd0; --shadow: 0 2px 16px rgba(30,30,60,0.09); --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Lato', sans-serif; font-size: 15px; min-height: 100vh; padding: 0 0 40px 0; }
+
+  header { background: var(--ink); color: #fff; padding: 22px 20px 16px; text-align: center; position: relative; overflow: hidden; }
+  header::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, transparent, transparent 18px, rgba(255,255,255,0.03) 18px, rgba(255,255,255,0.03) 19px); }
+  header h1 { font-family: 'Playfair Display', serif; font-size: 1.65rem; position: relative; }
+  header h1 span { color: var(--accent); }
+  header p { font-size: 0.82rem; color: rgba(255,255,255,0.6); margin-top: 4px; font-weight: 300; position: relative; }
+
+  .container { max-width: 500px; margin: 0 auto; padding: 0 14px; }
+
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); padding: 18px 16px; margin-top: 16px; }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .badge { background: var(--accent); color: #fff; border-radius: 20px; font-size: 0.65rem; font-family: 'Lato', sans-serif; font-weight: 700; padding: 2px 9px; letter-spacing: 1px; text-transform: uppercase; }
+  .badge.blue { background: var(--accent2); } .badge.green { background: var(--green); } .badge.purple { background: var(--purple); }
+
+  .method-toggle { display: flex; margin-bottom: 16px; border: 2px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .method-btn { flex: 1; padding: 10px 6px; border: none; background: var(--bg); cursor: pointer; font-family: 'Lato', sans-serif; font-size: 0.8rem; font-weight: 700; color: var(--ink2); transition: all .18s; text-align: center; line-height: 1.3; }
+  .method-btn:first-child { border-right: 2px solid var(--border); }
+  .method-btn .mname { display: block; font-size: 0.88rem; }
+  .method-btn .msub { display: block; font-size: 0.65rem; color: #aaa; margin-top: 2px; }
+  .method-btn.active-trap { background: #eaf4fb; color: var(--accent2); }
+  .method-btn.active-trap .msub { color: var(--accent2); opacity: .7; }
+  .method-btn.active-simp { background: #f3eeff; color: var(--purple); }
+  .method-btn.active-simp .msub { color: var(--purple); opacity: .7; }
+
+  .func-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .func-tab { flex: 1; min-width: 70px; background: var(--bg); border: 2px solid var(--border); border-radius: 10px; padding: 8px 4px; cursor: pointer; text-align: center; transition: all .18s; }
+  .func-tab .ftex { font-family: 'Playfair Display', serif; font-size: .9rem; color: var(--ink2); display: block; }
+  .func-tab .fdesc { font-size: 0.65rem; color: #999; margin-top: 2px; }
+  .func-tab.active-trap { border-color: var(--accent2); background: #eaf4fb; }
+  .func-tab.active-trap .ftex { color: var(--accent2); }
+  .func-tab.active-simp { border-color: var(--purple); background: #f3eeff; }
+  .func-tab.active-simp .ftex { color: var(--purple); }
+
+  .slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .slider-row label { font-size: 0.8rem; color: var(--ink2); white-space: nowrap; font-weight: 700; }
+  input[type=range] { flex: 1; height: 4px; }
+  input[type=range].trap-range { accent-color: var(--accent2); }
+  input[type=range].simp-range { accent-color: var(--purple); }
+  .n-display { font-family: 'Playfair Display', serif; font-size: 1.4rem; min-width: 30px; text-align: right; }
+  .n-display.trap-color { color: var(--accent2); }
+  .n-display.simp-color { color: var(--purple); }
+  .simp-note { font-size: 0.74rem; color: var(--purple); margin-bottom: 8px; min-height: 18px; }
+  .hidden { display: none; }
+
+  #canvas-wrap { width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: #f7f4ef; margin-bottom: 12px; }
+  canvas { display: block; width: 100%; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.74rem; color: var(--ink2); }
+  .legend-box { width: 14px; height: 10px; border-radius: 3px; }
+
+  .formula-box { background: #f0f7ff; border-left: 4px solid var(--accent2); border-radius: 0 10px 10px 0; padding: 12px 14px; margin: 10px 0; font-size: 0.88rem; line-height: 1.7; }
+  .formula-box.simp-box { background: #f5f0ff; border-left-color: var(--purple); }
+  .formula-box .fline { font-family: 'Source Code Pro', monospace; font-size: 0.83rem; color: var(--ink); }
+  .formula-box .fval { font-weight: 700; color: var(--accent2); }
+  .formula-box .fval.simp { color: var(--purple); }
+  .formula-box .fval.exact { color: var(--green); }
+  .formula-box .ferr { font-size: 0.78rem; color: #999; margin-top: 4px; }
+
+  .big-formula { text-align: center; padding: 14px 10px; font-family: 'Source Code Pro', monospace; font-size: 0.82rem; border-radius: 10px; margin: 10px 0; line-height: 2; color: var(--ink); overflow-x: auto; }
+  .big-formula.trap-bg { background: #fff8f0; border: 1px solid #f4a26155; }
+  .big-formula.simp-bg { background: #f8f4ff; border: 1px solid #7c4dbe44; }
+  .hl  { color: var(--accent); font-weight: 700; }
+  .hl2 { color: var(--accent2); font-weight: 700; }
+  .hl3 { color: var(--green); font-weight: 700; }
+  .hl4 { color: var(--purple); font-weight: 700; }
+
+  pre { background: #1a1a2e; color: #e0e8ff; border-radius: 10px; padding: 16px 14px; font-family: 'Source Code Pro', monospace; font-size: 0.76rem; line-height: 1.7; overflow-x: auto; white-space: pre; margin-top: 6px; }
+  .py-kw { color: #ff79c6; } .py-fn { color: #8be9fd; } .py-str { color: #f1fa8c; }
+  .py-cm { color: #6272a4; font-style: italic; } .py-num { color: #bd93f9; } .py-var { color: #50fa7b; }
+
+  .concept-row { display: flex; gap: 10px; margin: 8px 0; align-items: flex-start; }
+  .concept-icon { font-size: 1.4rem; min-width: 30px; text-align: center; margin-top: 2px; }
+  .concept-text { font-size: 0.82rem; color: var(--ink2); line-height: 1.6; }
+  .concept-text strong { color: var(--ink); }
+
+  .result-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .result-table th { font-size: 0.72rem; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 5px 8px; border-bottom: 2px solid var(--border); text-align: left; }
+  .result-table td { padding: 6px 8px; font-size: 0.8rem; border-bottom: 1px solid var(--border); font-family: 'Source Code Pro', monospace; }
+  .result-table tr:last-child td { border-bottom: none; }
+  .td-n { color: var(--accent); font-weight: 700; }
+  .td-val { color: var(--accent2); } .td-val-simp { color: var(--purple); } .td-err { color: #aaa; }
+
+  .copy-btn { float: right; background: #ffffff18; border: 1px solid #ffffff30; color: #ccc; border-radius: 6px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer; font-family: 'Lato', sans-serif; margin-bottom: 4px; }
+  .copy-btn:hover { background: #ffffff30; }
+  .section-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 8px; }
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Integración <span>Numérica</span></h1>
+  <p>Trapecio · Simpson · Cálculo Numérico</p>
+</header>
+
+<div class="container">
+
+  <!-- CONCEPTO -->
+  <div class="card">
+    <div class="card-title" id="conceptTitle">¿Qué es la regla del trapecio? <span class="badge">Concepto</span></div>
+    <div id="conceptBody"></div>
+    <div class="big-formula trap-bg" id="bigFormula"></div>
+  </div>
+
+  <!-- CONFIGURACIÓN -->
+  <div class="card">
+    <div class="card-title">Configuración <span class="badge blue">Interactivo</span></div>
+
+    <div class="method-toggle">
+      <button class="method-btn active-trap" id="btnTrap" onclick="setMethod('trap')">
+        <span class="mname">Trapecio</span>
+        <span class="msub">h/2 · [f₀ + 2Σ + fₙ]</span>
+      </button>
+      <button class="method-btn" id="btnSimp" onclick="setMethod('simp')">
+        <span class="mname">Simpson</span>
+        <span class="msub">h/3 · [f₀ + 4Σₒdd + 2Σₑᵥₑₙ + fₙ]</span>
+      </button>
+    </div>
+
+    <div class="section-label">Elige la función</div>
+    <div class="func-tabs" id="funcTabs">
+      <div class="func-tab active-trap" data-idx="0">
+        <span class="ftex">x²</span>
+      </div>
+      <div class="func-tab" data-idx="1">
+        <span class="ftex">sin(x)</span>
+      </div>
+      <div class="func-tab" data-idx="2">
+        <span class="ftex">x²e⁻ˣ</span>
+      </div>
+    </div>
+
+    <div class="slider-row">
+      <label>Segmentos n =</label>
+      <input type="range" id="nSlider" class="trap-range" min="1" max="20" value="4">
+      <span class="n-display trap-color" id="nVal">4</span>
+    </div>
+    <div class="simp-note hidden" id="simpNote"></div>
+
+    <div id="canvas-wrap">
+      <canvas id="myCanvas"></canvas>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-box" id="legendBox"></div>
+        <span id="legendLabel">Trapecios</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:var(--exact-fill);border:2px solid var(--green)"></div>
+        <span>Área exacta</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:var(--curve-stroke);height:3px;border-radius:2px"></div>
+        <span>f(x)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMA DETALLADA -->
+  <div class="card">
+    <div class="card-title">Suma detallada <span class="badge green">Cálculo</span></div>
+    <div class="formula-box" id="formulaBox"></div>
+    <hr class="divider">
+    <div class="section-label">Convergencia — cómo mejora con n</div>
+    <table class="result-table">
+      <thead><tr><th>n</th><th>Aprox.</th><th>Exacto</th><th>Error %</th></tr></thead>
+      <tbody id="convBody"></tbody>
+    </table>
+  </div>
+
+  <!-- PYTHON -->
+  <div class="card">
+    <div class="card-title">Código Python <span class="badge">Implementación</span></div>
+    <p style="font-size:0.8rem;color:var(--ink2);margin-bottom:10px;">
+      El mismo algoritmo con un <strong>ciclo for</strong>. La fórmula se traduce línea a línea:
+    </p>
+    <button class="copy-btn" id="copyBtn">⎘ Copiar</button>
+    <pre id="pyCode"></pre>
+    <p style="font-size:0.74rem;color:#aaa;margin-top:8px;">
+      💡 Pruébalo en <strong>Google Colab</strong> o tu terminal Python.
+    </p>
+  </div>
+
+</div>
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const FUNCS = [
+  {
+    label: 'x²', py: 'x**2',
+    fn: x => x*x,
+    a: 0, b: 2,
+    exact: (a,b) => (b**3 - a**3) / 3,
+    desc: 'Integral exacta: x³/3'
+  },
+  {
+    label: 'sin(x)', py: 'math.sin(x)',
+    fn: x => Math.sin(x),
+    a: 0, b: Math.PI,
+    exact: (a,b) => -Math.cos(b) + Math.cos(a),
+    desc: 'Integral exacta: −cos(x)'
+  },
+  {
+    label: 'x²·e⁻ˣ', py: 'x**2 * math.exp(-x)',
+    fn: x => x*x * Math.exp(-x),
+    a: 0, b: 4,
+    exact: (a,b) => {
+      const F = x => -Math.exp(-x)*(x*x + 2*x + 2);
+      return F(b) - F(a);
+    },
+    desc: 'Integral exacta: −e⁻ˣ(x²+2x+2)'
+  }
+];
+
+let funcIdx = 0;
+let n = 4;
+let method = 'trap';
+
+const canvas = document.getElementById('myCanvas');
+const ctx = canvas.getContext('2d');
+
+// ─── METHOD ───────────────────────────────────────────────────────────────────
+function setMethod(m) {
+  method = m;
+  if (method === 'simp' && n % 2 !== 0) { n++; }
+  updateMethodUI();
+  render();
+}
+
+function updateMethodUI() {
+  const isTrap = method === 'trap';
+  document.getElementById('btnTrap').className = 'method-btn' + (isTrap ? ' active-trap' : '');
+  document.getElementById('btnSimp').className = 'method-btn' + (!isTrap ? ' active-simp' : '');
+
+  const slider = document.getElementById('nSlider');
+  slider.min = isTrap ? 1 : 2;
+  slider.step = isTrap ? 1 : 2;
+  slider.className = isTrap ? 'trap-range' : 'simp-range';
+  slider.value = n;
+
+  document.getElementById('nVal').className = 'n-display ' + (isTrap ? 'trap-color' : 'simp-color');
+  document.getElementById('nVal').textContent = n;
+
+  const note = document.getElementById('simpNote');
+  note.className = isTrap ? 'simp-note hidden' : 'simp-note';
+  note.textContent = isTrap ? '' : '⚠ Simpson requiere n par — el slider avanza de 2 en 2';
+
+  document.querySelectorAll('.func-tab').forEach(t => {
+    t.classList.remove('active-trap', 'active-simp');
+    if (parseInt(t.dataset.idx) === funcIdx) t.classList.add(isTrap ? 'active-trap' : 'active-simp');
+  });
+
+  const lb = document.getElementById('legendBox');
+  lb.style.background = isTrap ? 'var(--trap-fill)' : 'var(--simp-fill)';
+  lb.style.border = '2px solid ' + (isTrap ? 'var(--trap-stroke)' : 'var(--simp-stroke)');
+  document.getElementById('legendLabel').textContent = isTrap ? 'Trapecios' : 'Parábolas (Simpson)';
+
+  document.getElementById('formulaBox').className = isTrap ? 'formula-box' : 'formula-box simp-box';
+
+  // concept card
+  document.getElementById('conceptTitle').innerHTML = isTrap
+    ? '¿Qué es la regla del trapecio? <span class="badge">Concepto</span>'
+    : '¿Qué es la regla de Simpson? <span class="badge purple">Concepto</span>';
+
+  document.getElementById('conceptBody').innerHTML = isTrap ? `
+    <div class="concept-row">
+      <div class="concept-icon">📐</div>
+      <div class="concept-text">Aproximamos el área bajo una curva usando <strong>trapecios</strong>. Más segmentos = mayor precisión.</div>
+    </div>
+    <div class="concept-row">
+      <div class="concept-icon">➗</div>
+      <div class="concept-text">Dividimos <strong>[a, b]</strong> en <em>n</em> segmentos de ancho <em>h = (b−a)/n</em> y sumamos el área de cada trapecio.</div>
+    </div>` : `
+    <div class="concept-row">
+      <div class="concept-icon">🔵</div>
+      <div class="concept-text">En vez de líneas rectas, usamos <strong>parábolas</strong> para aproximar la curva entre cada par de segmentos. Más preciso que el trapecio.</div>
+    </div>
+    <div class="concept-row">
+      <div class="concept-icon">⚡</div>
+      <div class="concept-text">Los puntos interiores <strong>impares</strong> se multiplican por <strong>4</strong> y los <strong>pares</strong> por <strong>2</strong>. <em>n debe ser par.</em></div>
+    </div>`;
+
+  const bf = document.getElementById('bigFormula');
+  if (isTrap) {
+    bf.className = 'big-formula trap-bg';
+    bf.innerHTML = `<span class="hl2">I</span> ≈ <span class="hl">(h/2)</span> × [<span class="hl3">f(x₀)</span> + 2·<span class="hl2">Σ f(xᵢ)</span> + <span class="hl3">f(xₙ)</span>]<br>
+      <span style="font-size:.72rem;color:#aaa">h = (b−a)/n &nbsp;|&nbsp; i = 1, 2, ..., n−1</span>`;
+  } else {
+    bf.className = 'big-formula simp-bg';
+    bf.innerHTML = `<span class="hl4">I</span> ≈ <span class="hl">(h/3)</span> × [<span class="hl3">f(x₀)</span> + 4·<span class="hl4">Σ f(xₒdd)</span> + 2·<span class="hl2">Σ f(xₑᵥₑₙ)</span> + <span class="hl3">f(xₙ)</span>]<br>
+      <span style="font-size:.72rem;color:#aaa">h = (b−a)/n &nbsp;|&nbsp; n par &nbsp;|&nbsp; odd: i=1,3,5… &nbsp;even: i=2,4,6…</span>`;
+  }
+}
+
+// ─── NUMERICS ─────────────────────────────────────────────────────────────────
+function calcTrap(fn, a, b, n) {
+  const h = (b - a) / n;
+  let s = fn(a) + fn(b);
+  for (let i = 1; i < n; i++) s += 2 * fn(a + i * h);
+  return (h / 2) * s;
+}
+
+function calcSimp(fn, a, b, n) {
+  const h = (b - a) / n;
+  let s = fn(a) + fn(b);
+  for (let i = 1; i < n; i++) s += (i % 2 === 1 ? 4 : 2) * fn(a + i * h);
+  return (h / 3) * s;
+}
+
+function calc(fn, a, b, ni) {
+  return method === 'trap' ? calcTrap(fn, a, b, ni) : calcSimp(fn, a, b, ni % 2 === 0 ? ni : ni + 1);
+}
+
+// ─── DRAW ─────────────────────────────────────────────────────────────────────
+function draw() {
+  const wrap = document.getElementById('canvas-wrap');
+  const W = wrap.clientWidth;
+  const H = Math.round(W * 0.56);
+  canvas.width = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.height = H + 'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  const f = FUNCS[funcIdx];
+  const pad = { l: 42, r: 14, t: 14, b: 32 };
+  const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+  const a = f.a, b = f.b;
+
+  let yMin = 0, yMax = 0;
+  for (let i = 0; i <= 200; i++) {
+    const y = f.fn(a + (b-a)*i/200);
+    if (y < yMin) yMin = y; if (y > yMax) yMax = y;
+  }
+  const yr = yMax - yMin || 1;
+  yMin -= 0.05*yr; yMax += 0.18*yr;
+
+  const toX = v => pad.l + (v-a)/(b-a)*pw;
+  const toY = v => pad.t + (1-(v-yMin)/(yMax-yMin))*ph;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#f7f4ef'; ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle = '#e6e0d6'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const yv = yMin + (yMax-yMin)*i/4, cy = toY(yv);
+    ctx.beginPath(); ctx.moveTo(pad.l, cy); ctx.lineTo(pad.l+pw, cy); ctx.stroke();
+    ctx.fillStyle = '#bbb'; ctx.font = '9px Lato'; ctx.textAlign = 'right';
+    ctx.fillText(yv.toFixed(2), pad.l-3, cy+3);
+  }
+  ctx.textAlign = 'left';
+
+  // exact area
+  ctx.beginPath(); ctx.moveTo(toX(a), toY(0));
+  for (let i = 0; i <= 200; i++) { const xv = a+(b-a)*i/200; ctx.lineTo(toX(xv), toY(f.fn(xv))); }
+  ctx.lineTo(toX(b), toY(0)); ctx.closePath();
+  ctx.fillStyle = 'rgba(42,157,143,0.13)'; ctx.fill();
+
+  const h = (b-a)/n;
+  if (method === 'trap') {
+    for (let i = 0; i < n; i++) {
+      const x0=a+i*h, x1=x0+h;
+      ctx.beginPath();
+      ctx.moveTo(toX(x0),toY(0)); ctx.lineTo(toX(x0),toY(f.fn(x0)));
+      ctx.lineTo(toX(x1),toY(f.fn(x1))); ctx.lineTo(toX(x1),toY(0));
+      ctx.closePath();
+      ctx.fillStyle='rgba(69,123,157,0.22)'; ctx.strokeStyle='#457b9d'; ctx.lineWidth=1.3;
+      ctx.fill(); ctx.stroke();
+    }
+  } else {
+    for (let i = 0; i < n; i += 2) {
+      const x0=a+i*h, x1=x0+h, x2=x0+2*h;
+      const y0=f.fn(x0), y1=f.fn(x1), y2=f.fn(x2);
+      ctx.beginPath(); ctx.moveTo(toX(x0), toY(0)); ctx.lineTo(toX(x0), toY(y0));
+      for (let s = 0; s <= 30; s++) {
+        const t = s/30, xv = x0+2*h*t;
+        const L0=(xv-x1)*(xv-x2)/((x0-x1)*(x0-x2));
+        const L1=(xv-x0)*(xv-x2)/((x1-x0)*(x1-x2));
+        const L2=(xv-x0)*(xv-x1)/((x2-x0)*(x2-x1));
+        ctx.lineTo(toX(xv), toY(y0*L0+y1*L1+y2*L2));
+      }
+      ctx.lineTo(toX(x2), toY(0)); ctx.closePath();
+      ctx.fillStyle='rgba(124,77,190,0.18)'; ctx.strokeStyle='#7c4dbe'; ctx.lineWidth=1.3;
+      ctx.fill(); ctx.stroke();
+      [x0,x1,x2].forEach(xv => {
+        ctx.beginPath(); ctx.moveTo(toX(xv),toY(0)); ctx.lineTo(toX(xv),toY(f.fn(xv)));
+        ctx.strokeStyle='#7c4dbe44'; ctx.lineWidth=1; ctx.stroke();
+      });
+    }
+  }
+
+  // axes
+  ctx.strokeStyle='#888'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,pad.t+ph); ctx.lineTo(pad.l+pw,pad.t+ph); ctx.stroke();
+
+  // x labels
+  ctx.fillStyle='#888'; ctx.font='9px Source Code Pro';
+  for (let i = 0; i <= n; i++) {
+    const cx = toX(a+(b-a)*i/n);
+    ctx.beginPath(); ctx.moveTo(cx,toY(0)); ctx.lineTo(cx,toY(0)+4); ctx.stroke();
+    ctx.textAlign='center'; ctx.fillText('x'+i, cx, toY(0)+14);
+  }
+  ctx.textAlign='left';
+
+  // curve
+  ctx.beginPath(); ctx.strokeStyle='#e63946'; ctx.lineWidth=2.5;
+  for (let i = 0; i <= 200; i++) {
+    const xv = a+(b-a)*i/200;
+    if (i===0) ctx.moveTo(toX(xv),toY(f.fn(xv))); else ctx.lineTo(toX(xv),toY(f.fn(xv)));
+  }
+  ctx.stroke();
+
+  ctx.fillStyle='#e63946'; ctx.font='bold 11px Playfair Display';
+  ctx.fillText('f(x) = '+f.label, pad.l+6, pad.t+14);
+}
+
+// ─── FORMULA DETAIL ───────────────────────────────────────────────────────────
+function updateFormula() {
+  const f = FUNCS[funcIdx];
+  const a=f.a, b=f.b, h=(b-a)/n;
+  const exact = f.exact(a,b);
+  const isTrap = method === 'trap';
+  const approx = isTrap ? calcTrap(f.fn,a,b,n) : calcSimp(f.fn,a,b,n);
+  const err = Math.abs((approx-exact)/exact*100);
+  const pts = Array.from({length:n+1},(_,i)=>a+i*h);
+  const vc = isTrap ? '' : ' simp';
+
+  let html = `<div class="fline"><strong>h</strong> = (${b.toFixed(3)} − ${a}) / ${n} = <span class="fval${vc}">${h.toFixed(4)}</span></div>`;
+  html += `<div class="fline" style="margin-top:8px">`;
+
+  if (isTrap) {
+    let total = f.fn(pts[0]);
+    html += `&nbsp;&nbsp;&nbsp;f(x₀) = ${f.fn(pts[0]).toFixed(4)}<br>`;
+    for (let i=1; i<n; i++) {
+      const vi = f.fn(pts[i]);
+      total += 2*vi;
+      html += `+ 2·f(x${i}) = ${(2*vi).toFixed(4)}<br>`;
+    }
+    total += f.fn(pts[n]);
+    html += `+ &nbsp;f(x${n}) = ${f.fn(pts[n]).toFixed(4)}`;
+    html += `</div>`;
+    html += `<div class="fline" style="margin-top:6px;border-top:1px solid #cde;padding-top:6px">Suma = <span class="fval">${total.toFixed(4)}</span></div>`;
+    html += `<div class="fline" style="margin-top:6px"><strong>I ≈</strong> (${h.toFixed(4)} / 2) × ${total.toFixed(4)} = <span class="fval">${approx.toFixed(6)}</span></div>`;
+  } else {
+    let total = f.fn(pts[0]);
+    html += `&nbsp;&nbsp;&nbsp;f(x₀) = ${f.fn(pts[0]).toFixed(4)}<br>`;
+    for (let i=1; i<n; i++) {
+      const vi = f.fn(pts[i]);
+      const coef = i%2===1 ? 4 : 2;
+      total += coef*vi;
+      html += `+ ${coef}·f(x${i}) = ${(coef*vi).toFixed(4)}<br>`;
+    }
+    total += f.fn(pts[n]);
+    html += `+ &nbsp;f(x${n}) = ${f.fn(pts[n]).toFixed(4)}`;
+    html += `</div>`;
+    html += `<div class="fline" style="margin-top:6px;border-top:1px solid #e0d8ff;padding-top:6px">Suma = <span class="fval simp">${total.toFixed(4)}</span></div>`;
+    html += `<div class="fline" style="margin-top:6px"><strong>I ≈</strong> (${h.toFixed(4)} / 3) × ${total.toFixed(4)} = <span class="fval simp">${approx.toFixed(6)}</span></div>`;
+  }
+
+  html += `<div class="fline" style="margin-top:6px"><strong>Exacto:</strong> <span class="fval exact">${exact.toFixed(6)}</span> &nbsp;<em style="font-size:.75rem;color:#888">${f.desc}</em></div>`;
+  html += `<div class="ferr">Error: ${err.toFixed(4)}%</div>`;
+  document.getElementById('formulaBox').innerHTML = html;
+}
+
+// ─── CONV TABLE ───────────────────────────────────────────────────────────────
+function updateConvTable() {
+  const f = FUNCS[funcIdx];
+  const exact = f.exact(f.a, f.b);
+  const isTrap = method === 'trap';
+  const ns = isTrap ? [1,2,4,8,16] : [2,4,8,16,32];
+  const tbody = document.getElementById('convBody');
+  tbody.innerHTML = '';
+  ns.forEach(ni => {
+    const ap = isTrap ? calcTrap(f.fn,f.a,f.b,ni) : calcSimp(f.fn,f.a,f.b,ni);
+    const err = Math.abs((ap-exact)/exact*100);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="td-n">${ni}</td><td class="${isTrap?'td-val':'td-val-simp'}">${ap.toFixed(6)}</td><td style="color:var(--green)">${exact.toFixed(6)}</td><td class="td-err">${err.toFixed(4)}%</td>`;
+    if (ni === n) tr.style.fontWeight = '700';
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── PYTHON ───────────────────────────────────────────────────────────────────
+function updatePython() {
+  const f = FUNCS[funcIdx];
+  const imp = f.py.includes('math.') ? '<span class="py-kw">import</span> <span class="py-fn">math</span>\n\n' : '';
+  const bStr = f.b === Math.PI ? 'math.pi' : f.b.toString();
+  const isTrap = method === 'trap';
+
+  const code = isTrap ?
+`${imp}<span class="py-kw">def</span> <span class="py-fn">f</span>(<span class="py-var">x</span>):
+    <span class="py-kw">return</span> ${f.py}
+
+<span class="py-var">a</span>, <span class="py-var">b</span>, <span class="py-var">n</span> = ${f.a}, ${bStr}, ${n}
+
+<span class="py-var">h</span> = (<span class="py-var">b</span> - <span class="py-var">a</span>) / <span class="py-var">n</span>
+<span class="py-var">suma</span> = <span class="py-fn">f</span>(<span class="py-var">a</span>) + <span class="py-fn">f</span>(<span class="py-var">b</span>)        <span class="py-cm"># extremos</span>
+
+<span class="py-kw">for</span> <span class="py-var">i</span> <span class="py-kw">in</span> <span class="py-fn">range</span>(<span class="py-num">1</span>, <span class="py-var">n</span>):       <span class="py-cm"># puntos interiores</span>
+    <span class="py-var">xi</span> = <span class="py-var">a</span> + <span class="py-var">i</span> * <span class="py-var">h</span>
+    <span class="py-var">suma</span> = <span class="py-var">suma</span> + <span class="py-num">2</span> * <span class="py-fn">f</span>(<span class="py-var">xi</span>)
+
+<span class="py-var">resultado</span> = (<span class="py-var">h</span> / <span class="py-num">2</span>) * <span class="py-var">suma</span>
+<span class="py-fn">print</span>(<span class="py-var">resultado</span>)` :
+`${imp}<span class="py-kw">def</span> <span class="py-fn">f</span>(<span class="py-var">x</span>):
+    <span class="py-kw">return</span> ${f.py}
+
+<span class="py-var">a</span>, <span class="py-var">b</span>, <span class="py-var">n</span> = ${f.a}, ${bStr}, ${n}  <span class="py-cm"># n debe ser par</span>
+
+<span class="py-var">h</span> = (<span class="py-var">b</span> - <span class="py-var">a</span>) / <span class="py-var">n</span>
+<span class="py-var">suma</span> = <span class="py-fn">f</span>(<span class="py-var">a</span>) + <span class="py-fn">f</span>(<span class="py-var">b</span>)        <span class="py-cm"># extremos</span>
+
+<span class="py-kw">for</span> <span class="py-var">i</span> <span class="py-kw">in</span> <span class="py-fn">range</span>(<span class="py-num">1</span>, <span class="py-var">n</span>):
+    <span class="py-var">xi</span> = <span class="py-var">a</span> + <span class="py-var">i</span> * <span class="py-var">h</span>
+    <span class="py-kw">if</span> <span class="py-var">i</span> % <span class="py-num">2</span> == <span class="py-num">1</span>:          <span class="py-cm"># índice impar → ×4</span>
+        <span class="py-var">suma</span> = <span class="py-var">suma</span> + <span class="py-num">4</span> * <span class="py-fn">f</span>(<span class="py-var">xi</span>)
+    <span class="py-kw">else</span>:                    <span class="py-cm"># índice par → ×2</span>
+        <span class="py-var">suma</span> = <span class="py-var">suma</span> + <span class="py-num">2</span> * <span class="py-fn">f</span>(<span class="py-var">xi</span>)
+
+<span class="py-var">resultado</span> = (<span class="py-var">h</span> / <span class="py-num">3</span>) * <span class="py-var">suma</span>
+<span class="py-fn">print</span>(<span class="py-var">resultado</span>)`;
+
+  document.getElementById('pyCode').innerHTML = code;
+}
+
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
+document.getElementById('funcTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.func-tab');
+  if (!tab) return;
+  funcIdx = parseInt(tab.dataset.idx);
+  document.querySelectorAll('.func-tab').forEach(t => t.classList.remove('active-trap','active-simp'));
+  tab.classList.add(method === 'trap' ? 'active-trap' : 'active-simp');
+  render();
+});
+
+document.getElementById('nSlider').addEventListener('input', e => {
+  n = parseInt(e.target.value);
+  if (method === 'simp' && n % 2 !== 0) n++;
+  document.getElementById('nVal').textContent = n;
+  render();
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('pyCode').innerText).then(() => {
+    document.getElementById('copyBtn').textContent = '✓ Copiado!';
+    setTimeout(() => document.getElementById('copyBtn').textContent = '⎘ Copiar', 2000);
+  });
+});
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  draw();
+  updateFormula();
+  updateConvTable();
+  updatePython();
+}
+
+window.addEventListener('resize', render);
+updateMethodUI();
+render();
+</script>
+</body>
+</html>
