@@ -169,6 +169,26 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
     </div>
     <div id="panel-t">
       <div id="plt-traj" style="height:240px;width:100%"></div>
+      <div class="cv-foot" style="justify-content:space-between;align-items:center">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="leg"><div class="leg-l" style="background:#1d6b5c"></div><em>P. aeruginosa</em></div>
+          <div class="leg"><div class="leg-l" style="background:#b83232"></div><em>P. fluorescens</em></div>
+          <div class="leg"><div class="leg-l" style="background:#2c5f8a"></div>S(t)</div>
+          <div class="leg"><div class="leg-l" style="background:rgba(107,58,138,0.6);border-top:2px dashed rgba(107,58,138,0.6);height:0;width:16px"></div>D(t)</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button id="btn-S" onclick="toggleSerie('S')"
+            style="font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:5px;
+                   border:1px solid #2c5f8a;background:var(--bluL);color:#2c5f8a;cursor:pointer">
+            S ✓
+          </button>
+          <button id="btn-D" onclick="toggleSerie('D')"
+            style="font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:5px;
+                   border:1px solid rgba(107,58,138,0.6);background:var(--purL);color:var(--pur);cursor:pointer">
+            D ✓
+          </button>
+        </div>
+      </div>
     </div>
     <div id="panel-m" style="display:none">
       <div id="plt-monod" style="height:240px;width:100%"></div>
@@ -241,6 +261,32 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
     </div>
   </div>
   <div class="alert" id="alert-box"></div>
+
+  <!-- Chesson criterion -->
+  <div id="chesson-box" style="margin-top:8px;display:none">
+    <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;
+                letter-spacing:0.1em;color:var(--ink3);margin-bottom:6px">
+      Criterio de Chesson — invasibilidad mutua
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div style="background:var(--surf);border:1px solid var(--brd);border-radius:9px;padding:8px 10px">
+        <div style="font-family:var(--mono);font-size:8px;text-transform:uppercase;
+                    letter-spacing:0.07em;color:var(--ink3);margin-bottom:3px">
+          x₁ invade E₂: μ₁(S₂*)&gt;D₂*
+        </div>
+        <div id="ch-r1" style="font-family:var(--mono);font-size:12px;font-weight:700">—</div>
+      </div>
+      <div style="background:var(--surf);border:1px solid var(--brd);border-radius:9px;padding:8px 10px">
+        <div style="font-family:var(--mono);font-size:8px;text-transform:uppercase;
+                    letter-spacing:0.07em;color:var(--ink3);margin-bottom:3px">
+          x₂ invade E₁: μ₂(S₁*)&gt;D₁*
+        </div>
+        <div id="ch-r2" style="font-family:var(--mono);font-size:12px;font-weight:700">—</div>
+      </div>
+    </div>
+    <div id="ch-verdict" style="margin-top:6px;padding:7px 10px;border-radius:7px;
+         font-family:var(--mono);font-size:10px;display:none"></div>
+  </div>
 </div>
 
 <!-- Accordion -->
@@ -400,6 +446,92 @@ function perturbar(){
 }
 
 // ── Stats & alert ─────────────────────────────────────
+// ── Equilibrium solvers for Chesson ───────────────────
+// Solve E1: mu1(S1*) = D1* = a0+a1*x1*, x1* = Y1*(Sin-S1*)
+function solveE1chesson(){
+  const f=S=>mu1(S)-P.a0-P.a1*P.Y1*(P.Sin-S);
+  if(f(0.001)*f(P.Sin-0.001)>0) return null;
+  let lo=0.001,hi=P.Sin-0.001;
+  for(let i=0;i<80;i++){const m=(lo+hi)/2; f(lo)*f(m)<0?hi=m:lo=m;}
+  const S1=(lo+hi)/2, x1=P.Y1*(P.Sin-S1), D1=P.a0+P.a1*x1;
+  return x1>1e-4?{S:S1,x:x1,D:D1}:null;
+}
+// Solve E2: mu2(S2*) = D2* = a0+a2*x2*, x2* = Y2*(Sin-S2*)
+function solveE2chesson(){
+  const f=S=>mu2(S)-P.a0-P.a2*P.Y2*(P.Sin-S);
+  if(f(0.001)*f(P.Sin-0.001)>0) return null;
+  let lo=0.001,hi=P.Sin-0.001;
+  for(let i=0;i<80;i++){const m=(lo+hi)/2; f(lo)*f(m)<0?hi=m:lo=m;}
+  const S2=(lo+hi)/2, x2=P.Y2*(P.Sin-S2), D2=P.a0+P.a2*x2;
+  return x2>1e-4?{S:S2,x:x2,D:D2}:null;
+}
+
+function updateChesson(){
+  const box=document.getElementById('chesson-box');
+  const e1=solveE1chesson(), e2=solveE2chesson();
+
+  if(!e1&&!e2){box.style.display='none';return;}
+  box.style.display='block';
+
+  const r1el=document.getElementById('ch-r1');
+  const r2el=document.getElementById('ch-r2');
+  const verd=document.getElementById('ch-verdict');
+
+  // Chesson condition 1: x1 can invade E2 — mu1(S2*) > D2*
+  let c1=null;
+  if(e2){
+    const val=mu1(e2.S)-e2.D;
+    c1=val>0;
+    r1el.textContent=(val>0?'✓ ':'✗ ')+
+      'μ₁(S₂*)='+mu1(e2.S).toFixed(4)+
+      (val>0?' > ':' ≤ ')+'D₂*='+e2.D.toFixed(4);
+    r1el.style.color=val>0?'var(--grn)':'var(--red)';
+  } else {
+    r1el.textContent='E₂ no existe';
+    r1el.style.color='var(--ink3)';
+  }
+
+  // Chesson condition 2: x2 can invade E1 — mu2(S1*) > D1*
+  let c2=null;
+  if(e1){
+    const val=mu2(e1.S)-e1.D;
+    c2=val>0;
+    r2el.textContent=(val>0?'✓ ':'✗ ')+
+      'μ₂(S₁*)='+mu2(e1.S).toFixed(4)+
+      (val>0?' > ':' ≤ ')+'D₁*='+e1.D.toFixed(4);
+    r2el.style.color=val>0?'var(--red)':'var(--ink3)';
+  } else {
+    r2el.textContent='E₁ no existe';
+    r2el.style.color='var(--ink3)';
+  }
+
+  // Verdict
+  verd.style.display='block';
+  if(c1===true&&c2===true){
+    verd.style.background='var(--purL)';
+    verd.style.color='var(--pur)';
+    verd.style.border='1px solid #c8a8dc';
+    verd.textContent='✓ Criterio de Chesson satisfecho — ambas especies pueden invadir: coexistencia posible';
+  } else if(c1===false&&c2===true){
+    verd.style.background='var(--redL)';
+    verd.style.color='var(--red)';
+    verd.style.border='1px solid #e0b0b0';
+    verd.textContent='✗ Solo x₂ puede invadir — P. fluorescens excluye a P. aeruginosa';
+  } else if(c1===true&&c2===false){
+    verd.style.background='var(--grnL)';
+    verd.style.color='var(--grn)';
+    verd.style.border='1px solid #a8d4cc';
+    verd.textContent='✗ Solo x₁ puede invadir — P. aeruginosa excluye a P. fluorescens';
+  } else if(c1===false&&c2===false){
+    verd.style.background='var(--ambL)';
+    verd.style.color='var(--amb)';
+    verd.style.border='1px solid #e8c880';
+    verd.textContent='✗ Ninguna especie puede invadir — el resultado depende de las condiciones iniciales';
+  } else {
+    verd.style.display='none';
+  }
+}
+
 function refreshStats(){
   if(!sim||sim.x1s.length<2){
     document.getElementById('st-x1').textContent='—';
@@ -431,6 +563,21 @@ function refreshStats(){
     al.className='alert show stable';
     al.textContent='Simulando…';
   }
+  updateChesson();
+}
+
+let showS=true, showD=true;
+
+function toggleSerie(key){
+  if(key==='S') showS=!showS;
+  else           showD=!showD;
+  const btnS=document.getElementById('btn-S');
+  const btnD=document.getElementById('btn-D');
+  btnS.textContent = showS ? 'S ✓' : 'S ✗';
+  btnS.style.opacity = showS ? '1' : '0.45';
+  btnD.textContent = showD ? 'D ✓' : 'D ✗';
+  btnD.style.opacity = showD ? '1' : '0.45';
+  drawTraj();
 }
 
 // ── Time series ───────────────────────────────────────
@@ -525,22 +672,32 @@ function drawTraj(){
     ctx.textAlign='center';ctx.fillText('Presiona ▶ Simular',W/2,H/2); return;
   }
 
-  const pad={l:42,r:44,t:12,b:28};
+  const pad={l:42,r:showD?44:12,t:12,b:28};
   const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
   const tmax=Math.max(sim.ts[sim.ts.length-1],60);
-  const ymax=Math.max(...sim.x1s,...sim.x2s,...sim.Ss,P.Sin)*1.1;
+
+  // ymax: include S only if shown
+  const vals=[...sim.x1s,...sim.x2s];
+  if(showS) vals.push(...sim.Ss,P.Sin);
+  const ymax=Math.max(...vals)*1.1||1;
   const Dmax=Math.max(...sim.Ds)*1.4||0.1;
   const tx=t=>pad.l+pw*(t/tmax);
   const ty=v=>pad.t+ph*(1-Math.min(v,ymax)/ymax);
   const tyD=v=>pad.t+ph*(1-v/Dmax);
 
   drawGrid(ctx,pad,W,H,0,tmax,0,ymax,4,4,v=>v.toFixed(0),v=>v.toFixed(1));
-  // right axis D labels
-  ctx.fillStyle='rgba(107,58,138,0.5)'; ctx.font='9px Space Mono,monospace'; ctx.textAlign='left';
-  for(let i=0;i<=4;i++) ctx.fillText((Dmax*(1-i/4)).toFixed(3),pad.l+pw+3,pad.t+ph*i/4+3);
 
-  drawLine(ctx,sim.ts,sim.Ds,tx,tyD,'rgba(107,58,138,0.6)',1.5,true);
-  drawLine(ctx,sim.ts,sim.Ss,tx,ty,'#2c5f8a',2);
+  // right axis D labels (only if shown)
+  if(showD){
+    ctx.fillStyle='rgba(107,58,138,0.5)'; ctx.font='9px Space Mono,monospace'; ctx.textAlign='left';
+    for(let i=0;i<=4;i++) ctx.fillText((Dmax*(1-i/4)).toFixed(3),pad.l+pw+3,pad.t+ph*i/4+3);
+    drawLine(ctx,sim.ts,sim.Ds,tx,tyD,'rgba(107,58,138,0.6)',1.5,true);
+    ctx.fillStyle='rgba(107,58,138,0.5)';
+    ctx.save();ctx.translate(W-5,pad.t+ph/2);ctx.rotate(Math.PI/2);
+    ctx.font='9px Space Mono,monospace';ctx.fillText('D(h⁻¹)',0,0);ctx.restore();
+  }
+
+  if(showS) drawLine(ctx,sim.ts,sim.Ss,tx,ty,'#2c5f8a',2);
   drawLine(ctx,sim.ts,sim.x2s,tx,ty,'#b83232',2.2);
   drawLine(ctx,sim.ts,sim.x1s,tx,ty,'#1d6b5c',2.5);
 
@@ -552,17 +709,7 @@ function drawTraj(){
   // axis labels
   ctx.fillStyle='#aaa';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
   ctx.fillText('t (h)',pad.l+pw/2,H-2);
-  ctx.save();ctx.translate(10,pad.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('g/L',0,0);ctx.restore();
-  ctx.fillStyle='rgba(107,58,138,0.5)';
-  ctx.save();ctx.translate(W-5,pad.t+ph/2);ctx.rotate(Math.PI/2);ctx.fillText('D(h⁻¹)',0,0);ctx.restore();
-
-  // legend
-  const legs=[['x₁','#1d6b5c'],['x₂','#b83232'],['S','#2c5f8a'],['D','rgba(107,58,138,0.6)']];
-  legs.forEach(([lbl,col],i)=>{
-    ctx.fillStyle=col;ctx.fillRect(pad.l+pw-80,pad.t+6+i*13,14,2.5);
-    ctx.fillStyle='#6b6560';ctx.font='8px Space Mono,monospace';ctx.textAlign='left';
-    ctx.fillText(lbl,pad.l+pw-62,pad.t+9+i*13);
-  });
+  ctx.save();ctx.translate(10,pad.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('mg/L',0,0);ctx.restore();
 }
 
 // ── 3D phase portrait (isometric canvas) ─────────────
@@ -881,6 +1028,7 @@ function toggleAcc(){
 // ── Init ──────────────────────────────────────────────
 window.addEventListener('resize',()=>{cellPool1=[];cellPool2=[];redrawActive();});
 refreshStats();redrawActive();drawReactor();
+updateChesson();
 setTimeout(()=>{if(window.MathJax)MathJax.typesetPromise();},400);
 </script>
 </body>
