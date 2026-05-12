@@ -139,13 +139,13 @@
     <div class="section-label">Elige la función</div>
     <div class="func-tabs" id="funcTabs">
       <div class="func-tab active-trap" data-idx="0">
-        <span class="ftex">x²</span>
+        <span class="ftex">x<sup>2</sup></span>
       </div>
       <div class="func-tab" data-idx="1">
         <span class="ftex">sin(x)</span>
       </div>
       <div class="func-tab" data-idx="2">
-        <span class="ftex">x²e⁻ˣ</span>
+        <span class="ftex">x<sup>2</sup>e<sup>-x</sup></span>
       </div>
     </div>
 
@@ -207,11 +207,11 @@
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const FUNCS = [
   {
-    label: 'x²', py: 'x**2',
+    label: 'x^2', py: 'x**2',
     fn: x => x*x,
     a: 0, b: 2,
     exact: (a,b) => (b**3 - a**3) / 3,
-    desc: 'Integral exacta: x³/3'
+    desc: 'Integral exacta: x^3/3'
   },
   {
     label: 'sin(x)', py: 'math.sin(x)',
@@ -221,14 +221,14 @@ const FUNCS = [
     desc: 'Integral exacta: −cos(x)'
   },
   {
-    label: 'x²·e⁻ˣ', py: 'x**2 * math.exp(-x)',
+    label: 'x^2·e^(-x)', py: 'x**2 * math.exp(-x)',
     fn: x => x*x * Math.exp(-x),
     a: 0, b: 4,
     exact: (a,b) => {
       const F = x => -Math.exp(-x)*(x*x + 2*x + 2);
       return F(b) - F(a);
     },
-    desc: 'Integral exacta: −e⁻ˣ(x²+2x+2)'
+    desc: 'Integral exacta: -e^(-x)(x^2+2x+2)'
   }
 ];
 
