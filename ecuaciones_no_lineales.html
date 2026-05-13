@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Búsqueda de Raíces</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Code+Pro:wght@400;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf8f4; --card: #fff; --ink: #1a1a2e; --ink2: #444466;
+    --red: #e63946; --blue: #457b9d; --green: #2a9d8f; --orange: #f4a261;
+    --purple: #7c4dbe; --border: #e0dbd0;
+    --shadow: 0 2px 16px rgba(30,30,60,0.09); --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Lato', sans-serif; font-size: 15px; padding-bottom: 40px; }
+
+  header { background: var(--ink); color: #fff; padding: 22px 20px 16px; text-align: center; position: relative; overflow: hidden; }
+  header::before { content:''; position:absolute; inset:0; background: repeating-linear-gradient(135deg,transparent,transparent 18px,rgba(255,255,255,.03) 18px,rgba(255,255,255,.03) 19px); }
+  header h1 { font-family:'Playfair Display',serif; font-size:1.65rem; position:relative; }
+  header h1 span { color: var(--red); }
+  header p { font-size:.82rem; color:rgba(255,255,255,.6); margin-top:4px; font-weight:300; position:relative; }
+
+  .container { max-width:500px; margin:0 auto; padding:0 14px; }
+
+  .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--border); padding:18px 16px; margin-top:16px; }
+  .card-title { font-family:'Playfair Display',serif; font-size:1.05rem; margin-bottom:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .badge { color:#fff; border-radius:20px; font-size:.65rem; font-family:'Lato',sans-serif; font-weight:700; padding:2px 9px; letter-spacing:1px; text-transform:uppercase; }
+  .badge-red { background:var(--red); } .badge-blue { background:var(--blue); } .badge-green { background:var(--green); }
+
+  /* METHOD TABS */
+  .method-toggle { display:flex; border:2px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+  .method-btn { flex:1; padding:11px 6px; border:none; background:var(--bg); cursor:pointer; font-family:'Lato',sans-serif; font-size:.82rem; font-weight:700; color:var(--ink2); transition:all .18s; text-align:center; }
+  .method-btn:first-child { border-right:2px solid var(--border); }
+  .method-btn.active-nr  { background:#fff0f0; color:var(--red); }
+  .method-btn.active-bis { background:#eaf4fb; color:var(--blue); }
+
+  /* FUNC TABS */
+  .func-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .func-tab { flex:1; min-width:70px; background:var(--bg); border:2px solid var(--border); border-radius:10px; padding:8px 6px; cursor:pointer; text-align:center; transition:all .18s; font-family:'Playfair Display',serif; font-size:.9rem; color:var(--ink2); }
+  .func-tab.active-nr  { border-color:var(--red);  background:#fff0f0; color:var(--red); }
+  .func-tab.active-bis { border-color:var(--blue); background:#eaf4fb; color:var(--blue); }
+
+  /* CONTROLS */
+  .control-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .control-row label { font-size:.8rem; color:var(--ink2); font-weight:700; white-space:nowrap; min-width:30px; }
+  .control-row input[type=range] { flex:1; height:4px; accent-color:var(--red); }
+  .control-row input[type=range].blue { accent-color:var(--blue); }
+  .val-display { font-family:'Source Code Pro',monospace; font-size:1rem; font-weight:700; min-width:44px; text-align:right; }
+  .val-display.red { color:var(--red); } .val-display.blue { color:var(--blue); }
+
+  /* CANVAS */
+  #canvas-wrap { width:100%; border-radius:10px; overflow:hidden; border:1px solid var(--border); background:#f7f4ef; margin-bottom:12px; }
+  canvas { display:block; width:100%; }
+
+  /* STEP BUTTON */
+  .step-btn { width:100%; padding:12px; border:none; border-radius:10px; font-family:'Lato',sans-serif; font-size:.9rem; font-weight:700; cursor:pointer; transition:all .15s; letter-spacing:.5px; margin-bottom:10px; }
+  .step-btn.red  { background:var(--red);  color:#fff; }
+  .step-btn.red:hover  { background:#c1121f; }
+  .step-btn.blue { background:var(--blue); color:#fff; }
+  .step-btn.blue:hover { background:#2d6a8a; }
+  .step-btn.reset { background:#f0ede8; color:var(--ink2); }
+  .step-btn.reset:hover { background:var(--border); }
+
+  .btn-row { display:flex; gap:8px; margin-bottom:10px; }
+  .btn-row .step-btn { margin-bottom:0; }
+
+  /* ITERATION LOG */
+  .iter-log { background:#f7f4ef; border-radius:10px; border:1px solid var(--border); overflow:hidden; margin-bottom:4px; }
+  .iter-log table { width:100%; border-collapse:collapse; }
+  .iter-log th { font-size:.7rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:6px 8px; border-bottom:2px solid var(--border); text-align:left; background:#f0ede8; }
+  .iter-log td { padding:5px 8px; font-size:.76rem; font-family:'Source Code Pro',monospace; border-bottom:1px solid var(--border); }
+  .iter-log tr:last-child td { border-bottom:none; }
+  .iter-log .current td { background:#fff8e8; font-weight:700; }
+  .iter-log .converged td { background:#eafaf8; }
+
+  .status-msg { text-align:center; font-size:.8rem; font-weight:700; padding:6px; border-radius:8px; margin-bottom:8px; min-height:28px; }
+  .status-msg.running { color:var(--blue); background:#eaf4fb; }
+  .status-msg.done    { color:var(--green); background:#eafaf8; }
+  .status-msg.warn    { color:var(--orange); background:#fff5ea; }
+
+  /* FORMULA */
+  .formula-box { border-radius:0 10px 10px 0; padding:12px 14px; margin:10px 0; font-size:.85rem; line-height:1.8; }
+  .formula-box.red  { background:#fff0f0; border-left:4px solid var(--red); }
+  .formula-box.blue { background:#eaf4fb; border-left:4px solid var(--blue); }
+  .formula-box .fline { font-family:'Source Code Pro',monospace; font-size:.82rem; color:var(--ink); }
+  .fval-red { font-weight:700; color:var(--red); }
+  .fval-blue { font-weight:700; color:var(--blue); }
+  .fval-green { font-weight:700; color:var(--green); }
+
+  /* PYTHON */
+  pre { background:#1a1a2e; color:#e0e8ff; border-radius:10px; padding:16px 14px; font-family:'Source Code Pro',monospace; font-size:.76rem; line-height:1.7; overflow-x:auto; white-space:pre; margin-top:6px; }
+  .py-kw{color:#ff79c6} .py-fn{color:#8be9fd} .py-cm{color:#6272a4;font-style:italic} .py-num{color:#bd93f9} .py-var{color:#50fa7b} .py-str{color:#f1fa8c}
+  .copy-btn { float:right; background:#ffffff18; border:1px solid #ffffff30; color:#ccc; border-radius:6px; padding:4px 10px; font-size:.72rem; cursor:pointer; font-family:'Lato',sans-serif; margin-bottom:4px; }
+  .copy-btn:hover { background:#ffffff30; }
+
+  .section-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#999; margin-bottom:8px; }
+  .hidden { display:none; }
+  hr.divider { border:none; border-top:1px solid var(--border); margin:14px 0; }
+
+  .concept-row { display:flex; gap:10px; margin:8px 0; align-items:flex-start; }
+  .concept-icon { font-size:1.3rem; min-width:28px; text-align:center; margin-top:2px; }
+  .concept-text { font-size:.82rem; color:var(--ink2); line-height:1.6; }
+  .concept-text strong { color:var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Búsqueda de <span>Raíces</span></h1>
+  <p>Newton-Raphson · Bisección · Métodos Iterativos</p>
+</header>
+
+<div class="container">
+
+  <!-- CONCEPTO -->
+  <div class="card">
+    <div class="card-title" id="conceptTitle">Newton-Raphson <span class="badge badge-red">Concepto</span></div>
+    <div id="conceptBody"></div>
+  </div>
+
+  <!-- INTERACTIVO -->
+  <div class="card">
+    <div class="card-title">Simulación <span class="badge badge-green">Interactivo</span></div>
+
+    <div class="method-toggle">
+      <button class="method-btn active-nr" id="btnNR" onclick="setMethod('nr')">Newton-Raphson</button>
+      <button class="method-btn" id="btnBis" onclick="setMethod('bis')">Bisección</button>
+    </div>
+
+    <div class="section-label">Función</div>
+    <div class="func-tabs" id="funcTabs">
+      <div class="func-tab active-nr" data-idx="0">x<sup>2</sup>−3</div>
+      <div class="func-tab" data-idx="1">x<sup>3</sup>−x−2</div>
+      <div class="func-tab" data-idx="2">cos(x)−x</div>
+    </div>
+
+    <!-- NR controls -->
+    <div id="nrControls">
+      <div class="control-row">
+        <label>x<sub>0</sub> =</label>
+        <input type="range" id="x0Slider" min="-3" max="3" step="0.1" value="2">
+        <span class="val-display red" id="x0Val">2.0</span>
+      </div>
+      <div class="control-row">
+        <label>tol =</label>
+        <input type="range" id="tolSliderNR" min="1" max="8" step="1" value="6">
+        <span class="val-display red" id="tolValNR">1e-6</span>
+      </div>
+    </div>
+
+    <!-- Bisection controls -->
+    <div id="bisControls" class="hidden">
+      <div class="control-row">
+        <label>a =</label>
+        <input type="range" id="aSlider" class="blue" min="-3" max="0" step="0.1" value="-2">
+        <span class="val-display blue" id="aVal">-2.0</span>
+      </div>
+      <div class="control-row">
+        <label>b =</label>
+        <input type="range" id="bSlider" class="blue" min="0" max="3" step="0.1" value="2">
+        <span class="val-display blue" id="bVal">2.0</span>
+      </div>
+      <div class="control-row">
+        <label>tol =</label>
+        <input type="range" id="tolSliderBis" class="blue" min="1" max="8" step="1" value="6">
+        <span class="val-display blue" id="tolValBis">1e-6</span>
+      </div>
+      <div class="status-msg warn hidden" id="bisWarn"></div>
+    </div>
+
+    <div id="canvas-wrap"><canvas id="myCanvas"></canvas></div>
+
+    <div class="status-msg" id="statusMsg"></div>
+
+    <div class="btn-row">
+      <button class="step-btn red" id="btnStep" onclick="doStep()">→ Siguiente iteración</button>
+      <button class="step-btn reset" id="btnReset" onclick="resetSim()" style="flex:0;padding:12px 16px">↺</button>
+    </div>
+
+    <!-- ITERATION TABLE -->
+    <div class="section-label" id="tableLabel">Iteraciones</div>
+    <div class="iter-log">
+      <table>
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FÓRMULA -->
+  <div class="card">
+    <div class="card-title">Fórmula <span class="badge badge-red" id="formulaBadge">Newton-Raphson</span></div>
+    <div class="formula-box red" id="formulaBox"></div>
+  </div>
+
+  <!-- CÓDIGO PYTHON -->
+  <div class="card">
+    <div class="card-title">Código Python <span class="badge badge-green">Implementación</span></div>
+    <div class="func-tabs" id="codeTabs" style="margin-bottom:12px">
+      <div class="code-tab active-nr" data-code="0" style="flex:1;min-width:80px;background:var(--bg);border:2px solid var(--border);border-radius:10px;padding:7px 4px;cursor:pointer;text-align:center;font-size:.75rem;font-weight:700;color:var(--ink2);transition:all .18s">f'(x) exacta</div>
+      <div class="code-tab" data-code="1" style="flex:1;min-width:80px;background:var(--bg);border:2px solid var(--border);border-radius:10px;padding:7px 4px;cursor:pointer;text-align:center;font-size:.75rem;font-weight:700;color:var(--ink2);transition:all .18s">Dif. finita</div>
+    </div>
+    <div id="nrCodeTabs" class="">
+    </div>
+    <button class="copy-btn" id="copyBtn">⎘ Copiar</button>
+    <pre id="pyCode"></pre>
+  </div>
+
+</div>
+
+<script>
+// ─── FUNCTIONS ────────────────────────────────────────────────────────────────
+const FUNCS = [
+  {
+    label: 'x^2 - 3',
+    fn:  x => x*x - 3,
+    dfn: x => 2*x,
+    py:  'x**2 - 3',
+    dpy: '2*x',
+    roots: [Math.sqrt(3), -Math.sqrt(3)],
+    xmin: -3, xmax: 3, ymin: -4, ymax: 6
+  },
+  {
+    label: 'x^3 - x - 2',
+    fn:  x => x*x*x - x - 2,
+    dfn: x => 3*x*x - 1,
+    py:  'x**3 - x - 2',
+    dpy: '3*x**2 - 1',
+    roots: [1.5214],
+    xmin: -2, xmax: 3, ymin: -5, ymax: 8
+  },
+  {
+    label: 'cos(x) - x',
+    fn:  x => Math.cos(x) - x,
+    dfn: x => -Math.sin(x) - 1,
+    py:  'math.cos(x) - x',
+    dpy: '-math.sin(x) - 1',
+    roots: [0.7391],
+    xmin: -2, xmax: 3, ymin: -3, ymax: 3
+  }
+];
+
+let method = 'nr';
+let funcIdx = 0;
+let x0 = 2.0, bisA = -2.0, bisB = 2.0;
+let tol = 1e-6;
+let iterations = [];
+let stepIdx = 0;
+let converged = false;
+const MAX_ITER = 30;
+
+// ─── METHOD SWITCH ────────────────────────────────────────────────────────────
+function setMethod(m) {
+  method = m;
+  codeTab = 0;
+  // reset code tab styling
+  document.querySelectorAll('.code-tab').forEach((t,i) => {
+    t.style.borderColor = i===0 ? 'var(--red)' : 'var(--border)';
+    t.style.background  = i===0 ? '#fff0f0'    : 'var(--bg)';
+    t.style.color       = i===0 ? 'var(--red)'  : 'var(--ink2)';
+  });
+  document.getElementById('btnNR').className  = 'method-btn' + (m==='nr'  ? ' active-nr'  : '');
+  document.getElementById('btnBis').className = 'method-btn' + (m==='bis' ? ' active-bis' : '');
+  document.getElementById('nrControls').className  = m==='nr'  ? '' : 'hidden';
+  document.getElementById('bisControls').className = m==='bis' ? '' : 'hidden';
+  document.getElementById('btnStep').className = 'step-btn ' + (m==='nr' ? 'red' : 'blue');
+  document.querySelectorAll('.func-tab').forEach(t => {
+    t.classList.remove('active-nr','active-bis');
+    if (parseInt(t.dataset.idx)===funcIdx) t.classList.add(m==='nr'?'active-nr':'active-bis');
+  });
+  updateConcept();
+  updateFormula();
+  fullReset();
+}
+
+// ─── CONCEPT ──────────────────────────────────────────────────────────────────
+function updateConcept() {
+  const isnr = method === 'nr';
+  document.getElementById('conceptTitle').innerHTML = isnr
+    ? 'Newton-Raphson <span class="badge badge-red">Concepto</span>'
+    : 'Bisección <span class="badge badge-blue">Concepto</span>';
+  document.getElementById('conceptBody').innerHTML = isnr ? `
+    <div class="concept-row"><div class="concept-icon">📐</div>
+    <div class="concept-text">Parte de una aproximación inicial <strong>x<sub>0</sub></strong> y traza la <strong>recta tangente</strong> a la curva. El punto donde esa recta cruza el eje x es la nueva aproximación.</div></div>
+    <div class="concept-row"><div class="concept-icon">⚡</div>
+    <div class="concept-text">Converge muy rápido (convergencia cuadrática) pero necesita calcular la derivada y puede fallar si <strong>f'(x) ≈ 0</strong>.</div></div>` : `
+    <div class="concept-row"><div class="concept-icon">✂️</div>
+    <div class="concept-text">Parte de un intervalo <strong>[a, b]</strong> donde la función cambia de signo. En cada paso divide el intervalo a la mitad y se queda con la mitad que contiene la raíz.</div></div>
+    <div class="concept-row"><div class="concept-icon">🐢</div>
+    <div class="concept-text">Siempre converge si hay una raíz en <strong>[a, b]</strong>, pero es más lento que Newton-Raphson.</div></div>`;
+}
+
+// ─── FORMULA ──────────────────────────────────────────────────────────────────
+function updateFormula() {
+  const isnr = method === 'nr';
+  const badge = document.getElementById('formulaBadge');
+  const box   = document.getElementById('formulaBox');
+  if (isnr) {
+    badge.textContent = 'Newton-Raphson'; badge.className = 'badge badge-red';
+    box.className = 'formula-box red';
+    box.innerHTML = `
+      <div class="fline" style="margin-bottom:6px"><strong>Algoritmo:</strong></div>
+      <div class="fline">1. Escoger x<sub>0</sub> (aproximación inicial)</div>
+      <div class="fline" style="margin-top:6px">2. Iterar con la fórmula:</div>
+      <div class="fline" style="margin-top:4px;margin-left:12px;font-size:.95rem"><strong>x<sub>n+1</sub> = x<sub>n</sub> − f(x<sub>n</sub>) / f'(x<sub>n</sub>)</strong></div>
+      <div class="fline" style="margin-top:6px">3. Repetir hasta que:</div>
+      <div class="fline" style="margin-left:12px"><span class="fval-red">|x<sub>n+1</sub> − x<sub>n</sub>| &lt; tolerancia</span></div>`;
+  } else {
+    badge.textContent = 'Bisección'; badge.className = 'badge badge-blue';
+    box.className = 'formula-box blue';
+    box.innerHTML = `
+      <div class="fline">Condición: <strong>f(a) · f(b) &lt; 0</strong> &nbsp;(signos opuestos)</div>
+      <div class="fline" style="margin-top:8px">Punto medio: <span class="fval-blue">c = (a + b) / 2</span></div>
+      <div class="fline" style="margin-top:8px">Si f(a)·f(c) &lt; 0 → raíz en [a, c] → b = c</div>
+      <div class="fline">Si f(a)·f(c) &gt; 0 → raíz en [c, b] → a = c</div>
+      <div class="fline" style="margin-top:8px">Criterio de parada: <span class="fval-blue">b − a &lt; tolerancia</span></div>`;
+  }
+}
+
+// ─── PRECOMPUTE ALL ITERATIONS ────────────────────────────────────────────────
+function computeAllIterations() {
+  const f = FUNCS[funcIdx];
+  iterations = [];
+  if (method === 'nr') {
+    let x = x0;
+    for (let i = 0; i < MAX_ITER; i++) {
+      const fx = f.fn(x), dfx = f.dfn(x);
+      if (Math.abs(dfx) < 1e-14) break;
+      const xnew = x - fx/dfx;
+      const err  = Math.abs(xnew - x);
+      iterations.push({ x, fx, dfx, xnew, err });
+      x = xnew;
+      if (err < tol) break;
+    }
+  } else {
+    let a = bisA, b = bisB;
+    if (f.fn(a) * f.fn(b) >= 0) return;
+    for (let i = 0; i < MAX_ITER; i++) {
+      const c = (a+b)/2, fc = f.fn(c), fa = f.fn(a);
+      const err = b - a;
+      iterations.push({ a, b, c, fa, fb: f.fn(b), fc, err });
+      if (Math.abs(fc) < 1e-14 || err < tol) break;
+      if (fa*fc < 0) b = c; else a = c;
+    }
+  }
+}
+
+// ─── RESET ────────────────────────────────────────────────────────────────────
+function fullReset() {
+  checkBisValid();
+  computeAllIterations();
+  stepIdx = 0;
+  converged = false;
+  document.getElementById('tableBody').innerHTML = '';
+  updateTableHead();
+  setStatus('', '');
+  // always restore button label to the correct method text
+  const btn = document.getElementById('btnStep');
+  btn.textContent = '→ Siguiente iteración';
+  btn.className = 'step-btn ' + (method==='nr' ? 'red' : 'blue');
+  draw(-1);
+  updatePython();
+}
+
+function checkBisValid() {
+  const f = FUNCS[funcIdx];
+  const warn = document.getElementById('bisWarn');
+  if (method !== 'bis') { warn.className='status-msg warn hidden'; return; }
+  if (f.fn(bisA) * f.fn(bisB) >= 0) {
+    warn.className = 'status-msg warn';
+    warn.textContent = 'f(a) y f(b) tienen el mismo signo — elige otro intervalo';
+  } else {
+    warn.className = 'status-msg warn hidden';
+  }
+}
+
+// ─── STEP ─────────────────────────────────────────────────────────────────────
+function doStep() {
+  // if already converged, this acts as reset
+  if (converged) { fullReset(); return; }
+  if (iterations.length === 0) { setStatus('Intervalo inválido — ajusta a y b', 'warn'); return; }
+  if (stepIdx >= iterations.length) {
+    converged = true;
+    const last = iterations[iterations.length-1];
+    const root = method==='nr' ? last.xnew : last.c;
+    setStatus('Convergencia alcanzada ✓  raíz ≈ ' + root.toFixed(8), 'done');
+    document.getElementById('btnStep').textContent = '↺ Reiniciar';
+    return;
+  }
+
+  const it = iterations[stepIdx];
+  addTableRow(it, stepIdx);
+  draw(stepIdx);
+
+  if (it.err < tol || stepIdx === iterations.length - 1) {
+    converged = true;
+    const root = method==='nr' ? it.xnew : it.c;
+    setStatus('Convergencia alcanzada ✓  raíz ≈ ' + root.toFixed(8), 'done');
+    document.getElementById('btnStep').textContent = '↺ Reiniciar';
+  } else {
+    setStatus('Iteración ' + (stepIdx+1) + ' — error = ' + it.err.toExponential(3), 'running');
+  }
+  stepIdx++;
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status-msg' + (cls ? ' '+cls : '');
+}
+
+// ─── TABLE ────────────────────────────────────────────────────────────────────
+function updateTableHead() {
+  document.getElementById('tableHead').innerHTML = method === 'nr'
+    ? '<tr><th>n</th><th>xn</th><th>f(xn)</th><th>xn+1</th><th>error</th></tr>'
+    : '<tr><th>n</th><th>a</th><th>c</th><th>b</th><th>error</th></tr>';
+}
+
+function addTableRow(it, idx) {
+  const tbody = document.getElementById('tableBody');
+  tbody.querySelectorAll('tr').forEach(r => r.classList.remove('current'));
+  const tr = document.createElement('tr');
+  tr.className = (it.err < tol) ? 'converged' : 'current';
+  if (method === 'nr') {
+    tr.innerHTML = `<td>${idx+1}</td><td>${it.x.toFixed(5)}</td><td>${it.fx.toFixed(5)}</td><td>${it.xnew.toFixed(5)}</td><td>${it.err.toExponential(2)}</td>`;
+  } else {
+    tr.innerHTML = `<td>${idx+1}</td><td>${it.a.toFixed(5)}</td><td>${it.c.toFixed(5)}</td><td>${it.b.toFixed(5)}</td><td>${it.err.toExponential(2)}</td>`;
+  }
+  tbody.appendChild(tr);
+  tr.scrollIntoView({ block:'nearest', behavior:'smooth' });
+}
+
+// ─── DRAW ─────────────────────────────────────────────────────────────────────
+function draw(stepN) {
+  const wrap = document.getElementById('canvas-wrap');
+  const W = wrap.clientWidth, H = Math.round(W * 0.6);
+  const c = document.getElementById('myCanvas');
+  c.width = W * devicePixelRatio; c.height = H * devicePixelRatio;
+  c.style.height = H + 'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  const f = FUNCS[funcIdx];
+  const pad = { l:42, r:14, t:14, b:32 };
+  const pw = W-pad.l-pad.r, ph = H-pad.t-pad.b;
+  const xmin=f.xmin, xmax=f.xmax, ymin=f.ymin, ymax=f.ymax;
+  const toX = v => pad.l + (v-xmin)/(xmax-xmin)*pw;
+  const toY = v => pad.t + (1-(v-ymin)/(ymax-ymin))*ph;
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#f7f4ef'; ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle='#e6e0d6'; ctx.lineWidth=1;
+  for (let i=0; i<=4; i++) {
+    const yv=ymin+(ymax-ymin)*i/4, cy=toY(yv);
+    ctx.beginPath(); ctx.moveTo(pad.l,cy); ctx.lineTo(pad.l+pw,cy); ctx.stroke();
+    ctx.fillStyle='#bbb'; ctx.font='9px Lato'; ctx.textAlign='right';
+    ctx.fillText(yv.toFixed(1), pad.l-3, cy+3);
+  }
+  // axes
+  ctx.strokeStyle='#aaa'; ctx.lineWidth=1.5;
+  if (ymin<0 && ymax>0) { const cy=toY(0); ctx.beginPath(); ctx.moveTo(pad.l,cy); ctx.lineTo(pad.l+pw,cy); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,pad.t+ph); ctx.stroke();
+  // x ticks
+  ctx.fillStyle='#bbb'; ctx.font='9px Lato'; ctx.textAlign='center';
+  for (let xv=Math.ceil(xmin); xv<=xmax; xv++) {
+    const cx=toX(xv);
+    ctx.beginPath(); ctx.moveTo(cx,toY(0)-3); ctx.lineTo(cx,toY(0)+3); ctx.stroke();
+    ctx.fillText(xv, cx, toY(0)+13);
+  }
+  ctx.textAlign='left';
+
+  // ── BISECTION ──
+  if (method === 'bis') {
+    if (stepN < 0) {
+      // before any step: just show a and b as points on x-axis
+      const fa = f.fn(bisA), fb = f.fn(bisB);
+      // shade full interval
+      ctx.fillStyle='rgba(69,123,157,0.08)';
+      ctx.fillRect(toX(bisA), pad.t, toX(bisB)-toX(bisA), ph);
+      // a marker
+      ctx.strokeStyle='#457b9d'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(toX(bisA),pad.t); ctx.lineTo(toX(bisA),pad.t+ph); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(toX(bisB),pad.t); ctx.lineTo(toX(bisB),pad.t+ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(toX(bisA), toY(0), 5, 0, 2*Math.PI); ctx.fillStyle='#457b9d'; ctx.fill();
+      ctx.beginPath(); ctx.arc(toX(bisB), toY(0), 5, 0, 2*Math.PI); ctx.fillStyle='#457b9d'; ctx.fill();
+      // dots on curve
+      ctx.beginPath(); ctx.arc(toX(bisA), toY(fa), 4, 0, 2*Math.PI); ctx.fillStyle='#457b9d'; ctx.fill();
+      ctx.beginPath(); ctx.arc(toX(bisB), toY(fb), 4, 0, 2*Math.PI); ctx.fillStyle='#457b9d'; ctx.fill();
+      ctx.fillStyle='#457b9d'; ctx.font='bold 10px Lato'; ctx.textAlign='center';
+      ctx.fillText('a', toX(bisA), toY(0)+16);
+      ctx.fillText('b', toX(bisB), toY(0)+16);
+      ctx.textAlign='left';
+    } else if (stepN < iterations.length) {
+      const it = iterations[stepN];
+      ctx.fillStyle='rgba(69,123,157,0.12)';
+      ctx.fillRect(toX(it.a), pad.t, toX(it.b)-toX(it.a), ph);
+      ctx.strokeStyle='#457b9d'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(toX(it.a),pad.t); ctx.lineTo(toX(it.a),pad.t+ph); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(toX(it.b),pad.t); ctx.lineTo(toX(it.b),pad.t+ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle='#e63946'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(toX(it.c),pad.t); ctx.lineTo(toX(it.c),pad.t+ph); ctx.stroke();
+      // dots on x-axis
+      ctx.beginPath(); ctx.arc(toX(it.a), toY(0), 5, 0, 2*Math.PI); ctx.fillStyle='#457b9d'; ctx.fill();
+      ctx.beginPath(); ctx.arc(toX(it.b), toY(0), 5, 0, 2*Math.PI); ctx.fillStyle='#457b9d'; ctx.fill();
+      ctx.beginPath(); ctx.arc(toX(it.c), toY(0), 5, 0, 2*Math.PI); ctx.fillStyle='#e63946'; ctx.fill();
+      // dot on curve at c
+      ctx.beginPath(); ctx.arc(toX(it.c), toY(it.fc), 5, 0, 2*Math.PI); ctx.fillStyle='#e63946'; ctx.fill();
+      ctx.fillStyle='#457b9d'; ctx.font='bold 10px Lato'; ctx.textAlign='center';
+      ctx.fillText('a', toX(it.a), toY(0)+16);
+      ctx.fillText('b', toX(it.b), toY(0)+16);
+      ctx.fillStyle='#e63946';
+      ctx.fillText('c', toX(it.c), toY(0)+16);
+      ctx.textAlign='left';
+    }
+  }
+
+  // ── NEWTON ──
+  if (method === 'nr') {
+    if (stepN < 0) {
+      // just show x0
+      ctx.beginPath(); ctx.arc(toX(x0), toY(f.fn(x0)), 5, 0, 2*Math.PI);
+      ctx.fillStyle='#e63946'; ctx.fill();
+      ctx.beginPath(); ctx.arc(toX(x0), toY(0), 5, 0, 2*Math.PI);
+      ctx.fillStyle='#e63946'; ctx.fill();
+      ctx.fillStyle='#e63946'; ctx.font='bold 10px Lato'; ctx.textAlign='center';
+      ctx.fillText('x0', toX(x0), toY(f.fn(x0))-9);
+      ctx.fillText('x0', toX(x0), toY(0)+16);
+      ctx.textAlign='left';
+    } else {
+      for (let k=0; k<=Math.min(stepN, iterations.length-1); k++) {
+        const it = iterations[k];
+        const alpha = k===stepN ? 1 : 0.2;
+        const x1=Math.max(xmin,it.x-1.5), x2=Math.min(xmax,it.x+1.5);
+        ctx.strokeStyle=`rgba(244,162,97,${alpha})`; ctx.lineWidth=k===stepN?2:1;
+        ctx.beginPath(); ctx.moveTo(toX(x1),toY(it.fx+it.dfx*(x1-it.x))); ctx.lineTo(toX(x2),toY(it.fx+it.dfx*(x2-it.x))); ctx.stroke();
+        ctx.beginPath(); ctx.arc(toX(it.x), toY(it.fx), k===stepN?5:3, 0, 2*Math.PI);
+        ctx.fillStyle=k===stepN?'#e63946':`rgba(230,57,70,${alpha})`; ctx.fill();
+        if (k===stepN) {
+          ctx.strokeStyle='rgba(230,57,70,0.4)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+          ctx.beginPath(); ctx.moveTo(toX(it.xnew),toY(0)); ctx.lineTo(toX(it.xnew),toY(it.fx+it.dfx*(it.xnew-it.x))); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.beginPath(); ctx.arc(toX(it.xnew),toY(0),5,0,2*Math.PI); ctx.fillStyle='#f4a261'; ctx.fill();
+          ctx.fillStyle='#e63946'; ctx.font='bold 10px Lato'; ctx.textAlign='center';
+          ctx.fillText('x'+k, toX(it.x), toY(it.fx)-9);
+          ctx.fillStyle='#f4a261';
+          ctx.fillText('x'+(k+1), toX(it.xnew), toY(0)+16);
+          ctx.textAlign='left';
+        }
+      }
+    }
+  }
+
+  // curve (always on top)
+  ctx.beginPath(); ctx.strokeStyle='#1a1a2e'; ctx.lineWidth=2.5;
+  for (let i=0; i<=300; i++) {
+    const xv=xmin+(xmax-xmin)*i/300, yv=f.fn(xv);
+    if (i===0) ctx.moveTo(toX(xv),toY(yv)); else ctx.lineTo(toX(xv),toY(yv));
+  }
+  ctx.stroke();
+
+  ctx.fillStyle='#1a1a2e'; ctx.font='bold 11px Playfair Display';
+  ctx.fillText('f(x) = '+f.label, pad.l+6, pad.t+14);
+}
+
+const canvas = document.getElementById('myCanvas');
+const ctx = canvas.getContext('2d');
+
+// ─── PYTHON CODE ──────────────────────────────────────────────────────────────
+let codeTab = 0;
+
+function updatePython() {
+  const f = FUNCS[funcIdx];
+  const imp = f.py.includes('math.') ? '<span class="py-kw">import</span> <span class="py-fn">math</span>\n\n' : '';
+  const isnr = method === 'nr';
+
+  // show/hide code tabs (only for NR)
+  document.getElementById('nrCodeTabs').style.display = isnr ? '' : 'none';
+
+  let code;
+  if (isnr) {
+    if (codeTab === 0) {
+      // exact derivative
+      code =
+`${imp}<span class="py-kw">def</span> <span class="py-fn">f</span>(<span class="py-var">x</span>):
+    <span class="py-kw">return</span> ${f.py}
+
+<span class="py-kw">def</span> <span class="py-fn">fprima</span>(<span class="py-var">x</span>):
+    <span class="py-kw">return</span> ${f.dpy}
+
+<span class="py-var">x0</span> = ${x0.toFixed(1)}          <span class="py-cm"># condición inicial</span>
+<span class="py-var">tol</span> = <span class="py-num">${tol}</span>
+<span class="py-var">discrepancia</span> = <span class="py-num">1</span>      <span class="py-cm"># valor inicial > tol</span>
+
+<span class="py-kw">while</span> <span class="py-var">discrepancia</span> >= <span class="py-var">tol</span>:
+    <span class="py-var">x1</span> = <span class="py-var">x0</span> - <span class="py-fn">f</span>(<span class="py-var">x0</span>) / <span class="py-fn">fprima</span>(<span class="py-var">x0</span>)
+    <span class="py-var">discrepancia</span> = <span class="py-fn">abs</span>(<span class="py-var">x1</span> - <span class="py-var">x0</span>)
+    <span class="py-var">x0</span> = <span class="py-var">x1</span>
+
+<span class="py-fn">print</span>(<span class="py-var">x0</span>)`;
+    } else {
+      // finite difference approximation of derivative
+      code =
+`${imp}<span class="py-kw">def</span> <span class="py-fn">f</span>(<span class="py-var">x</span>):
+    <span class="py-kw">return</span> ${f.py}
+
+<span class="py-cm"># f'(x) ≈ (f(x+h) - f(x-h)) / (2h)  — diferencia centrada</span>
+<span class="py-kw">def</span> <span class="py-fn">fprima</span>(<span class="py-var">x</span>):
+    <span class="py-var">h</span> = <span class="py-num">1e-5</span>
+    <span class="py-kw">return</span> (<span class="py-fn">f</span>(<span class="py-var">x</span> + <span class="py-var">h</span>) - <span class="py-fn">f</span>(<span class="py-var">x</span> - <span class="py-var">h</span>)) / (<span class="py-num">2</span> * <span class="py-var">h</span>)
+
+<span class="py-var">x0</span> = ${x0.toFixed(1)}          <span class="py-cm"># condición inicial</span>
+<span class="py-var">tol</span> = <span class="py-num">${tol}</span>
+<span class="py-var">discrepancia</span> = <span class="py-num">1</span>
+
+<span class="py-kw">while</span> <span class="py-var">discrepancia</span> >= <span class="py-var">tol</span>:
+    <span class="py-var">x1</span> = <span class="py-var">x0</span> - <span class="py-fn">f</span>(<span class="py-var">x0</span>) / <span class="py-fn">fprima</span>(<span class="py-var">x0</span>)
+    <span class="py-var">discrepancia</span> = <span class="py-fn">abs</span>(<span class="py-var">x1</span> - <span class="py-var">x0</span>)
+    <span class="py-var">x0</span> = <span class="py-var">x1</span>
+
+<span class="py-fn">print</span>(<span class="py-var">x0</span>)`;
+    }
+  } else {
+    code =
+`${imp}<span class="py-kw">def</span> <span class="py-fn">f</span>(<span class="py-var">x</span>):
+    <span class="py-kw">return</span> ${f.py}
+
+<span class="py-var">a</span>, <span class="py-var">b</span> = ${bisA.toFixed(1)}, ${bisB.toFixed(1)}   <span class="py-cm"># intervalo inicial</span>
+<span class="py-var">tol</span> = <span class="py-num">${tol}</span>
+
+<span class="py-kw">while</span> (<span class="py-var">b</span> - <span class="py-var">a</span>) >= <span class="py-var">tol</span>:
+    <span class="py-var">c</span> = (<span class="py-var">a</span> + <span class="py-var">b</span>) / <span class="py-num">2</span>
+    <span class="py-kw">if</span> <span class="py-fn">f</span>(<span class="py-var">a</span>) * <span class="py-fn">f</span>(<span class="py-var">c</span>) < <span class="py-num">0</span>:
+        <span class="py-var">b</span> = <span class="py-var">c</span>
+    <span class="py-kw">else</span>:
+        <span class="py-var">a</span> = <span class="py-var">c</span>
+
+<span class="py-fn">print</span>((<span class="py-var">a</span> + <span class="py-var">b</span>) / <span class="py-num">2</span>)`;
+  }
+  document.getElementById('pyCode').innerHTML = code;
+}
+
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.code-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    codeTab = parseInt(tab.dataset.code);
+    document.querySelectorAll('.code-tab').forEach(t => {
+      t.style.borderColor = 'var(--border)';
+      t.style.background = 'var(--bg)';
+      t.style.color = 'var(--ink2)';
+    });
+    tab.style.borderColor = 'var(--red)';
+    tab.style.background = '#fff0f0';
+    tab.style.color = 'var(--red)';
+    updatePython();
+  });
+});
+
+document.getElementById('funcTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.func-tab');
+  if (!tab) return;
+  funcIdx = parseInt(tab.dataset.idx);
+  document.querySelectorAll('.func-tab').forEach(t => t.classList.remove('active-nr','active-bis'));
+  tab.classList.add(method==='nr' ? 'active-nr' : 'active-bis');
+  fullReset();
+});
+
+document.getElementById('tolSliderNR').addEventListener('input', e => {
+  tol = Math.pow(10, -parseInt(e.target.value));
+  document.getElementById('tolValNR').textContent = '1e-' + e.target.value;
+  fullReset();
+});
+
+document.getElementById('tolSliderBis').addEventListener('input', e => {
+  tol = Math.pow(10, -parseInt(e.target.value));
+  document.getElementById('tolValBis').textContent = '1e-' + e.target.value;
+  fullReset();
+});
+
+document.getElementById('x0Slider').addEventListener('input', e => {
+  x0 = parseFloat(e.target.value);
+  document.getElementById('x0Val').textContent = x0.toFixed(1);
+  fullReset();
+});
+
+document.getElementById('aSlider').addEventListener('input', e => {
+  bisA = parseFloat(e.target.value);
+  document.getElementById('aVal').textContent = bisA.toFixed(1);
+  fullReset();
+});
+
+document.getElementById('bSlider').addEventListener('input', e => {
+  bisB = parseFloat(e.target.value);
+  document.getElementById('bVal').textContent = bisB.toFixed(1);
+  fullReset();
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('pyCode').innerText).then(() => {
+    document.getElementById('copyBtn').textContent = '✓ Copiado!';
+    setTimeout(() => document.getElementById('copyBtn').textContent = '⎘ Copiar', 2000);
+  });
+});
+
+window.addEventListener('resize', () => draw(stepIdx > 0 ? stepIdx-1 : -1));
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+updateConcept();
+updateFormula();
+updateTableHead();
+fullReset();
+
+
+</script>
+</body>
+</html>
