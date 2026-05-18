@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Michaelis-Menten — DIB 901</title>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f5f0;--surf:#fff;--brd:#e2ddd6;
+  --ink:#1c1917;--ink2:#6b6560;--ink3:#aaa5a0;
+  --grn:#1d6b5c;--grnL:#d4ede8;
+  --blu:#2c5f8a;--bluL:#dce8f4;
+  --red:#b83232;--redL:#f4dede;
+  --pur:#6b3a8a;--purL:#eeddf4;
+  --amb:#92600a;--ambL:#fdf0d8;
+  --serif:'Crimson Pro',Georgia,serif;
+  --mono:'Space Mono',monospace;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--serif);
+     font-size:16px;min-height:100dvh;padding-bottom:2rem}
+
+header{padding:15px 18px 11px;border-bottom:1px solid var(--brd);background:var(--surf)}
+.hdr-tag{font-family:var(--mono);font-size:9px;letter-spacing:.14em;
+         text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+header h1{font-size:18px;font-weight:600;letter-spacing:-.01em}
+header h1 em{font-style:italic;color:var(--grn)}
+
+.wrap{padding:11px 14px 0}
+.sec-lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;
+         letter-spacing:.12em;color:var(--ink3);margin-bottom:6px}
+
+.cv-card{background:var(--surf);border:1px solid var(--brd);
+         border-radius:12px;overflow:hidden}
+canvas{display:block;width:100%}
+.cv-foot{padding:5px 10px 7px;background:var(--bg);
+         border-top:1px solid var(--brd);display:flex;gap:12px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:10px;
+     color:var(--ink2);font-family:var(--mono)}
+.leg-l{width:18px;height:2.5px;border-radius:1px}
+.leg-d{width:18px;height:0;border-top:2px dashed}
+
+/* conditions */
+.cond-grid{display:grid;grid-template-columns:1fr;gap:6px;margin-top:10px}
+.cond{border-radius:9px;padding:8px 11px;border:1px solid var(--brd);background:var(--surf)}
+.cond .lbl{font-family:var(--mono);font-size:8px;text-transform:uppercase;
+           letter-spacing:.08em;color:var(--ink3);margin-bottom:2px}
+.cond .val{font-family:var(--mono);font-size:13px;font-weight:700}
+.cond .desc{font-size:11px;color:var(--ink2);margin-top:2px;line-height:1.4;font-family:var(--serif)}
+.ok{background:var(--grnL);border-color:#a8d4cc}.ok .val{color:var(--grn)}
+.warn{background:var(--ambL);border-color:#e8c880}.warn .val{color:var(--amb)}
+.bad{background:var(--redL);border-color:#e0b0b0}.bad .val{color:var(--red)}
+
+/* sliders */
+.ctrl-card{background:var(--surf);border:1px solid var(--brd);
+           border-radius:12px;padding:12px;margin-top:10px}
+.sl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.sl-name{font-family:var(--mono);font-size:10px;color:var(--ink2)}
+.sl-num{font-family:var(--mono);font-size:15px;font-weight:700;line-height:1}
+.sl-num.grn{color:var(--grn)}.sl-num.blu{color:var(--blu)}
+.sl-num.red{color:var(--red)}.sl-num.pur{color:var(--pur)}
+.sl-wrap{margin-bottom:10px}
+.sl-wrap:last-child{margin-bottom:0}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:3px;
+                  background:var(--brd);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;
+  border-radius:50%;background:var(--ink);border:3px solid var(--bg);
+  box-shadow:0 0 0 1.5px var(--ink)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
+  background:var(--ink);border:3px solid var(--bg);box-shadow:0 0 0 1.5px var(--ink)}
+.divider{border:none;border-top:1px solid var(--brd);margin:10px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-tag">DIB 901 · Sistemas rápido-lentos</div>
+  <h1>Cinética de <em>Michaelis-Menten</em></h1>
+</header>
+
+<!-- Main plot: s(t) top, c(t) bottom -->
+<div class="wrap" style="margin-top:11px">
+  <div class="cv-card">
+    <canvas id="cv-main" style="height:380px"></canvas>
+    <div class="cv-foot">
+      <div class="leg"><div class="leg-l" style="background:#1d6b5c"></div>s — sistema completo</div>
+      <div class="leg"><div class="leg-d" style="border-color:#b83232"></div>s — QSS</div>
+      <div class="leg"><div class="leg-l" style="background:#2c5f8a"></div>c — sistema completo</div>
+      <div class="leg"><div class="leg-d" style="border-color:#6b3a8a"></div>c* — quasi-estático</div>
+    </div>
+  </div>
+</div>
+
+<!-- QSS conditions -->
+<div class="wrap">
+  <div class="sec-lbl" style="margin-top:10px">Condiciones para QSS válida</div>
+  <div class="cond-grid">
+    <div class="cond" id="cond1">
+      <div class="lbl">Condición 1 — Tikhonov clásico</div>
+      <div class="val" id="cv1">—</div>
+      <div class="desc">ε₁ = e₀/s₀ ≪ 1 &nbsp;(enzima catalítica, concentración pequeña)</div>
+    </div>
+    <div class="cond" id="cond2">
+      <div class="lbl">Condición 2 — velocidades de reacción</div>
+      <div class="val" id="cv2">—</div>
+      <div class="desc">ε₂ = k₂/(k₁s₀) ≪ 1 &nbsp;(disociación lenta vs. formación del complejo)</div>
+    </div>
+    <div class="cond" id="cond3">
+      <div class="lbl">Condición de Segel-Slemrod (general)</div>
+      <div class="val" id="cv3">—</div>
+      <div class="desc">ε = (e₀ + k₂/k₁)/(s₀ + Kₘ) ≪ 1 &nbsp;(condición más general)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Sliders -->
+<div class="wrap">
+  <div class="ctrl-card">
+    <div class="sl-wrap">
+      <div class="sl-row">
+        <span class="sl-name">t_max (s) &nbsp;<span style="font-weight:400;color:var(--ink3)">— 0 = automático</span></span>
+        <span class="sl-num grn" id="n-tmax">auto</span>
+      </div>
+      <input type="range" id="sl-tmax" min="0" max="500" step="1" value="0" oninput="onSl()">
+    </div>
+    <hr class="divider">
+    <div class="sl-wrap">
+      <div class="sl-row">
+        <span class="sl-name">e₀ — conc. inicial enzima (µM)</span>
+        <span class="sl-num grn" id="n-e0">1.00</span>
+      </div>
+      <input type="range" id="sl-e0" min="0.01" max="8" step="0.01" value="1" oninput="onSl()">
+    </div>
+    <hr class="divider">
+    <div class="sl-wrap">
+      <div class="sl-row">
+        <span class="sl-name">s₀ — conc. inicial sustrato (µM)</span>
+        <span class="sl-num blu" id="n-s0">10.0</span>
+      </div>
+      <input type="range" id="sl-s0" min="1" max="50" step="0.5" value="10" oninput="onSl()">
+    </div>
+    <hr class="divider">
+    <div class="sl-wrap">
+      <div class="sl-row">
+        <span class="sl-name">k₁ (µM⁻¹s⁻¹)</span>
+        <span class="sl-num grn" id="n-k1">1.00</span>
+      </div>
+      <input type="range" id="sl-k1" min="0.1" max="10" step="0.1" value="1" oninput="onSl()">
+    </div>
+    <hr class="divider">
+    <div class="sl-wrap">
+      <div class="sl-row">
+        <span class="sl-name">k₋₁ (s⁻¹)</span>
+        <span class="sl-num red" id="n-km1">1.00</span>
+      </div>
+      <input type="range" id="sl-km1" min="0.01" max="10" step="0.01" value="1" oninput="onSl()">
+    </div>
+    <hr class="divider">
+    <div class="sl-wrap">
+      <div class="sl-row">
+        <span class="sl-name">k₂ (s⁻¹)</span>
+        <span class="sl-num pur" id="n-k2">0.10</span>
+      </div>
+      <input type="range" id="sl-k2" min="0.01" max="10" step="0.01" value="0.1" oninput="onSl()">
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Parameters ────────────────────────────────────────
+let P={e0:1, s0:10, k1:1, km1:1, k2:0.1, tmax:0};
+
+function Km(){return(P.km1+P.k2)/P.k1;}
+function Vmax(){return P.k2*P.e0;}
+function cStar(s){return P.e0*s/(s+Km());}
+
+// ── RK4 solvers ───────────────────────────────────────
+function solveFull(){
+  const Tauto=6*P.s0/Vmax();
+  const Tmax=P.tmax>0 ? P.tmax : Tauto;
+  const N=600;
+  const dt=Tmax/(N-1);
+  const ts=new Float64Array(N), sf=new Float64Array(N), cf=new Float64Array(N);
+  let s=P.s0, c=0;
+  for(let i=0;i<N;i++){
+    ts[i]=i*dt; sf[i]=s; cf[i]=c;
+    // sub-steps for accuracy on fast scale
+    const substeps=Math.max(1,Math.ceil(dt*P.k1*(P.s0+Km())/0.1));
+    const dts=dt/substeps;
+    for(let j=0;j<substeps;j++){
+      const f=(s,c)=>{const e=P.e0-c;
+        return[-P.k1*e*s+P.km1*c, P.k1*e*s-(P.km1+P.k2)*c];};
+      const[k1s,k1c]=f(s,c);
+      const[k2s,k2c]=f(s+dts/2*k1s,c+dts/2*k1c);
+      const[k3s,k3c]=f(s+dts/2*k2s,c+dts/2*k2c);
+      const[k4s,k4c]=f(s+dts*k3s,c+dts*k3c);
+      s=Math.max(0,s+dts*(k1s+2*k2s+2*k3s+k4s)/6);
+      c=Math.max(0,Math.min(P.e0,c+dts*(k1c+2*k2c+2*k3c+k4c)/6));
+    }
+  }
+  return{ts,sf,cf,tmax:Tmax};
+}
+
+function solveReduced(tmax){
+  const N=600, dt=tmax/(N-1);
+  const ts=new Float64Array(N), sr=new Float64Array(N), cr=new Float64Array(N);
+  let s=P.s0;
+  for(let i=0;i<N;i++){
+    ts[i]=i*dt; sr[i]=s; cr[i]=cStar(s);
+    const rk=(s)=>-Vmax()*s/(s+Km());
+    const k1=rk(s),k2=rk(s+dt/2*k1),k3=rk(s+dt/2*k2),k4=rk(s+dt*k3);
+    s=Math.max(0,s+dt*(k1+2*k2+2*k3+k4)/6);
+  }
+  return{ts,sr,cr};
+}
+
+// ── Downsample for drawing ────────────────────────────
+function downsample(arr, n){
+  const out=[], step=Math.max(1,Math.floor(arr.length/n));
+  for(let i=0;i<arr.length;i+=step) out.push(arr[i]);
+  return out;
+}
+
+// ── Canvas setup ──────────────────────────────────────
+function setupCv(id){
+  const cv=document.getElementById(id);
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.offsetWidth, H=cv.offsetHeight;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  return{ctx,W,H};
+}
+
+// ── Draw helpers ──────────────────────────────────────
+function drawGridSub(ctx,pad,W,H,tmax,ymax,yLabel){
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  ctx.strokeStyle='#f0ede8'; ctx.lineWidth=0.5;
+  for(let i=0;i<=3;i++){
+    const y=pad.t+ph*i/3;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+pw,y);ctx.stroke();
+    ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='right';
+    ctx.fillText((ymax*(1-i/3)).toFixed(2),pad.l-3,y+3);
+  }
+  for(let i=0;i<=4;i++){
+    const x=pad.l+pw*i/4;
+    ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+ph);ctx.stroke();
+    ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+    ctx.fillText((tmax*i/4).toFixed(1),x,pad.t+ph+12);
+  }
+  ctx.fillStyle='#aaa';ctx.font='9px Space Mono,monospace';
+  ctx.save();ctx.translate(9,pad.t+ph/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText(yLabel,0,0);ctx.restore();
+}
+
+function drawLineArr(ctx,ts,ys,tmax,ymax,pad,W,H,color,lw,dash){
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  const tx=t=>pad.l+pw*(t/tmax);
+  const ty=v=>pad.t+ph*(1-Math.min(v,ymax*1.05)/ymax);
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=lw||2;
+  if(dash)ctx.setLineDash([5,3]);
+  ctx.beginPath();
+  for(let i=0;i<ts.length;i++){
+    const px=tx(ts[i]),py=ty(ys[i]);
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.stroke();ctx.restore();
+}
+
+// ── Main draw function ────────────────────────────────
+function drawAll(){
+  const{ctx,W,H}=setupCv('cv-main');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+
+  // Solve
+  const full=solveFull();
+  const tmax=full.tmax;
+  const red=solveReduced(tmax);
+
+  // Downsample
+  const N=400;
+  const step=Math.max(1,Math.floor(full.ts.length/N));
+  const ts_f=[], sf_f=[], cf_f=[];
+  for(let i=0;i<full.ts.length;i+=step){
+    ts_f.push(full.ts[i]); sf_f.push(full.sf[i]); cf_f.push(full.cf[i]);
+  }
+
+  // Layout: two subplots stacked
+  const gap=28, topH=Math.floor((H-gap)/2);
+  const padS={l:40,r:12,t:12,b:8};
+  const padC={l:40,r:12,t:gap+topH+6,b:22};
+  padS.b=gap+topH; // bottom of S panel
+  // redefine as absolute coords
+  const subS={l:40,r:12,t:12,b:gap+topH};
+  const subC={l:40,r:12,t:gap+topH+4,b:H-22};
+
+  // Draw separator line
+  const yMid=gap+topH;
+  ctx.strokeStyle='#e8e4dc';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(20,yMid);ctx.lineTo(W-12,yMid);ctx.stroke();
+
+  // s panel
+  const pad1={l:subS.l,r:subS.r,t:subS.t,b:0};
+  const ph1=yMid-subS.t-4;
+  const ymax_s=P.s0*1.05;
+  // grid s
+  const pw=W-pad1.l-pad1.r;
+  ctx.strokeStyle='#f0ede8';ctx.lineWidth=0.5;
+  for(let i=0;i<=3;i++){
+    const y=pad1.t+ph1*i/3;
+    ctx.beginPath();ctx.moveTo(pad1.l,y);ctx.lineTo(pad1.l+pw,y);ctx.stroke();
+    ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='right';
+    ctx.fillText((ymax_s*(1-i/3)).toFixed(1),pad1.l-3,y+3);
+  }
+  for(let i=0;i<=4;i++){
+    const x=pad1.l+pw*i/4;
+    ctx.beginPath();ctx.moveTo(x,pad1.t);ctx.lineTo(x,pad1.t+ph1);ctx.stroke();
+  }
+  // label s
+  ctx.fillStyle='#aaa';ctx.font='9px Space Mono,monospace';
+  ctx.save();ctx.translate(9,pad1.t+ph1/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('s (µM)',0,0);ctx.restore();
+  // subtitle
+  ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='left';
+  ctx.fillText('SUSTRATO',pad1.l+4,pad1.t+11);
+
+  const tx1=t=>pad1.l+pw*(t/tmax);
+  const ty1=v=>pad1.t+ph1*(1-v/ymax_s);
+  // s QSS dashed
+  ctx.save();ctx.strokeStyle='#b83232';ctx.lineWidth=1.8;ctx.setLineDash([5,3]);
+  ctx.beginPath();
+  red.ts.forEach((t,i)=>{const px=tx1(t),py=ty1(red.sr[i]);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});
+  ctx.stroke();ctx.restore();
+  // s full
+  ctx.save();ctx.strokeStyle='#1d6b5c';ctx.lineWidth=2.2;
+  ctx.beginPath();
+  ts_f.forEach((t,i)=>{const px=tx1(t),py=ty1(sf_f[i]);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});
+  ctx.stroke();ctx.restore();
+
+  // c panel
+  const ph2=H-22-subC.t;
+  const ymax_c=P.e0*1.1;
+  ctx.strokeStyle='#f0ede8';ctx.lineWidth=0.5;
+  for(let i=0;i<=3;i++){
+    const y=subC.t+ph2*i/3;
+    ctx.beginPath();ctx.moveTo(subC.l,y);ctx.lineTo(subC.l+pw,y);ctx.stroke();
+    ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='right';
+    ctx.fillText((ymax_c*(1-i/3)).toFixed(3),subC.l-3,y+3);
+  }
+  for(let i=0;i<=4;i++){
+    const x=subC.l+pw*i/4;
+    ctx.beginPath();ctx.moveTo(x,subC.t);ctx.lineTo(x,subC.t+ph2);ctx.stroke();
+    ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+    ctx.fillText((tmax*i/4).toFixed(1),x,subC.t+ph2+12);
+  }
+  ctx.fillStyle='#aaa';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+  ctx.fillText('t (s)',subC.l+pw/2,H-3);
+  ctx.save();ctx.translate(9,subC.t+ph2/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('c (µM)',0,0);ctx.restore();
+  ctx.fillStyle='#bbb';ctx.font='9px Space Mono,monospace';ctx.textAlign='left';
+  ctx.fillText('COMPLEJO SE',subC.l+4,subC.t+11);
+
+  const tx2=t=>subC.l+pw*(t/tmax);
+  const ty2=v=>subC.t+ph2*(1-v/ymax_c);
+
+  // shade boundary layer
+  const tbl=3/(P.k1*(P.s0+Km()));
+  const xbl=Math.min(tx2(tbl),subC.l+pw);
+  ctx.fillStyle='rgba(44,95,138,0.07)';
+  ctx.fillRect(subC.l,subC.t,xbl-subC.l,ph2);
+
+  // c* QSS dashed
+  ctx.save();ctx.strokeStyle='#6b3a8a';ctx.lineWidth=1.8;ctx.setLineDash([5,3]);
+  ctx.beginPath();
+  red.ts.forEach((t,i)=>{const px=tx2(t),py=ty2(red.cr[i]);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});
+  ctx.stroke();ctx.restore();
+  // c full
+  ctx.save();ctx.strokeStyle='#2c5f8a';ctx.lineWidth=2.2;
+  ctx.beginPath();
+  ts_f.forEach((t,i)=>{const px=tx2(t),py=ty2(cf_f[i]);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});
+  ctx.stroke();ctx.restore();
+
+  // boundary layer label
+  ctx.fillStyle='rgba(44,95,138,0.5)';ctx.font='8px Space Mono,monospace';ctx.textAlign='center';
+  if(xbl-subC.l>20) ctx.fillText('capa\nlímite',(subC.l+xbl)/2,subC.t+20);
+}
+
+// ── QSS conditions ────────────────────────────────────
+function condClass(v){return v<0.05?'ok':v<0.2?'warn':'bad';}
+function condTxt(v){return v<0.05?'≪ 1  ✓ válida':v<0.2?'moderado ⚠':'≳ 1  ✗ cuestionable';}
+
+function updateConds(){
+  const km=Km();
+  const e1=P.e0/P.s0;
+  const e2=P.k2/(P.k1*P.s0);
+  const e3=(P.e0+P.k2/P.k1)/(P.s0+km);
+  [[e1,'cond1','cv1'],[e2,'cond2','cv2'],[e3,'cond3','cv3']].forEach(([v,cid,vid])=>{
+    document.getElementById(cid).className='cond '+condClass(v);
+    document.getElementById(vid).textContent=v.toFixed(4)+'  —  '+condTxt(v);
+  });
+}
+
+// ── Sliders ───────────────────────────────────────────
+function onSl(){
+  P.e0=+document.getElementById('sl-e0').value;
+  P.s0=+document.getElementById('sl-s0').value;
+  P.k1=+document.getElementById('sl-k1').value;
+  P.km1=+document.getElementById('sl-km1').value;
+  P.k2=+document.getElementById('sl-k2').value;
+  P.tmax=+document.getElementById('sl-tmax').value;
+  document.getElementById('n-e0').textContent=P.e0.toFixed(2);
+  document.getElementById('n-s0').textContent=P.s0.toFixed(1);
+  document.getElementById('n-k1').textContent=P.k1.toFixed(2);
+  document.getElementById('n-km1').textContent=P.km1.toFixed(2);
+  document.getElementById('n-k2').textContent=P.k2.toFixed(2);
+  document.getElementById('n-tmax').textContent=P.tmax>0?P.tmax.toFixed(0)+' s':'auto';
+  updateConds();
+  drawAll();
+}
+
+// ── Init ──────────────────────────────────────────────
+window.addEventListener('resize',drawAll);
+updateConds();
+drawAll();
+</script>
+</body>
+</html>
