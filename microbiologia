@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Quiz · Bacterias y Medios de Cultivo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:ital,wght@0,600;1,600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F6F2;--surface:#FFFFFF;--border:#E2E0D8;
+  --text:#1A1A18;--muted:#6B6A65;
+  --accent:#2B6045;--accent-light:#E8F2EC;--accent-dark:#1D4530;
+  --danger:#8B2020;--danger-light:#FDEAEA;
+  --warn:#7A4F00;--warn-light:#FEF3E0;
+  --radius:14px;--radius-sm:8px;
+}
+html{background:var(--bg)}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:0 0 48px}
+.header{background:var(--accent);padding:22px 20px 20px;text-align:center}
+.header-eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:5px}
+.header h1{font-family:'Lora',serif;font-size:20px;font-weight:600;color:#fff;line-height:1.3}
+.header-sub{font-size:13px;color:rgba(255,255,255,.7);margin-top:5px}
+.global-bar{background:var(--accent-dark);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.9)}
+.global-bar strong{font-weight:600;color:#fff}
+.global-quizzes{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
+.progress-wrap{padding:14px 16px 0;max-width:560px;margin:0 auto}
+.progress-info{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px}
+.progress-bar-bg{height:4px;background:var(--border);border-radius:99px;overflow:hidden}
+.progress-bar-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .4s ease}
+.main{max-width:560px;margin:16px auto 0;padding:0 14px}
+.screen{display:none}
+.screen.active{display:block}
+.start-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:26px 22px;text-align:center}
+.start-icon{width:52px;height:52px;background:var(--accent-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:24px}
+.start-card h2{font-family:'Lora',serif;font-size:19px;font-weight:600;margin-bottom:8px}
+.start-card p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px}
+.pill-row{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:20px}
+.pill{font-size:12px;padding:4px 11px;border-radius:99px;background:var(--accent-light);color:var(--accent-dark);font-weight:500}
+.history-section{margin-top:18px}
+.history-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;text-align:left}
+.history-list{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.history-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.history-item .hi-label{color:var(--text);font-weight:500}
+.hi-done{color:var(--accent);font-weight:600}
+.hi-partial{color:var(--warn);font-weight:600}
+.hi-retry{font-size:11px;color:var(--muted);text-decoration:underline;cursor:pointer;margin-left:10px}
+.btn{display:block;width:100%;padding:13px;background:var(--accent);color:#fff;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:background .15s,transform .1s}
+.btn:hover{background:var(--accent-dark)}
+.btn:active{transform:scale(.98)}
+.btn.secondary{background:transparent;color:var(--accent);border:1.5px solid var(--accent);margin-top:9px}
+.btn.secondary:hover{background:var(--accent-light)}
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 18px 18px;margin-bottom:11px}
+.q-type-badge{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:3px 9px;border-radius:99px;margin-bottom:11px}
+.badge-alt{background:#E8EEF8;color:#1D3A7A}
+.badge-vf{background:#F0EAF8;color:#4A1D7A}
+.q-text{font-size:15px;line-height:1.65;color:var(--text);margin-bottom:16px}
+.q-context{font-size:13px;color:var(--muted);background:var(--bg);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin-bottom:14px;line-height:1.5}
+.options{display:flex;flex-direction:column;gap:8px}
+.option-btn{display:flex;align-items:center;gap:11px;padding:12px 13px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;text-align:left;font-family:'Inter',sans-serif;font-size:14px;color:var(--text);transition:border-color .15s,background .15s;width:100%}
+.option-btn:hover:not(:disabled){border-color:var(--accent);background:var(--accent-light)}
+.option-btn:disabled{cursor:default}
+.option-letter{min-width:26px;height:26px;border-radius:50%;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--muted);flex-shrink:0;transition:all .15s}
+.option-btn.correct{border-color:var(--accent);background:var(--accent-light)}
+.option-btn.correct .option-letter{background:var(--accent);border-color:var(--accent);color:#fff}
+.option-btn.wrong{border-color:var(--danger);background:var(--danger-light)}
+.option-btn.wrong .option-letter{background:var(--danger);border-color:var(--danger);color:#fff}
+.option-btn.show-correct{border-color:var(--accent);background:var(--accent-light);opacity:.65}
+.feedback{display:none;margin-top:13px;padding:11px 13px;border-radius:var(--radius-sm);font-size:13px;line-height:1.55}
+.feedback.correct-fb{background:var(--accent-light);border-left:3px solid var(--accent);color:var(--accent-dark)}
+.feedback.wrong-fb{background:var(--danger-light);border-left:3px solid var(--danger);color:var(--danger)}
+.feedback.show{display:block}
+.fb-title{font-weight:600;margin-bottom:3px}
+.next-wrap{margin-top:12px;display:none}
+.next-wrap.show{display:block}
+.results-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:26px 22px}
+.score-circle{width:86px;height:86px;border-radius:50%;border:4px solid var(--accent);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 14px}
+.score-num{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--accent);line-height:1}
+.score-den{font-size:12px;color:var(--muted)}
+.results-card h2{font-family:'Lora',serif;font-size:18px;margin-bottom:6px;text-align:center}
+.result-msg{font-size:14px;color:var(--muted);margin-bottom:16px;line-height:1.6;text-align:center}
+.global-result-box{background:var(--accent-light);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.grb-label{font-size:13px;color:var(--accent-dark)}
+.grb-score{font-size:20px;font-weight:600;color:var(--accent);font-family:'Lora',serif}
+.summary-list{margin-bottom:18px}
+.summary-item{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;align-items:flex-start}
+.summary-item:last-child{border-bottom:none}
+.s-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+.s-text{color:var(--text);line-height:1.4;flex:1}
+.s-result{margin-left:4px;font-weight:600;flex-shrink:0}
+.s-ok{color:var(--accent)}
+.s-no{color:var(--danger)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-eyebrow">Laboratorio de Microbiología</div>
+  <h1>Bacterias y Medios<br>de Cultivo</h1>
+  <div class="header-sub">Quiz de preparación · Prueba práctica</div>
+</div>
+
+<div class="global-bar" id="globalBar">
+  <div>
+    <div>Puntaje total: <strong id="globalScoreDisplay">0</strong> pts</div>
+    <div class="global-quizzes" id="globalQuizzesDisplay">0 quizzes completados</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:12px;color:rgba(255,255,255,.7)">Mejor quiz</div>
+    <div style="font-weight:600" id="bestDisplay">—</div>
+  </div>
+</div>
+
+<div class="progress-wrap" id="progressWrap" style="display:none">
+  <div class="progress-info">
+    <span id="progressLabel">Pregunta 1 de 10</span>
+    <span id="scoreLabel">0 correctas</span>
+  </div>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<div class="main">
+  <div class="screen active" id="screenStart">
+    <div class="start-card">
+      <div class="start-icon">🔬</div>
+      <h2>¿Listos para empezar?</h2>
+      <p>Se seleccionarán <strong>10 preguntas al azar</strong> de un banco de 100, sobre identificación de colonias, medios selectivos y pruebas bioquímicas.</p>
+      <div class="pill-row">
+        <span class="pill">Alternativas</span>
+        <span class="pill">Verdadero / Falso</span>
+      </div>
+      <button class="btn" onclick="startNewQuiz()">Comenzar quiz →</button>
+      <div class="history-section" id="historySection" style="display:none">
+        <div class="history-title">Quizzes anteriores</div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screenQuestion">
+    <div class="q-card">
+      <span class="q-type-badge" id="qBadge"></span>
+      <div class="q-context" id="qContext" style="display:none"></div>
+      <div class="q-text" id="qText"></div>
+      <div class="options" id="qOptions"></div>
+      <div class="feedback" id="qFeedback"></div>
+    </div>
+    <div class="next-wrap" id="nextWrap">
+      <button class="btn" id="nextBtn" onclick="nextQuestion()">Siguiente pregunta →</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screenResults">
+    <div class="results-card">
+      <div class="score-circle">
+        <div class="score-num" id="scoreNum">0</div>
+        <div class="score-den">de 10</div>
+      </div>
+      <h2 id="resultTitle"></h2>
+      <p class="result-msg" id="resultMsg"></p>
+      <div class="global-result-box">
+        <div class="grb-label">Puntaje total acumulado</div>
+        <div class="grb-score" id="globalScoreResult">0 pts</div>
+      </div>
+      <div class="summary-list" id="summaryList"></div>
+      <button class="btn" onclick="startNewQuiz()">Nuevo quiz →</button>
+      <button class="btn secondary" onclick="showScreen('screenStart');renderHistory()">Ver historial</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const Q=[
+// ── E. COLI ──
+{t:"alt",c:"Observas colonias rosa-magenta en agar MacConkey.",q:"¿Qué propiedad de E. coli explica este color?",o:["No fermenta lactosa","Fermenta lactosa y acidifica el medio","Produce H₂S","Es halotolerante"],a:1,e:"E. coli fermenta lactosa, acidificando el medio y haciendo virar el indicador de pH a rosa-magenta."},
+{t:"vf",q:"E. coli produce colonias con brillo verde metálico en agar Levine.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. E. coli fermenta lactosa intensamente en Levine (EMB), produciendo el característico brillo verde metálico por precipitación de colorantes."},
+{t:"alt",q:"En agar XLD, ¿cómo se ven las colonias de E. coli?",o:["Rojas con centro negro","Incoloras o translúcidas","Amarillas grandes","Negras con halo transparente"],a:2,e:"E. coli fermenta los carbohidratos del XLD, acidificando el medio y produciendo colonias amarillas grandes."},
+{t:"vf",q:"E. coli es inhibida por el agar Cetrimida porque la cetrimida actúa sobre bacterias Gram negativas.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Cetrimida inhibe a los Gram negativos en general; solo Pseudomonas tolera este agente entre los Gram negativos."},
+{t:"alt",q:"¿Cuál es el resultado esperado de E. coli en el Agar Hierro-Kliger?",o:["K/K · Gas(−) · H₂S(−)","A/A · Gas(+) · H₂S(−)","K/A · Gas(+) · H₂S(+)","A/A · Gas(−) · H₂S(+)"],a:1,e:"E. coli fermenta lactosa (A arriba) y glucosa (A abajo), produce gas (CO₂) y no produce H₂S, dando A/A · Gas(+) · H₂S(−)."},
+{t:"vf",q:"E. coli da resultado positivo en la prueba de indol.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. E. coli posee triptofanasa y desdobla el triptófano del medio produciendo indol, evidenciado como anillo rojo con el reactivo de Kovacs."},
+{t:"alt",q:"¿Cuál prueba bioquímica distingue a E. coli de Klebsiella si ambas dan A/A en Kliger?",o:["Catalasa","Oxidasa","Indol","Hidrólisis de almidón"],a:2,e:"E. coli es indol(+) y Klebsiella es indol(−). Ambas fermentan lactosa y glucosa (A/A), pero la prueba de indol las diferencia claramente."},
+{t:"alt",c:"Comparas Klebsiella y E. coli en agar MacConkey.",q:"¿Qué diferencia morfológica permite distinguirlas visualmente?",o:["E. coli es incolora; Klebsiella es rosa","Klebsiella forma colonias grandes y mucoides; E. coli no","E. coli produce centro negro; Klebsiella no","No hay diferencia visual posible"],a:1,e:"Klebsiella produce una gran cápsula de polisacáridos que da aspecto mucoide y mayor tamaño a sus colonias, a diferencia de E. coli."},
+{t:"vf",q:"E. coli produce colonias rosadas en agar SS (Salmonella-Shigella).",o:["Verdadero","Falso"],a:0,e:"VERDADERO. E. coli fermenta lactosa y produce colonias rosadas o rojas en SS, aunque este medio es algo inhibitorio para ella."},
+{t:"alt",q:"¿Cuál es el resultado de oxidasa en E. coli y qué indica?",o:["Positivo; tiene citocromo C oxidasa","Negativo; carece de citocromo C oxidasa","Positivo; es fermentadora","Negativo; produce H₂S"],a:1,e:"E. coli es oxidasa negativa porque no posee citocromo C oxidasa funcional."},
+{t:"vf",q:"E. coli hidroliza el almidón, produciendo un halo transparente en el agar almidón.",o:["Verdadero","Falso"],a:1,e:"FALSO. E. coli es negativa para hidrólisis de almidón; no produce amilasa, por lo que no hay halo transparente alrededor de sus colonias."},
+{t:"alt",q:"¿A qué grupo pertenece E. coli según la prueba de óxido-fermentación?",o:["Oxidadora","Fermentadora","Ni oxidadora ni fermentadora","Ambas según temperatura"],a:1,e:"E. coli es fermentadora: utiliza glucosa sin necesidad de oxígeno, produciendo ácido en ambos tubos del medio O-F."},
+{t:"vf",q:"El agar Baird Parker inhibe a E. coli porque contiene telurio de potasio.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. El telurio de potasio presente en Baird Parker actúa como agente inhibidor selectivo para la mayoría de las bacterias Gram negativas, incluyendo E. coli."},
+{t:"alt",q:"¿Por qué el agar Manitol Salado inhibe a E. coli?",o:["Porque E. coli no fermenta el manitol","Porque E. coli no es halotolerante","Porque E. coli es Gram positiva","Porque E. coli produce H₂S que reacciona con el medio"],a:1,e:"Manitol Salado contiene NaCl al 7.5%, concentración que inhibe a organismos no halotolerantes como E. coli."},
+{t:"alt",q:"¿Qué agentes del agar MacConkey actúan como selectivos para favorecer Gram negativos?",o:["Telurio de potasio","Cristal violeta y sales biliares","Cetrimida","Yodo y verde brillante"],a:1,e:"MacConkey usa cristal violeta y sales biliares para inhibir Gram positivos, permitiendo el crecimiento selectivo de Gram negativos."},
+{t:"vf",q:"E. coli es catalasa positiva, lo que indica que puede realizar respiración aerobia.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. La catalasa descompone el H₂O₂ tóxico en agua y oxígeno, lo que indica capacidad de respiración aerobia. E. coli es catalasa(+)."},
+// ── SALMONELLA ──
+{t:"alt",c:"En agar XLD aparecen colonias rojas con un llamativo centro negro.",q:"¿Qué bacteria y qué reacción produce el centro negro?",o:["E. coli; fermentación de lactosa","Salmonella; H₂S reacciona con sales férricas formando FeS","Klebsiella; producción de cápsula","Vibrio; hidrólisis de gelatina"],a:1,e:"Salmonella produce H₂S, que reacciona con las sales férricas del XLD precipitando FeS negro. No fermenta los carbohidratos del medio, por eso las colonias son rojas."},
+{t:"vf",q:"Salmonella produce colonias rosa-magenta en MacConkey porque fermenta lactosa.",o:["Verdadero","Falso"],a:1,e:"FALSO. Salmonella NO fermenta lactosa y produce colonias incoloras o transparentes en MacConkey."},
+{t:"alt",q:"¿Cuál es el resultado de Salmonella en el Agar Hierro-Kliger?",o:["A/A · Gas(+) · H₂S(−)","K/K · Gas(−) · H₂S(−)","K/A · Gas(+) · H₂S(+)","A/A · Gas(−) · H₂S(+)"],a:2,e:"K/A indica que Salmonella no fermenta lactosa (K=alcalino arriba) pero sí fermenta glucosa (A=ácido abajo). Gas(+) y H₂S(+) son características adicionales."},
+{t:"vf",q:"Salmonella es inhibida por el agar Manitol Salado porque no es halotolerante.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. El 7.5% de NaCl del Manitol Salado inhibe organismos no halotolerantes. Salmonella no tolera esas concentraciones de sal."},
+{t:"alt",q:"En agar SS, ¿cómo se reconocen las colonias de Salmonella?",o:["Rosa-magenta grandes","Incoloras o translúcidas con centro negro","Verde-azul intenso","Amarillas mucoides"],a:1,e:"Salmonella no fermenta lactosa (colonias incoloras en SS) y produce H₂S, que forma precipitado negro con las sales férricas del medio."},
+{t:"alt",q:"¿Cuáles son los resultados de oxidasa e indol de Salmonella?",o:["Oxidasa(+), Indol(+)","Oxidasa(−), Indol(−)","Oxidasa(+), Indol(−)","Oxidasa(−), Indol(+)"],a:1,e:"Salmonella es oxidasa negativa e indol negativa (no posee triptofanasa)."},
+{t:"vf",q:"El agar Levine diferencia Salmonella de E. coli porque Salmonella produce colonias con brillo verde metálico.",o:["Verdadero","Falso"],a:1,e:"FALSO. Es E. coli quien produce el brillo verde metálico en Levine. Salmonella produce colonias incoloras o translúcidas."},
+{t:"alt",q:"¿Por qué el agar Baird Parker inhibe a Salmonella?",o:["Por el cristal violeta","Por el telurio de potasio y cloruro de litio","Por la cetrimida","Por el NaCl al 7.5%"],a:1,e:"Baird Parker contiene telurio de potasio y cloruro de litio, que inhiben a la mayoría de los Gram negativos como Salmonella."},
+{t:"alt",q:"¿Qué indica la producción de H₂S en Salmonella a nivel bioquímico?",o:["Presencia de triptofanasa","Actividad de amilasa","Reducción de compuestos azufrados del medio","Fermentación de lactosa"],a:2,e:"Salmonella posee enzimas que reducen compuestos azufrados (tiosulfato, cisteína) del medio, liberando H₂S gaseoso que reacciona con los metales del agar."},
+{t:"vf",q:"Salmonella es fermentadora en la prueba de óxido-fermentación.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Salmonella utiliza glucosa por vía fermentativa, dando resultado fermentador en la prueba O-F, aunque no fermenta todos los carbohidratos."},
+{t:"alt",q:"¿Qué prueba en Kliger diferencia mejor a Salmonella de E. coli?",o:["Gas(+) vs Gas(−)","A/A vs K/A y la producción de H₂S","Oxidasa(+) vs Oxidasa(−)","Indol(+) vs Indol(−) únicamente"],a:1,e:"E. coli da A/A con H₂S(−); Salmonella da K/A con H₂S(+). Esta combinación las distingue claramente."},
+{t:"vf",q:"Salmonella hidroliza la gelatina, evidenciado por un halo transparente.",o:["Verdadero","Falso"],a:1,e:"FALSO. Salmonella es negativa para hidrólisis de gelatina. No produce gelatinasa."},
+{t:"alt",q:"En agar Levine, ¿qué observarías al sembrar Salmonella?",o:["Colonias oscuras con verde metálico","Colonias incoloras o translúcidas","Colonias amarillas grandes","Colonias negras con halo"],a:1,e:"Salmonella no fermenta lactosa ni sacarosa en Levine, por lo que las colonias aparecen incoloras o translúcidas."},
+{t:"alt",q:"¿Cuál par de características distingue a Salmonella de E. coli de forma más directa?",o:["Gram(−) en ambas","Salmonella: H₂S(+) e indol(−); E. coli: H₂S(−) e indol(+)","Ambas producen brillo verde en Levine","Ambas fermentan lactosa"],a:1,e:"Salmonella produce H₂S y es indol negativa; E. coli no produce H₂S y es indol positiva."},
+{t:"vf",q:"Salmonella y Pseudomonas comparten el resultado K/K en el Agar Hierro-Kliger.",o:["Verdadero","Falso"],a:1,e:"FALSO. Salmonella da K/A (no fermenta lactosa pero sí glucosa). K/K corresponde solo a Pseudomonas, que no fermenta ningún carbohidrato."},
+{t:"alt",q:"¿En cuál medio de cultivo Salmonella produce colonias incoloras SIN centro negro?",o:["XLD","SS","MacConkey","Baird Parker"],a:2,e:"En MacConkey, Salmonella produce colonias incoloras o transparentes (no fermenta lactosa) y sin centro negro (MacConkey no contiene hierro para precipitar H₂S como color)."},
+// ── VIBRIO ──
+{t:"alt",q:"¿Cuál es la morfología característica de Vibrio que lo distingue en tinción de Gram?",o:["Coco Gram positivo","Bacilo recto Gram negativo","Bacilo curvo Gram negativo","Diplococo Gram negativo"],a:2,e:"Vibrio es un bacilo curvo Gram negativo, con forma de coma. Esta morfología curva es característica del género."},
+{t:"vf",q:"Vibrio produce colonias rojas con centro negro en agar XLD.",o:["Verdadero","Falso"],a:1,e:"FALSO. Vibrio produce colonias amarillas o rojo-amarillentas en XLD porque fermenta sacarosa, no produce H₂S. Las colonias con centro negro son de Salmonella."},
+{t:"alt",q:"¿Qué resultado da Vibrio en la prueba de oxidasa y qué indica?",o:["Negativo; no tiene cadena respiratoria","Positivo; posee citocromo C en la cadena de transporte electrónico","Negativo; es anaerobio estricto","Positivo; fermenta todos los carbohidratos"],a:1,e:"Vibrio es oxidasa positiva, lo que indica la presencia de citocromo C oxidasa en su cadena de transporte electrónico."},
+{t:"vf",q:"Vibrio es inhibido por el agar Cetrimida porque es Gram negativo.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Cetrimida inhibe a los Gram negativos en general. Vibrio es Gram negativo y por lo tanto inhibido. Solo Pseudomonas tolera la cetrimida entre los Gram negativos."},
+{t:"alt",q:"¿Cuál es el resultado de Vibrio en Agar Hierro-Kliger?",o:["A/A · Gas(+) · H₂S(+)","K/K · Gas(−) · H₂S(−)","K/A (o A/A) · Gas(−) · H₂S(−)","K/A · Gas(+) · H₂S(+)"],a:2,e:"Vibrio da K/A o A/A dependiendo de la especie, con Gas(−) y H₂S(−). No produce H₂S y no siempre fermenta lactosa."},
+{t:"alt",q:"¿Cuál prueba bioquímica es POSITIVA en Vibrio pero NEGATIVA en E. coli?",o:["Catalasa","Indol","Oxidasa","Fermentación de glucosa"],a:2,e:"Vibrio es oxidasa(+), mientras E. coli es oxidasa(−). Ambas son catalasa(+) e indol(+), por lo que oxidasa es el marcador diferencial."},
+{t:"vf",q:"Vibrio hidroliza la gelatina, lo que se evidencia por un halo transparente alrededor de la colonia.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Vibrio produce gelatinasa, enzima que degrada la gelatina del medio y genera un halo transparente."},
+{t:"alt",q:"¿Por qué el agar SS inhibe a Vibrio?",o:["Por el NaCl al 7.5%","Por las sales biliares y el verde brillante","Por la cetrimida","Por el telurio de potasio"],a:1,e:"Agar SS contiene sales biliares y verde brillante como agentes inhibidores. Vibrio es sensible a estos compuestos."},
+{t:"alt",q:"En agar MacConkey, ¿cómo aparecen las colonias de Vibrio?",o:["Rosa-magenta","Incoloras o translúcidas","Verde brillante","Negras con halo"],a:1,e:"Vibrio no fermenta rápidamente lactosa en MacConkey, por lo que las colonias aparecen incoloras o translúcidas."},
+{t:"vf",q:"Vibrio y Pseudomonas comparten el resultado de oxidasa positiva entre los Gram negativos del grupo.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. De las bacterias Gram negativas estudiadas, solo Vibrio y Pseudomonas son oxidasa positivas."},
+{t:"alt",q:"¿Qué propiedad distingue a Vibrio de Pseudomonas en la prueba de indol?",o:["Vibrio es indol(−) y Pseudomonas es indol(+)","Vibrio es indol(+) y Pseudomonas es indol(−)","Ambas son indol(+)","Ambas son indol(−)"],a:1,e:"Vibrio es indol(+) porque tiene triptofanasa. Pseudomonas es indol(−). Este resultado ayuda a diferenciarlos aunque ambos sean oxidasa(+)."},
+{t:"vf",q:"Vibrio es inhibido por el agar Manitol Salado porque inhibe a todos los Gram negativos.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Manitol Salado con NaCl 7.5% inhibe la mayoría de los Gram negativos. Vibrio es Gram negativo y sensible a esa salinidad."},
+{t:"alt",q:"¿Qué diferencia las colonias de Vibrio de las de Salmonella en agar XLD?",o:["Vibrio produce colonias incoloras; Salmonella amarillas","Vibrio produce colonias amarillas sin centro negro; Salmonella produce rojas con centro negro","Vibrio produce colonias con brillo verde; Salmonella no","No hay diferencia visual"],a:1,e:"Vibrio fermenta sacarosa dando colonias amarillas o amarillo-rojizas sin centro negro. Salmonella no fermenta carbohidratos y produce H₂S, dando colonias rojas con centro negro."},
+{t:"alt",q:"La hidrólisis de almidón es variable (+/−) en Vibrio. ¿Qué enzima estaría presente si el resultado es positivo?",o:["Gelatinasa","Triptofanasa","Amilasa","Oxidasa"],a:2,e:"La hidrólisis de almidón positiva indica producción de amilasa, que degrada el almidón del medio. El resultado es variable entre cepas de Vibrio."},
+{t:"vf",q:"Vibrio puede diferenciarse de Salmonella porque Vibrio es oxidasa positiva y Salmonella es oxidasa negativa.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Esta es una diferencia clave: Vibrio oxidasa(+) vs Salmonella oxidasa(−). Combinada con H₂S y el perfil de Kliger, permite identificación certera."},
+{t:"alt",q:"¿Cuál combinación de resultados identifica únicamente a Vibrio entre los organismos estudiados?",o:["Oxidasa(−), Catalasa(+), Indol(+)","Oxidasa(+), Catalasa(+), Indol(+), Gelatina(+)","Oxidasa(+), Catalasa(+), Indol(−)","Oxidasa(−), Catalasa(+), Indol(−)"],a:1,e:"Vibrio: oxidasa(+), catalasa(+), indol(+) e hidrólisis de gelatina(+). Esta combinación lo distingue de Pseudomonas (indol negativo) y de E. coli (oxidasa negativa)."},
+// ── PSEUDOMONAS ──
+{t:"alt",q:"¿Cuál es el medio SELECTIVO para Pseudomonas aeruginosa y qué color produce?",o:["MacConkey; rosa-magenta","Manitol Salado; amarillo","Cetrimida; verde-azul","Baird Parker; negro con halo"],a:2,e:"El agar Cetrimida es el medio selectivo para Pseudomonas. Las colonias producen piocianina, pigmento que les da el característico color verde-azul."},
+{t:"vf",q:"Pseudomonas es fermentadora en la prueba de óxido-fermentación.",o:["Verdadero","Falso"],a:1,e:"FALSO. Pseudomonas es OXIDADORA, no fermentadora. Utiliza glucosa solo en presencia de oxígeno (tubo abierto)."},
+{t:"alt",q:"¿Cuál es el resultado de Pseudomonas en el Agar Hierro-Kliger?",o:["A/A · Gas(+) · H₂S(−)","K/A · Gas(+) · H₂S(+)","K/K · Gas(−) · H₂S(−)","A/A · Gas(−) · H₂S(+)"],a:2,e:"Pseudomonas es oxidadora y no fermenta lactosa ni glucosa, resultando en K/K (alcalino en ambos tubos). No produce gas ni H₂S."},
+{t:"vf",q:"El agar SS es un buen medio selectivo para aislar Pseudomonas.",o:["Verdadero","Falso"],a:1,e:"FALSO. La tabla indica explícitamente que SS 'no es selectivo para este tipo de bacilos'. El medio correcto para Pseudomonas es Cetrimida."},
+{t:"alt",q:"¿Cuál propiedad de Pseudomonas explica que pueda crecer en agar Cetrimida?",o:["Es Gram positiva","Tolera la cetrimida, que inhibe a los demás Gram negativos","Fermenta la lactosa del medio","Produce H₂S que neutraliza la cetrimida"],a:1,e:"Pseudomonas posee mecanismos de resistencia que le permiten tolerar la cetrimida. Este detergente catiónico inhibe la mayoría de los Gram negativos."},
+{t:"alt",q:"¿Cuáles dos bacterias Gram negativas del grupo tienen oxidasa positiva?",o:["E. coli y Klebsiella","Salmonella y E. coli","Vibrio y Pseudomonas","Solo Pseudomonas tiene oxidasa(+)"],a:2,e:"Entre los Gram negativos estudiados, solo Pseudomonas y Vibrio tienen oxidasa positiva. E. coli, Salmonella y Klebsiella son todas oxidasa negativas."},
+{t:"vf",q:"Pseudomonas hidroliza la gelatina pero no hidroliza el almidón.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Pseudomonas es positiva para hidrólisis de gelatina (tiene gelatinasa) y negativa para hidrólisis de almidón (no tiene amilasa)."},
+{t:"alt",q:"En agar MacConkey, ¿qué apariencia tienen las colonias de Pseudomonas?",o:["Rosa-magenta","Oscuras con brillo metálico","Incoloras o translúcidas","Amarillas mucoides"],a:2,e:"Pseudomonas no fermenta lactosa, por lo que sus colonias no acidifican MacConkey y aparecen incoloras o translúcidas."},
+{t:"alt",q:"¿Cuál combinación describe ÚNICAMENTE a Pseudomonas en el grupo?",o:["Gram(−), oxidasa(+), fermentadora","Gram(−), oxidasa(+), oxidadora, crece en Cetrimida","Gram(−), oxidasa(−), indol(+)","Gram(+), catalasa(+), manitol(+)"],a:1,e:"Gram negativa + oxidasa positiva + metabolismo oxidador + crecimiento en Cetrimida identifica exclusivamente a Pseudomonas."},
+{t:"vf",q:"Pseudomonas es indol positiva porque degrada el triptófano del medio.",o:["Verdadero","Falso"],a:1,e:"FALSO. Pseudomonas es indol NEGATIVA. No posee triptofanasa, por lo que no hidroliza el triptófano del medio."},
+{t:"alt",q:"¿Por qué el agar Manitol Salado inhibe a Pseudomonas?",o:["Porque Pseudomonas es Gram positiva","Por la alta salinidad o el telurio del medio","Porque Pseudomonas fermenta el manitol","Por el cristal violeta del medio"],a:1,e:"La tabla indica que Manitol Salado inhibe a Pseudomonas por la alta salinidad (NaCl 7.5%) o el telurio. Pseudomonas no es halotolerante en ese rango."},
+{t:"alt",q:"En agar Levine, ¿cómo se ven las colonias de Pseudomonas?",o:["Oscuras con brillo verde metálico","Incoloras o ligeramente verdes","Rosa-magenta","Amarillas grandes"],a:1,e:"Pseudomonas no fermenta lactosa ni sacarosa en Levine, así que las colonias aparecen incoloras o ligeramente verdes por su pigmento propio."},
+{t:"vf",q:"El resultado K/K en Kliger y oxidasa positiva son suficientes para identificar a Pseudomonas en el grupo.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Entre los organismos estudiados, la combinación K/K en Kliger y oxidasa(+) identifica exclusivamente a Pseudomonas."},
+{t:"alt",q:"En agar XLD, ¿cómo se ven las colonias de Pseudomonas?",o:["Amarillas grandes","Rojas con centro negro","Rojas o rosadas (no fermenta carbohidratos)","Incoloras con centro negro"],a:2,e:"Pseudomonas no fermenta los carbohidratos del XLD. El medio basifica alrededor de las colonias, que aparecen rojas o rosadas."},
+{t:"vf",q:"Pseudomonas aeruginosa produce un pigmento verde-azul llamado piocianina visible en agar Cetrimida.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. La piocianina es un pigmento fenanzinico verde-azul característico de Pseudomonas aeruginosa, muy visible en el agar Cetrimida."},
+{t:"alt",q:"¿Qué diferencia en la prueba O-F distingue a Pseudomonas de E. coli?",o:["Pseudomonas es negativa en ambos tubos; E. coli es positiva en ambos","Pseudomonas es positiva en tubo abierto (oxidadora); E. coli es positiva en ambos (fermentadora)","Pseudomonas produce gas; E. coli no","No hay diferencia en O-F"],a:1,e:"En O-F, Pseudomonas acidifica solo el tubo ABIERTO (necesita O₂), comportamiento oxidador. E. coli acidifica AMBOS tubos (fermentadora, no necesita O₂)."},
+// ── KLEBSIELLA ──
+{t:"alt",q:"¿Qué característica morfológica de Klebsiella es responsable del aspecto mucoide de sus colonias?",o:["Producción de H₂S","Gran producción de cápsula de polisacáridos","Presencia de flagelos","Alta concentración de pigmento"],a:1,e:"Klebsiella produce una gran cápsula de polisacáridos que le da un aspecto mucoide, viscoso y de mayor tamaño a sus colonias."},
+{t:"vf",q:"Klebsiella produce colonias incoloras en agar MacConkey porque no fermenta lactosa.",o:["Verdadero","Falso"],a:1,e:"FALSO. Klebsiella SÍ fermenta lactosa y produce colonias rosa-magenta en MacConkey. La diferencia con E. coli es que son grandes y mucoides."},
+{t:"alt",q:"¿Cuál es el resultado de Klebsiella en Agar Hierro-Kliger?",o:["K/A · Gas(+) · H₂S(+)","A/A · Gas(+) · H₂S(−)","K/K · Gas(−) · H₂S(−)","A/A · Gas(−) · H₂S(+)"],a:1,e:"Klebsiella fermenta lactosa y glucosa (A/A), produce gas y no produce H₂S."},
+{t:"vf",q:"La prueba de indol diferencia a Klebsiella de E. coli dado que ambas dan A/A en Kliger.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Ambas dan A/A en Kliger, pero E. coli es indol(+) y Klebsiella es indol(−), lo que las diferencia claramente."},
+{t:"alt",q:"En agar Levine, ¿cómo se ven las colonias de Klebsiella?",o:["Incoloras o translúcidas","Verde brillante metálico","Marrón oscuro, grandes, con centro oscuro","Negras con halo transparente"],a:2,e:"Klebsiella fermenta lactosa en Levine produciendo colonias marrón oscuro o negras, grandes, con centro oscuro."},
+{t:"alt",q:"¿Por qué el agar Manitol Salado inhibe a Klebsiella?",o:["Porque Klebsiella no fermenta el manitol","Porque Klebsiella no es halotolerante","Porque el telurio inhibe su cápsula","Porque Klebsiella es Gram positiva"],a:1,e:"Klebsiella no es halotolerante y no puede crecer en la alta concentración de NaCl (7.5%) del agar Manitol Salado."},
+{t:"vf",q:"Klebsiella es oxidasa negativa y fermentadora, igual que E. coli.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Ambas son oxidasa negativas y fermentadoras. Las diferencias clave están en indol y morfología colonial."},
+{t:"alt",q:"¿Cómo se ven las colonias de Klebsiella en agar SS?",o:["Incoloras con centro negro","Rojas con brillo metálico","Rosa, rojas o incoloras con centro rosado","Amarillas mucoides"],a:2,e:"Klebsiella fermenta lactosa en SS, produciendo colonias rosadas o rojas."},
+{t:"alt",q:"¿Cuál par de pruebas diferencia a Klebsiella de Salmonella?",o:["Oxidasa y catalasa","Kliger (A/A vs K/A) e indol","Gas(+) vs Gas(−)","Hidrólisis de gelatina y almidón"],a:1,e:"Klebsiella da A/A en Kliger (fermenta lactosa y glucosa) y es indol(−). Salmonella da K/A (no fermenta lactosa). La diferencia principal está en el Kliger."},
+{t:"vf",q:"Klebsiella hidroliza tanto almidón como gelatina.",o:["Verdadero","Falso"],a:1,e:"FALSO. Klebsiella es negativa para hidrólisis de almidón Y negativa para hidrólisis de gelatina."},
+{t:"alt",q:"¿Por qué el Baird Parker inhibe a Klebsiella?",o:["Por el NaCl","Por el cloruro de litio y telurio de potasio","Por la cetrimida","Por las sales biliares"],a:1,e:"Baird Parker contiene cloruro de litio y telurio de potasio como agentes selectivos que inhiben a Klebsiella."},
+{t:"alt",q:"En agar XLD, ¿qué aspecto tienen las colonias de Klebsiella?",o:["Rojas con centro negro","Incoloras","Amarillas grandes y mucoides","Verdes brillantes"],a:2,e:"Klebsiella fermenta los carbohidratos del XLD y produce colonias amarillas grandes. Su cápsula les da la consistencia mucoide característica."},
+{t:"vf",q:"Klebsiella puede diferenciarse de E. coli en MacConkey solo por el color de las colonias.",o:["Verdadero","Falso"],a:1,e:"FALSO. Ambas producen colonias rosa-magenta en MacConkey. Para diferenciarlas es necesario observar la morfología: Klebsiella produce colonias grandes y mucoides."},
+{t:"alt",q:"¿Cuál es la razón por la que Cetrimida inhibe a Klebsiella?",o:["Klebsiella no fermenta la cetrimida","Cetrimida inhibe a los Gram negativos en general; Klebsiella es Gram negativa","Klebsiella no produce cápsula","Klebsiella es halotolerante"],a:1,e:"Cetrimida inhibe la mayoría de los Gram negativos; solo Pseudomonas es capaz de tolerarla. Klebsiella, al ser Gram negativa, es inhibida."},
+{t:"vf",q:"Klebsiella y E. coli tienen el mismo resultado en Kliger, por lo que son indistinguibles con esa prueba sola.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Ambas dan A/A · Gas(+) · H₂S(−) en Kliger. Se requieren pruebas adicionales como indol para diferenciarlas."},
+// ── STAPHYLOCOCCUS ──
+{t:"alt",q:"¿Cuál es la morfología de Staphylococcus en tinción de Gram?",o:["Bacilo Gram negativo","Coco Gram positivo","Bacilo curvo Gram positivo","Diplococo Gram negativo"],a:1,e:"Staphylococcus es un coco Gram positivo. Aparece en grupos (racimos) de cocos azul-violeta en la tinción de Gram."},
+{t:"vf",q:"Staphylococcus crece en agar MacConkey porque es Gram positivo y tolera los colorantes inhibidores.",o:["Verdadero","Falso"],a:1,e:"FALSO. Staphylococcus es INHIBIDO por MacConkey porque los colorantes cristal violeta, eosina, azul de metileno, verde brillante y las sales biliares inhiben a los Gram positivos."},
+{t:"alt",q:"¿Cuál es el medio SELECTIVO para Staphylococcus y qué propiedad aprovecha?",o:["MacConkey; fermenta lactosa","Cetrimida; tolera la cetrimida","Manitol Salado; es halotolerante y fermenta manitol","Baird Parker; produce H₂S"],a:2,e:"Manitol Salado con NaCl 7.5% inhibe la mayoría de los microorganismos. Staphylococcus es halotolerante y produce colonias amarillas por fermentación del manitol."},
+{t:"alt",q:"¿Qué aspecto tienen las colonias de Staphylococcus en agar Baird Parker?",o:["Rosa-magenta","Incoloras con centro negro","Negras o grisáceas con halo transparente","Amarillas mucoides"],a:2,e:"En Baird Parker, Staphylococcus reduce el telurio dando colonias negras, y degrada la yema de huevo produciendo el halo transparente característico."},
+{t:"vf",q:"El halo transparente alrededor de las colonias de Staphylococcus en Baird Parker indica producción de amilasa.",o:["Verdadero","Falso"],a:1,e:"FALSO. El halo en Baird Parker se debe a la degradación de la YEMA DE HUEVO (lecitinasa) y la reducción de telurio, no a amilasa."},
+{t:"alt",q:"¿Por qué Staphylococcus es inhibido en agar Levine?",o:["Por el NaCl al 7.5%","Por los colorantes eosina y azul de metileno que inhiben Gram positivos","Por la cetrimida","Por el telurio de potasio"],a:1,e:"Levine (EMB) contiene eosina y azul de metileno, colorantes que inhiben selectivamente los organismos Gram positivos como Staphylococcus."},
+{t:"alt",q:"¿Cuáles son los resultados de oxidasa y catalasa de Staphylococcus?",o:["Oxidasa(+), Catalasa(+)","Oxidasa(−), Catalasa(+)","Oxidasa(+), Catalasa(−)","Oxidasa(−), Catalasa(−)"],a:1,e:"Staphylococcus es oxidasa negativa y catalasa positiva."},
+{t:"vf",q:"Staphylococcus puede crecer en agar XLD porque es resistente al verde brillante.",o:["Verdadero","Falso"],a:1,e:"FALSO. Staphylococcus es INHIBIDO por XLD. El verde brillante del agar XLD inhibe a los Gram positivos."},
+{t:"alt",q:"¿Cuál es el resultado de Staphylococcus en el Agar Hierro-Kliger?",o:["A/A · Gas(+) · H₂S(+)","K/K · Gas(−) · H₂S(−)","K/A","A/A · Gas(−) · H₂S(−)"],a:2,e:"Staphylococcus produce K/A en Kliger: alcalino en la zona de lactosa (no la fermenta) y ácido en la zona de glucosa (sí la fermenta)."},
+{t:"alt",q:"¿Cuántos medios del grupo inhiben a Staphylococcus? ¿Cuáles son?",o:["2: MacConkey y Levine","3: MacConkey, Levine y Cetrimida","5: MacConkey, Levine, Cetrimida, XLD y SS","4: MacConkey, XLD, SS y Baird Parker"],a:2,e:"Staphylococcus es inhibido por MacConkey, Levine, Cetrimida, XLD y SS: todos los medios Gram negativos del grupo."},
+{t:"vf",q:"Staphylococcus produce colonias amarillas en Manitol Salado porque fermenta el manitol del medio.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Staphylococcus aureus fermenta el manitol, produciendo ácido que hace virar el indicador del medio a amarillo."},
+{t:"alt",q:"¿Cuál es el resultado de Staphylococcus en la prueba de indol?",o:["Positivo; forma anillo rojo","Negativo; no produce triptofanasa","Variable según la cepa","Positivo solo en anaerobiosis"],a:1,e:"Staphylococcus es indol negativo. No posee la enzima triptofanasa necesaria para degradar el triptófano del medio."},
+{t:"vf",q:"Staphylococcus es el único organismo Gram positivo dentro del grupo de bacterias estudiadas.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. De las seis bacterias estudiadas, solo Staphylococcus es Gram positivo."},
+{t:"alt",q:"¿Por qué el agar SS inhibe a Staphylococcus?",o:["Por el NaCl al 7.5%","Por las sales biliares y el verde brillante que inhiben Gram positivos","Por la cetrimida","Por el telurio de potasio"],a:1,e:"SS contiene sales biliares y verde brillante. Estos agentes inhiben selectivamente los Gram positivos, incluyendo Staphylococcus."},
+{t:"vf",q:"Staphylococcus produce gas en el Agar Hierro-Kliger.",o:["Verdadero","Falso"],a:1,e:"FALSO. El resultado de Staphylococcus en Kliger es K/A sin información de gas reportada específicamente. No produce gas como E. coli o Klebsiella."},
+// ── COMPARATIVAS ──
+{t:"alt",q:"¿Cuáles bacterias del grupo estudiado son oxidasa POSITIVA?",o:["E. coli y Klebsiella","Salmonella y Klebsiella","Pseudomonas y Vibrio","E. coli y Salmonella"],a:2,e:"Solo Pseudomonas y Vibrio son oxidasa positivas entre los organismos estudiados."},
+{t:"vf",q:"Todas las bacterias estudiadas son catalasa positiva.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Todas las bacterias del grupo (E. coli, Salmonella, Vibrio, Pseudomonas, Klebsiella y Staphylococcus) son catalasa positivas."},
+{t:"alt",q:"¿Qué resultado en Kliger es EXCLUSIVO de Pseudomonas entre los organismos estudiados?",o:["A/A · Gas(+) · H₂S(−)","K/A · Gas(+) · H₂S(+)","K/K · Gas(−) · H₂S(−)","K/A · Gas(−) · H₂S(−)"],a:2,e:"K/K indica que la bacteria no fermenta ni lactosa ni glucosa. Este resultado solo corresponde a Pseudomonas, que es oxidadora."},
+{t:"vf",q:"La prueba de hidrólisis de gelatina diferencia a Vibrio y Pseudomonas de las demás porque ambas son positivas.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. De los organismos estudiados, solo Vibrio y Pseudomonas tienen hidrólisis de gelatina positiva."},
+{t:"alt",c:"Un alumno observa: colonias amarillas en XLD, oxidasa(+), indol(+), gelatina(+).",q:"¿A qué bacteria corresponde?",o:["E. coli","Klebsiella","Vibrio","Pseudomonas"],a:2,e:"Vibrio: colonias amarillas en XLD (fermenta sacarosa), oxidasa(+), indol(+), hidrólisis de gelatina(+). Esta combinación es exclusiva de Vibrio en el grupo."},
+{t:"alt",q:"¿Qué medio inhibe a TODOS los Gram negativos excepto a Pseudomonas?",o:["MacConkey","Manitol Salado","Cetrimida","SS"],a:2,e:"Cetrimida inhibe a todos los Gram negativos en general; solo Pseudomonas puede tolerarla."},
+{t:"vf",q:"El agar Levine (EMB) es selectivo para bacterias Gram negativas porque inhibe todos los Gram positivos.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Levine contiene eosina y azul de metileno, colorantes que inhiben Gram positivos. Es selectivo para Gram negativos y diferencial para fermentadores de lactosa."},
+{t:"alt",q:"¿Cuál bacteria produce H₂S visible en el Agar Hierro-Kliger entre las estudiadas?",o:["E. coli","Klebsiella","Pseudomonas","Salmonella"],a:3,e:"Solo Salmonella produce H₂S en Kliger, evidenciado como precipitado negro."},
+{t:"alt",q:"¿Qué bacteria es la única Gram positiva del grupo y en qué medio crece selectivamente?",o:["Vibrio; Cetrimida","Staphylococcus; Manitol Salado","Klebsiella; Baird Parker","Pseudomonas; SS"],a:1,e:"Staphylococcus es el único Gram positivo del grupo. Crece selectivamente en Manitol Salado gracias a su halotolerancia."},
+{t:"vf",q:"La diferencia entre un resultado A/A y K/A en Kliger indica si la bacteria fermenta o no la lactosa.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. A arriba = ácido en zona de lactosa = fermenta lactosa. K arriba = alcalino = no fermenta lactosa."},
+{t:"alt",q:"¿Cuál bacteria Gram negativa produce colonias grandes y mucoides en MacConkey y XLD?",o:["E. coli","Salmonella","Pseudomonas","Klebsiella"],a:3,e:"Klebsiella produce gran cápsula de polisacáridos que le da aspecto mucoide y viscoso a sus colonias."},
+{t:"alt",c:"Bacteria desconocida: Gram negativa, oxidasa(−), indol(+), fermenta lactosa, sin H₂S.",q:"¿Cuál es?",o:["Salmonella","Vibrio","E. coli","Pseudomonas"],a:2,e:"E. coli: Gram negativa, oxidasa(−), indol(+), fermenta lactosa (A/A en Kliger) y no produce H₂S."},
+{t:"vf",q:"El agar Baird Parker es selectivo SOLO para Staphylococcus; ninguna bacteria Gram negativa puede crecer en él.",o:["Verdadero","Falso"],a:1,e:"FALSO. Aunque Baird Parker es altamente selectivo para estafilococos, algunas bacterias Gram negativas como Vibrio tienen crecimiento variable en él."},
+{t:"alt",q:"¿Cuántas bacterias del grupo son fermentadoras de lactosa?",o:["Solo E. coli","E. coli y Klebsiella","E. coli, Klebsiella y Staphylococcus","Todas las bacterias del grupo"],a:1,e:"E. coli y Klebsiella fermentan lactosa y producen colonias rosa-magenta en MacConkey. Salmonella, Vibrio, Pseudomonas y Staphylococcus no fermentan lactosa."},
+{t:"vf",q:"En la prueba de indol, el anillo rojo se forma porque el reactivo de Kovacs reacciona con el indol producido.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. El reactivo de Kovacs (p-dimetilaminobenzaldehído en HCl) reacciona con el indol producido por la triptofanasa, formando un anillo rojo en la superficie del tubo."},
+{t:"alt",q:"¿Cuál bacteria Gram negativa del grupo NO crece en MacConkey Y NO crece en Levine?",o:["E. coli","Vibrio (no crece en ninguno)","Ninguna; todas crecen en al menos uno de los dos","Salmonella"],a:2,e:"Todas las bacterias Gram negativas del grupo (E. coli, Salmonella, Vibrio, Pseudomonas, Klebsiella) crecen en MacConkey y/o Levine. Solo Staphylococcus (Gram positivo) es inhibido en ambos."},
+{t:"alt",q:"¿Qué indica un resultado de catalasa positivo en términos metabólicos?",o:["La bacteria solo puede crecer en anaerobiosis","La bacteria produce la enzima catalasa y puede realizar respiración aerobia","La bacteria fermenta todos los carbohidratos","La bacteria produce H₂S"],a:1,e:"La catalasa descompone H₂O₂ en agua y O₂. Su presencia indica que la bacteria posee mecanismos antioxidantes propios de organismos aerobios."},
+{t:"vf",q:"Pseudomonas y Vibrio pueden diferenciarse por la prueba de indol: Vibrio es positivo y Pseudomonas es negativo.",o:["Verdadero","Falso"],a:0,e:"VERDADERO. Vibrio es indol(+) y Pseudomonas es indol(−). Junto con otros resultados, esto permite diferenciar dos bacterias que comparten la oxidasa positiva."}
+];
+
+let globalScore=0;
+let quizHistory=[];
+let currentQuizIdx=null;
+let currentQs=[];
+let currentIdx=0;
+let currentScore=0;
+let currentAnswers=[];
+
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function startNewQuiz(){
+  currentQs=shuffle(Q).slice(0,10);
+  currentIdx=0;currentScore=0;currentAnswers=[];
+  currentQuizIdx=quizHistory.length;
+  quizHistory.push({score:0,questions:currentQs,answers:[]});
+  document.getElementById('progressWrap').style.display='block';
+  showScreen('screenQuestion');
+  renderQuestion();
+}
+
+function retryQuiz(idx){
+  const old=quizHistory[idx];
+  globalScore-=old.score;
+  currentQuizIdx=idx;
+  currentQs=old.questions;
+  currentIdx=0;currentScore=0;currentAnswers=[];
+  quizHistory[idx]={score:0,questions:currentQs,answers:[]};
+  updateGlobalBar();
+  document.getElementById('progressWrap').style.display='block';
+  showScreen('screenQuestion');
+  renderQuestion();
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='screenStart') document.getElementById('progressWrap').style.display='none';
+}
+
+function renderQuestion(){
+  const q=currentQs[currentIdx];
+  updateProgress();
+  const badge=document.getElementById('qBadge');
+  if(q.t==='alt'){badge.textContent='Alternativas';badge.className='q-type-badge badge-alt';}
+  else{badge.textContent='Verdadero / Falso';badge.className='q-type-badge badge-vf';}
+  const ctx=document.getElementById('qContext');
+  if(q.c){ctx.textContent='🔬 '+q.c;ctx.style.display='block';}
+  else{ctx.style.display='none';}
+  document.getElementById('qText').textContent=q.q;
+  const letters=['A','B','C','D'];
+  const ow=document.getElementById('qOptions');
+  ow.innerHTML='';
+  q.o.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='option-btn';
+    const lbl=q.t==='vf'?(i===0?'V':'F'):letters[i];
+    btn.innerHTML=`<span class="option-letter">${lbl}</span><span>${opt}</span>`;
+    btn.onclick=()=>selectAnswer(i);
+    ow.appendChild(btn);
+  });
+  const fb=document.getElementById('qFeedback');
+  fb.className='feedback';fb.innerHTML='';
+  document.getElementById('nextWrap').classList.remove('show');
+}
+
+function selectAnswer(idx){
+  const q=currentQs[currentIdx];
+  document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+  const ok=idx===q.a;
+  if(ok) currentScore++;
+  currentAnswers.push({q,chosen:idx,correct:ok});
+  document.querySelectorAll('.option-btn')[idx].classList.add(ok?'correct':'wrong');
+  if(!ok) document.querySelectorAll('.option-btn')[q.a].classList.add('show-correct');
+  const fb=document.getElementById('qFeedback');
+  fb.innerHTML=`<div class="fb-title">${ok?'✓ Correcto':'✗ Incorrecto'}</div>${q.e}`;
+  fb.className='feedback show '+(ok?'correct-fb':'wrong-fb');
+  document.getElementById('scoreLabel').textContent=currentScore+' correcta'+(currentScore!==1?'s':'');
+  document.getElementById('nextWrap').classList.add('show');
+  document.getElementById('nextBtn').textContent=currentIdx<9?'Siguiente pregunta →':'Ver resultados →';
+}
+
+function nextQuestion(){
+  currentIdx++;
+  if(currentIdx>=10){showResults();return;}
+  renderQuestion();
+}
+
+function updateProgress(){
+  document.getElementById('progressLabel').textContent=`Pregunta ${currentIdx+1} de 10`;
+  document.getElementById('progressFill').style.width=(currentIdx/10*100)+'%';
+}
+
+function showResults(){
+  document.getElementById('progressFill').style.width='100%';
+  quizHistory[currentQuizIdx].score=currentScore;
+  quizHistory[currentQuizIdx].answers=currentAnswers;
+  globalScore+=currentScore;
+  updateGlobalBar();
+  showScreen('screenResults');
+  document.getElementById('scoreNum').textContent=currentScore;
+  const pct=currentScore*10;
+  let title,msg;
+  if(pct>=90){title='¡Excelente dominio!';msg='Dominas muy bien los medios de cultivo y pruebas bioquímicas.';}
+  else if(pct>=70){title='¡Buen trabajo!';msg='Tienes una base sólida. Repasa las preguntas que fallaste.';}
+  else if(pct>=50){title='Vas por buen camino';msg='Necesitas repasar algunos conceptos de selectividad y Kliger.';}
+  else{title='Hay que repasar';msg='Vuelve a revisar la tabla de bacterias y vuelve a intentarlo.';}
+  document.getElementById('resultTitle').textContent=title;
+  document.getElementById('resultMsg').textContent=msg;
+  document.getElementById('globalScoreResult').textContent=globalScore+' pts';
+  const list=document.getElementById('summaryList');
+  list.innerHTML='';
+  currentAnswers.forEach((a,i)=>{
+    const d=document.createElement('div');
+    d.className='summary-item';
+    const sq=a.q.q.length>72?a.q.q.slice(0,72)+'…':a.q.q;
+    d.innerHTML=`<span class="s-icon">${a.correct?'✅':'❌'}</span><span class="s-text">${i+1}. ${sq}</span><span class="s-result ${a.correct?'s-ok':'s-no'}">${a.correct?'+1':'0'}</span>`;
+    list.appendChild(d);
+  });
+}
+
+function updateGlobalBar(){
+  document.getElementById('globalScoreDisplay').textContent=globalScore;
+  const done=quizHistory.filter(q=>q.answers&&q.answers.length===10).length;
+  document.getElementById('globalQuizzesDisplay').textContent=done+' quiz'+(done!==1?'zes':'')+' completado'+(done!==1?'s':'');
+  const best=quizHistory.length?Math.max(...quizHistory.map(q=>q.score)):0;
+  document.getElementById('bestDisplay').textContent=quizHistory.length?(best+'/10'):'—';
+}
+
+function renderHistory(){
+  const sec=document.getElementById('historySection');
+  const list=document.getElementById('historyList');
+  if(!quizHistory.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  list.innerHTML='';
+  quizHistory.forEach((qh,i)=>{
+    const div=document.createElement('div');
+    div.className='history-item';
+    const cls=qh.score>=7?'hi-done':'hi-partial';
+    div.innerHTML=`<span class="hi-label">Quiz ${i+1}</span><span><span class="hi-score ${cls}">${qh.score}/10 pts</span><span class="hi-retry" onclick="retryQuiz(${i})">Repetir</span></span>`;
+    list.appendChild(div);
+  });
+}
+
+updateGlobalBar();
+</script>
+</body>
+</html>
